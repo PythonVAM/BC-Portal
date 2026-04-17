@@ -231,6 +231,29 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .submit-box-text { font-size: 13px; color: #0C447C; }
 .btn-submit { background: #185FA5; border: none; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .btn-submit:hover { background: #0C447C; }
+
+/* --- Multiple cost centre movements (v6) --- */
+.bc-move-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 12px;}
+.bc-move-title{font-size:13px;font-weight:500;}
+.bc-move-list{display:flex;flex-direction:column;gap:12px;}
+.bc-block{border:0.5px solid #e0ded8;border-radius:10px;background:#fff;padding:14px 14px;}
+.bc-block-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.bc-block-left{display:flex;flex-direction:column;gap:6px;}
+.bc-block-label{font-size:12px;color:#666;}
+.bc-block-name{font-size:13px;font-weight:500;}
+.bc-block-actions{display:flex;align-items:center;gap:8px;}
+.bc-type-select{font-size:12px;padding:6px 10px;border:0.5px solid #ccc;border-radius:8px;background:#fff;font-family:inherit;color:#1a1a1a;}
+.btn-icon{font-size:12px;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;border:0.5px solid #ccc;background:transparent;color:#666;}
+.btn-icon:hover{background:#f5f4f0;}
+.bc-limit{font-size:11px;color:#A32D2D;margin:8px 0 0;display:none;}
+.cc-dual-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cc-pane{border:0.5px solid #e0ded8;border-radius:10px;padding:14px 14px;background:#fff;}
+.cc-pane-title{font-size:12px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.cc-pane-sub{font-size:12px;color:#666;margin-bottom:12px;line-height:1.6;}
+.cc-pane-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#444441;white-space:nowrap;}
+.hier-item.disabled{opacity:.55;cursor:not-allowed;}
+.hier-item.disabled:hover{background:transparent;}
+
 </style>
 </head>
 <body>
@@ -327,15 +350,20 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 
 <!-- STEP 2 -->
 <div class="screen" id="screen-step2"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step2"></div>
-  <div style="font-size:13px;color:#666;margin-bottom:16px;">Select one or more cost centres, then specify a contact person for each.</div>
-  <div class="method-toggle"><button class="method-btn active" id="cc-btn-hier" onclick="swM('cc','hier')">Browse hierarchy</button><button class="method-btn" id="cc-btn-manual" onclick="swM('cc','manual')">Enter manually</button></div>
-  <div id="cc-method-hier"><div class="hierarchy-panel"><div class="breadcrumb" id="cc-bc"></div><ul class="hier-list" id="cc-hl"></ul></div></div>
-  <div id="cc-method-manual" style="display:none;"><div class="manual-add-row"><div class="field"><label>Cost centre code</label><input type="text" id="cc-mi" placeholder="e.g. 7300RND-CC-042"/></div><button class="btn-add" onclick="addM('cc')">+ Add</button></div><div class="input-hint">Enter the cost centre code exactly as it appears in the finance system.</div></div>
-  <div class="sel-tray"><div class="sel-tray-header"><span id="cc-cnt">No cost centres selected</span><button class="sel-tray-clear" id="cc-clr" onclick="clrAll('cc')" style="display:none;">Remove all</button></div><div id="cc-cards"><span class="sel-empty">Cost centres you select will appear here.</span></div></div>
+
+  <div style="font-size:13px;color:#666;margin-bottom:10px;">Add one or more cost centre movement blocks. Each block represents one boundary change instance with its own Cost out and Cost in selections.</div>
+
+  <div class="bc-move-header">
+    <div class="bc-move-title">Cost centre movements</div>
+    <button class="btn btn-primary" style="padding:8px 14px;font-size:12px;" onclick="addBcBlock()">+ Add movement</button>
+  </div>
+
+  <div class="bc-move-list" id="bc-move-list"></div>
+
   <div class="btn-row"><button class="btn btn-secondary" onclick="go('step1')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step2b')">Next →</button></div>
 </div></div>
-
 <!-- STEP 2b -->
+
 <div class="screen" id="screen-step2b"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step2b"></div>
   <div style="font-size:13px;color:#666;margin-bottom:20px;">Your cost centres are selected. How would you like to proceed?</div>
   <div class="path-grid">
@@ -525,12 +553,347 @@ const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre'
 const glTree={name:'GL accounts',children:[{code:'5000',name:'Staff costs',children:[{code:'5100',name:'Permanent headcount',children:[{code:'5110-STAFF',name:'Salaries & wages',leaf:true},{code:'5115-NI',name:'Employer NI',leaf:true},{code:'5120-PENS',name:'Pension contributions',leaf:true}]},{code:'5200',name:'Variable pay',children:[{code:'5210-BONUS',name:'Bonus & incentives',leaf:true},{code:'5220-OT',name:'Overtime',leaf:true}]},{code:'5300',name:'Contingent labour',children:[{code:'5310-CONT',name:'Contractor fees',leaf:true},{code:'5320-TEMP',name:'Temporary staff',leaf:true}]}]},{code:'6000',name:'Non-staff costs',children:[{code:'6100',name:'Travel & expenses',children:[{code:'6110-TRAV',name:'Business travel',leaf:true},{code:'6120-ENT',name:'Entertainment',leaf:true}]},{code:'6200',name:'IT & software',children:[{code:'6210-LIC',name:'Software licences',leaf:true},{code:'6220-HW',name:'Hardware',leaf:true}]}]},{code:'7000',name:'Research & development',children:[{code:'7100',name:'Clinical',children:[{code:'7110-CLIN',name:'Clinical trial costs',leaf:true},{code:'7120-REG',name:'Regulatory submissions',leaf:true}]}]}]};
 const locTree={name:'All locations',children:[{name:'United Kingdom',code:'GB',children:[{name:'London',code:'GB-LON',children:[{code:'GB-LON-001',name:'Canary Wharf HQ',leaf:true},{code:'GB-LON-002',name:'Paddington Research Centre',leaf:true},{code:'GB-LON-003',name:'Southwark Operations Hub',leaf:true}]},{name:'Cambridge',code:'GB-CAM',children:[{code:'GB-CAM-001',name:'Cambridge Science Park',leaf:true},{code:'GB-CAM-002',name:"Addenbrooke's Site",leaf:true}]},{name:'Manchester',code:'GB-MAN',children:[{code:'GB-MAN-001',name:'Spinningfields Office',leaf:true},{code:'GB-MAN-002',name:'MediaCity Hub',leaf:true}]}]},{name:'United States',code:'US',children:[{name:'New York',code:'US-NYC',children:[{code:'US-NYC-001',name:'Midtown Manhattan Office',leaf:true},{code:'US-NYC-002',name:'Brooklyn R&D Lab',leaf:true}]},{name:'Boston',code:'US-BOS',children:[{code:'US-BOS-001',name:'Kendall Square Campus',leaf:true},{code:'US-BOS-002',name:'Longwood Medical Site',leaf:true}]},{name:'San Francisco',code:'US-SFO',children:[{code:'US-SFO-001',name:'Mission Bay Office',leaf:true},{code:'US-SFO-002',name:'South of Market Hub',leaf:true}]}]},{name:'Germany',code:'DE',children:[{name:'Munich',code:'DE-MUC',children:[{code:'DE-MUC-001',name:'Schwabing Research Park',leaf:true},{code:'DE-MUC-002',name:'Airport Business Centre',leaf:true}]},{name:'Berlin',code:'DE-BER',children:[{code:'DE-BER-001',name:'Mitte Innovation Hub',leaf:true}]}]},{name:'Switzerland',code:'CH',children:[{name:'Basel',code:'CH-BSL',children:[{code:'CH-BSL-001',name:'Basel Life Sciences Campus',leaf:true},{code:'CH-BSL-002',name:'Novartis District Site',leaf:true}]},{name:'Zurich',code:'CH-ZRH',children:[{code:'CH-ZRH-001',name:'Zurich Science Hub',leaf:true}]}]},{name:'Japan',code:'JP',children:[{name:'Tokyo',code:'JP-TYO',children:[{code:'JP-TYO-001',name:'Shinjuku Office',leaf:true},{code:'JP-TYO-002',name:'Shibuya R&D Centre',leaf:true}]}]}]};
 
-const paths={cc:[{name:'Organisation',node:ccTree}],gl:[{name:'GL accounts',node:glTree}],loc:[{name:'All locations',node:locTree}]};
-const sel={cc:[],gl:[],loc:[]};
+
+// --- Cost centre pairing model (v6) ---
+let bcBlocks=[]; // [{id,type,outSel[],inSel[],parSel,paths:{out:[],in:[],par:[]}}]
+let _bcSeq=1;
+
+function bcTypeLabel(t){
+  return t==='partial_oto'?'Partial BC — One to One'
+    : t==='partial_otm'?'Partial BC — One to Many'
+    : t==='partial_mto'?'Partial BC — Many to One'
+    : 'Full Cost Centre BC';
+}
+
+function maxForType(t,side){
+  if(t==='partial_oto') return (side==='out'||side==='in')?1:0;
+  if(t==='partial_otm') return side==='out'?1:999;
+  if(t==='partial_mto') return side==='in'?1:999;
+  if(t==='full_cc') return side==='par'?1:999;
+  return 999;
+}
+
+function mkPaths(){return [{name:'Organisation',node:ccTree}];}
+
+function mkBlock(type='partial_oto'){
+  const id=`bc-${_bcSeq++}`;
+  return {id,type,outSel:[],inSel:[],parSel:null,paths:{out:mkPaths(),in:mkPaths(),par:mkPaths()}};
+}
+
+function addBcBlock(type){
+  bcBlocks.push(mkBlock(type||'partial_oto'));
+  renderBcBlocks();
+}
+
+function removeBcBlock(id){
+  bcBlocks = bcBlocks.filter(b=>b.id!==id);
+  if(!bcBlocks.length) bcBlocks=[mkBlock('partial_oto')];
+  renderBcBlocks();
+}
+
+function setBlockType(id,newType){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  b.type=newType;
+  if(newType==='full_cc') b.inSel=[]; else b.parSel=null;
+  if(maxForType(newType,'out')===1 && b.outSel.length>1) b.outSel=[b.outSel[0]];
+  if(maxForType(newType,'in')===1 && b.inSel.length>1) b.inSel=[b.inSel[0]];
+  renderBcBlocks();
+}
+
+function showBlockLimit(id,msg){
+  const el=document.getElementById(`${id}-limit`);
+  if(!el) return;
+  el.textContent=msg;
+  el.style.display='block';
+  clearTimeout(showBlockLimit._t);
+  showBlockLimit._t=setTimeout(()=>{el.style.display='none';},2200);
+}
+
+function swM3(id,side,m){
+  document.getElementById(`${id}-${side}-method-hier`).style.display = m==='hier'?'block':'none';
+  document.getElementById(`${id}-${side}-method-manual`).style.display = m==='manual'?'block':'none';
+  document.getElementById(`${id}-${side}-btn-hier`).classList.toggle('active',m==='hier');
+  document.getElementById(`${id}-${side}-btn-manual`).classList.toggle('active',m==='manual');
+}
+
+function navH3(id,side,i){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  b.paths[side]=b.paths[side].slice(0,i+1);
+  rHier3(id,side);
+}
+
+function isSel3(b,side,code){
+  if(side==='par') return b.parSel && b.parSel.code===code;
+  const arr = side==='out'?b.outSel:b.inSel;
+  return arr.some(x=>x.code===code);
+}
+
+function togLeaf3(id,side,code,name){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const max=maxForType(b.type,side);
+  const arr = side==='out'?b.outSel:b.inSel;
+  const exists=arr.some(x=>x.code===code);
+  if(exists){
+    const next=arr.filter(x=>x.code!==code);
+    if(side==='out') b.outSel=next; else b.inSel=next;
+  }else{
+    if(max===1 && arr.length>=1){
+      const next=[{code,name,contact:''}];
+      if(side==='out') b.outSel=next; else b.inSel=next;
+      showBlockLimit(id,'Selection updated to maintain the limit for this movement type.');
+    }else{
+      arr.push({code,name,contact:''});
+    }
+  }
+  rHier3(id,side); rTray3(id,side);
+}
+
+function togParent3(id,code,name){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  if(b.parSel && b.parSel.code===code) b.parSel=null;
+  else b.parSel={code,name};
+  rHier3(id,'par'); rTray3(id,'par');
+}
+
+function updContact3(id,side,code,val){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const arr = side==='out'?b.outSel:b.inSel;
+  const it=arr.find(x=>x.code===code);
+  if(it) it.contact=val;
+}
+
+function remSel3(id,side,code){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  if(side==='par') b.parSel=null;
+  else if(side==='out') b.outSel=b.outSel.filter(x=>x.code!==code);
+  else b.inSel=b.inSel.filter(x=>x.code!==code);
+  rHier3(id,side); rTray3(id,side);
+}
+
+function clrAll3(id,side){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  if(side==='par') b.parSel=null;
+  if(side==='out') b.outSel=[];
+  if(side==='in') b.inSel=[];
+  rHier3(id,side); rTray3(id,side);
+}
+
+function addManual3(id,side){
+  const inp=document.getElementById(`${id}-${side}-mi`);
+  if(!inp) return;
+  const code=inp.value.trim();
+  if(!code){inp.value='';return;}
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b){inp.value='';return;}
+
+  if(side==='par'){
+    b.parSel={code,name:'Manual entry'};
+    inp.value='';
+    rTray3(id,'par');
+    return;
+  }
+
+  const max=maxForType(b.type,side);
+  const arr = side==='out'?b.outSel:b.inSel;
+  if(arr.some(x=>x.code===code)){inp.value='';return;}
+  if(max===1 && arr.length>=1){
+    const next=[{code,name:'Manual entry',contact:''}];
+    if(side==='out') b.outSel=next; else b.inSel=next;
+    showBlockLimit(id,'Selection updated to maintain the limit for this movement type.');
+  }else{
+    arr.push({code,name:'Manual entry',contact:''});
+  }
+  inp.value='';
+  rTray3(id,side); rHier3(id,side);
+}
+
+function rHier3(id,side){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const paths=b.paths[side];
+  const cur=paths[paths.length-1].node;
+  const bcEl=document.getElementById(`${id}-${side}-bc`);
+  if(bcEl){
+    bcEl.innerHTML = paths.map((p,i)=> i<paths.length-1 ? `<span class=\"bc-link\" onclick=\"navH3('${id}','${side}',${i})\">${p.name}</span><span class=\"sep\"> › </span>` : `<span class=\"current\">${p.name}</span>`).join('');
+  }
+  const list=document.getElementById(`${id}-${side}-hl`);
+  if(!list) return;
+  list.innerHTML='';
+
+  (cur.children||[]).forEach(child=>{
+    const li=document.createElement('li');
+
+    if(side==='par'){
+      const selected = (!child.leaf) && isSel3(b,'par',child.code);
+      li.className='hier-item'+(selected?' sel-row':'')+(child.leaf?' disabled':'');
+      if(child.leaf){
+        li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon cc\">CC</div><div><div style=\"font-size:13px;\">${child.name}</div><div class=\"hier-code\">${child.code}</div></div></div><span class=\"hier-arrow\">—</span>`;
+      }else{
+        li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon folder\">▶</div><div><div style=\"font-size:13px;\">${child.name}</div>${child.code?`<div class=\"hier-code\">${child.code}</div>`:''}</div></div><div style=\"display:flex;align-items:center;gap:10px;\"><div class=\"hier-checkbox ${selected?'checked':''}\" title=\"Select this parent unit\"></div><span class=\"hier-arrow\">›</span></div>`;
+        li.onclick=()=>{b.paths.par.push({name:child.name,node:child}); rHier3(id,'par');};
+        li.querySelector('.hier-checkbox').onclick=(ev)=>{ev.stopPropagation(); togParent3(id,child.code,child.name);};
+      }
+      list.appendChild(li);
+      return;
+    }
+
+    const s = child.leaf && isSel3(b,side,child.code);
+    li.className='hier-item'+(child.leaf?' leaf-item':'')+(s?' sel-row':'');
+    if(child.leaf){
+      li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon ${s?'cc-chk':'cc'}\">CC</div><div><div style=\"font-size:13px;\">${child.name}</div><div class=\"hier-code\">${child.code}</div></div></div><div class=\"hier-checkbox ${s?'checked':''}\"></div>`;
+      li.onclick=()=>togLeaf3(id,side,child.code,child.name);
+    }else{
+      li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon folder\">▶</div><div><div style=\"font-size:13px;\">${child.name}</div>${child.code?`<div class=\"hier-code\">${child.code}</div>`:''}</div></div><span class=\"hier-arrow\">›</span>`;
+      li.onclick=()=>{b.paths[side].push({name:child.name,node:child}); rHier3(id,side);};
+    }
+    list.appendChild(li);
+  });
+}
+
+function rTray3(id,side){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const cnt=document.getElementById(`${id}-${side}-cnt`);
+  const clr=document.getElementById(`${id}-${side}-clr`);
+  const cards=document.getElementById(`${id}-${side}-cards`);
+  if(!cnt||!clr||!cards) return;
+
+  if(side==='par'){
+    if(!b.parSel){
+      cnt.textContent='No parent unit selected';
+      clr.style.display='none';
+      cards.innerHTML='<span class=\"sel-empty\">The parent unit you select will appear here.</span>';
+      return;
+    }
+    cnt.textContent='1 parent unit selected';
+    clr.style.display='inline';
+    cards.innerHTML = `<div class=\"generic-tag\"><span class=\"gl-tag-code\">${b.parSel.code}</span><span class=\"tag-name\">${b.parSel.name}</span><button class=\"tag-remove\" onclick=\"remSel3('${id}','par','${b.parSel.code}')\">×</button></div>`;
+    return;
+  }
+
+  const arr = side==='out'?b.outSel:b.inSel;
+  if(!arr.length){
+    cnt.textContent='No cost centres selected';
+    clr.style.display='none';
+    cards.innerHTML='<span class=\"sel-empty\">Cost centres you select will appear here.</span>';
+    return;
+  }
+  cnt.textContent = arr.length===1?'1 cost centre selected':`${arr.length} cost centres selected`;
+  clr.style.display='inline';
+  cards.innerHTML = arr.map(c=>
+    `<div class=\"cc-card\">
+      <div class=\"cc-card-header\">
+        <div class=\"cc-card-title\"><span class=\"cc-card-code\">${c.code}</span><span class=\"cc-card-name\">${c.name}</span></div>
+        <button class=\"cc-card-remove\" onclick=\"remSel3('${id}','${side}','${c.code}')\">×</button>
+      </div>
+      <div class=\"cc-contact-field\">
+        <div class=\"cc-contact-label\">Contact person</div>
+        <input type=\"text\" placeholder=\"Name or email...\" value=\"${c.contact||''}\" oninput=\"updContact3('${id}','${side}','${c.code}',this.value)\"/>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function blockHTML(b,idx){
+  const isFull = b.type==='full_cc';
+  const outLimit=maxForType(b.type,'out');
+  const inLimit=maxForType(b.type,'in');
+
+  const rightTitle = isFull?'Cost in parent unit':'Cost in cost centres';
+  const rightSide = isFull?'par':'in';
+  const rightHint = isFull
+    ? 'For full cost centre boundary changes, select the parent unit (not an individual cost centre) that the Cost out cost centre(s) will move into.'
+    : 'Select Cost in cost centres (the destination). Limits apply based on the selected movement type.';
+
+  const rightManualLbl = isFull?'Parent unit code':'Cost centre code';
+  const rightManualPh = isFull?'e.g. 7300':'e.g. 7300RND-CC-041';
+
+  const outPill = outLimit==999?'No limit':`Select ${outLimit}`;
+  const inPill  = isFull?'Select 1':(inLimit==999?'No limit':`Select ${inLimit}`);
+
+  return `
+  <div class=\"bc-block\" id=\"${b.id}-block\">
+    <div class=\"bc-block-top\">
+      <div class=\"bc-block-left\">
+        <div class=\"bc-block-label\">Movement ${idx+1}</div>
+        <div class=\"bc-block-name\">${bcTypeLabel(b.type)}</div>
+      </div>
+      <div class=\"bc-block-actions\">
+        <select class=\"bc-type-select\" onchange=\"setBlockType('${b.id}',this.value)\">
+          <option value=\"partial_oto\" ${b.type==='partial_oto'?'selected':''}>Partial BC — One to One</option>
+          <option value=\"partial_otm\" ${b.type==='partial_otm'?'selected':''}>Partial BC — One to Many</option>
+          <option value=\"partial_mto\" ${b.type==='partial_mto'?'selected':''}>Partial BC — Many to One</option>
+          <option value=\"full_cc\" ${b.type==='full_cc'?'selected':''}>Full Cost Centre BC</option>
+        </select>
+        <button class=\"btn-icon\" onclick=\"removeBcBlock('${b.id}')\">Remove</button>
+      </div>
+    </div>
+
+    <div class=\"bc-limit\" id=\"${b.id}-limit\"></div>
+
+    <div class=\"cc-dual-grid\">
+
+      <div class=\"cc-pane\">
+        <div class=\"cc-pane-title\"><span>Cost out cost centres</span><span class=\"cc-pane-badge\">${outPill}</span></div>
+        <div class=\"cc-pane-sub\">Select one or more Cost out cost centres. Add a contact person for each Cost out cost centre.</div>
+
+        <div class=\"method-toggle\"><button class=\"method-btn active\" id=\"${b.id}-out-btn-hier\" onclick=\"swM3('${b.id}','out','hier')\">Browse hierarchy</button><button class=\"method-btn\" id=\"${b.id}-out-btn-manual\" onclick=\"swM3('${b.id}','out','manual')\">Enter manually</button></div>
+        <div id=\"${b.id}-out-method-hier\"><div class=\"hierarchy-panel\"><div class=\"breadcrumb\" id=\"${b.id}-out-bc\"></div><ul class=\"hier-list\" id=\"${b.id}-out-hl\"></ul></div></div>
+        <div id=\"${b.id}-out-method-manual\" style=\"display:none;\"><div class=\"manual-add-row\"><div class=\"field\"><label>Cost centre code</label><input type=\"text\" id=\"${b.id}-out-mi\" placeholder=\"e.g. 7300RND-CC-042\"/></div><button class=\"btn-add\" onclick=\"addManual3('${b.id}','out')\">+ Add</button></div><div class=\"input-hint\">Enter the cost centre code exactly as it appears in the finance system.</div></div>
+
+        <div class=\"sel-tray\"><div class=\"sel-tray-header\"><span id=\"${b.id}-out-cnt\">No cost centres selected</span><button class=\"sel-tray-clear\" id=\"${b.id}-out-clr\" onclick=\"clrAll3('${b.id}','out')\" style=\"display:none;\">Remove all</button></div><div id=\"${b.id}-out-cards\"><span class=\"sel-empty\">Cost centres you select will appear here.</span></div></div>
+      </div>
+
+      <div class=\"cc-pane\">
+        <div class=\"cc-pane-title\"><span>${rightTitle}</span><span class=\"cc-pane-badge\">${inPill}</span></div>
+        <div class=\"cc-pane-sub\">${rightHint}</div>
+
+        <div class=\"method-toggle\"><button class=\"method-btn active\" id=\"${b.id}-${rightSide}-btn-hier\" onclick=\"swM3('${b.id}','${rightSide}','hier')\">Browse hierarchy</button><button class=\"method-btn\" id=\"${b.id}-${rightSide}-btn-manual\" onclick=\"swM3('${b.id}','${rightSide}','manual')\">Enter manually</button></div>
+        <div id=\"${b.id}-${rightSide}-method-hier\"><div class=\"hierarchy-panel\"><div class=\"breadcrumb\" id=\"${b.id}-${rightSide}-bc\"></div><ul class=\"hier-list\" id=\"${b.id}-${rightSide}-hl\"></ul></div></div>
+        <div id=\"${b.id}-${rightSide}-method-manual\" style=\"display:none;\"><div class=\"manual-add-row\"><div class=\"field\"><label>${rightManualLbl}</label><input type=\"text\" id=\"${b.id}-${rightSide}-mi\" placeholder=\"${rightManualPh}\"/></div><button class=\"btn-add\" onclick=\"addManual3('${b.id}','${rightSide}')\">+ Add</button></div><div class=\"input-hint\">${isFull?'Enter the parent unit code (organisation unit), not a leaf cost centre.':'Enter the cost centre code exactly as it appears in the finance system.'}</div></div>
+
+        <div class=\"sel-tray\"><div class=\"sel-tray-header\"><span id=\"${b.id}-${rightSide}-cnt\">${isFull?'No parent unit selected':'No cost centres selected'}</span><button class=\"sel-tray-clear\" id=\"${b.id}-${rightSide}-clr\" onclick=\"clrAll3('${b.id}','${rightSide}')\" style=\"display:none;\">${isFull?'Remove':'Remove all'}</button></div><div id=\"${b.id}-${rightSide}-cards\"><span class=\"sel-empty\">${isFull?'The parent unit you select will appear here.':'Cost centres you select will appear here.'}</span></div></div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function renderBcBlocks(){
+  const host=document.getElementById('bc-move-list');
+  if(!host) return;
+  host.innerHTML = bcBlocks.map((b,i)=>blockHTML(b,i)).join('');
+  bcBlocks.forEach(b=>{
+    rHier3(b.id,'out'); rTray3(b.id,'out');
+    if(b.type==='full_cc'){ rHier3(b.id,'par'); rTray3(b.id,'par'); }
+    else { rHier3(b.id,'in'); rTray3(b.id,'in'); }
+  });
+}
+
+function initBCBlocks(){
+  if(!bcBlocks.length) bcBlocks=[mkBlock('partial_oto')];
+  renderBcBlocks();
+}
+
+function getAllCostOut(){
+  const map=new Map();
+  bcBlocks.forEach(b=>{(b.outSel||[]).forEach(c=>{if(!map.has(c.code)) map.set(c.code,c);});});
+  return Array.from(map.values());
+}
+
+const paths={gl:[{name:'GL accounts',node:glTree}],loc:[{name:'All locations',node:locTree}]};
+const sel={gl:[],loc:[]};
 const isSel=(t,c)=>sel[t].some(x=>x.code===c);
-const icoCls=(t,s)=>t==='cc'?(s?'cc-chk':'cc'):t==='gl'?(s?'gl-chk':'gl'):(s?'loc-chk':'loc');
-const icoLbl=(t)=>t==='cc'?'CC':t==='gl'?'GL':'Site';
-const IDS={cc:{bc:'cc-bc',hl:'cc-hl'},gl:{bc:'gl-bc',hl:'gl-hl'},loc:{bc:'loc-bc',hl:'loc-hl'}};
+const icoCls=(t,s)=>t==='gl'?(s?'gl-chk':'gl'):(s?'loc-chk':'loc');
+const icoLbl=(t)=>t==='gl'?'GL':'Site';
+const IDS={gl:{bc:'gl-bc',hl:'gl-hl'},loc:{bc:'loc-bc',hl:'loc-hl'}};
 
 function rHier(t){
   const pa=paths[t];const cur=pa[pa.length-1].node;
@@ -553,22 +916,23 @@ function navH(t,i){paths[t]=paths[t].slice(0,i+1);rHier(t);}
 function togI(t,code,name){isSel(t,code)?sel[t]=sel[t].filter(x=>x.code!==code):sel[t].push({code,name,...(t==='cc'?{contact:''}:{})});rHier(t);rTray(t);}
 function remI(t,code){sel[t]=sel[t].filter(x=>x.code!==code);rHier(t);rTray(t);}
 function clrAll(t){sel[t]=[];rHier(t);rTray(t);}
-function updContact(code,val){const c=sel.cc.find(x=>x.code===code);if(c)c.contact=val;}
+function updContact(code,val){const c=getAllCostOut().find(x=>x.code===code);if(c)c.contact=val;}
 
 function rTray(t){
-  if(t==='cc'){
-    const el=document.getElementById('cc-cards'),cnt=document.getElementById('cc-cnt'),cb=document.getElementById('cc-clr');
-    if(!sel.cc.length){el.innerHTML='<span class="sel-empty">Cost centres you select will appear here.</span>';cnt.textContent='No cost centres selected';cb.style.display='none';return;}
-    cnt.textContent=sel.cc.length===1?'1 cost centre selected':`${sel.cc.length} cost centres selected`;cb.style.display='inline';
-    el.innerHTML=sel.cc.map(c=>`<div class="cc-card"><div class="cc-card-header"><div class="cc-card-title"><span class="cc-card-code">${c.code}</span><span class="cc-card-name">${c.name}</span></div><button class="cc-card-remove" onclick="remI('cc','${c.code}')">×</button></div><div class="cc-contact-field"><div class="cc-contact-label">Contact person</div><input type="text" placeholder="Name or email..." value="${c.contact||''}" oninput="updContact('${c.code}',this.value)"/></div></div>`).join('');
-  }else{
-    const cfg={gl:{el:'gl-tags',cnt:'gl-cnt',cb:'gl-clr',cc:'gl-tag-code',lbl:'GL accounts',s:'GL account'},loc:{el:'loc-tags',cnt:'loc-cnt',cb:'loc-clr',cc:'loc-tag-code',lbl:'locations',s:'location'}};
-    const c=cfg[t];const el=document.getElementById(c.el),cnt=document.getElementById(c.cnt),cb=document.getElementById(c.cb);
-    const items=sel[t];
-    if(!items.length){el.innerHTML=`<span class="sel-empty">${c.lbl.charAt(0).toUpperCase()+c.lbl.slice(1)} you select will appear here.</span>`;cnt.textContent=`No ${c.lbl} selected`;cb.style.display='none';return;}
-    cnt.textContent=items.length===1?`1 ${c.s} selected`:`${items.length} ${c.lbl} selected`;cb.style.display='inline';
-    el.innerHTML=items.map(g=>`<div class="generic-tag"><span class="${c.cc}">${g.code}</span><span class="tag-name">${g.name}</span><button class="tag-remove" onclick="remI('${t}','${g.code}')">×</button></div>`).join('');
-  }
+ const cfg={gl:{el:'gl-tags',cnt:'gl-cnt',cb:'gl-clr',cc:'gl-tag-code',lbl:'GL accounts',s:'GL account'},loc:{el:'loc-tags',cnt:'loc-cnt',cb:'loc-clr',cc:'loc-tag-code',lbl:'locations',s:'location'}};
+ const c=cfg[t];
+ if(!c) return;
+ const el=document.getElementById(c.el),cnt=document.getElementById(c.cnt),cb=document.getElementById(c.cb);
+ const items=sel[t];
+ if(!items.length){
+  el.innerHTML=`<span class="sel-empty">${c.lbl.charAt(0).toUpperCase()+c.lbl.slice(1)} you select will appear here.</span>`;
+  cnt.textContent=`No ${c.lbl} selected`;
+  cb.style.display='none';
+  return;
+ }
+ cnt.textContent=items.length===1?`1 ${c.s} selected`:`${items.length} ${c.lbl} selected`;
+ cb.style.display='inline';
+ el.innerHTML=items.map(g=>`<div class="generic-tag"><span class="${c.cc}">${g.code}</span><span class="tag-name">${g.name}</span><button class="tag-remove" onclick="remI('${t}','${g.code}')">×</button></div>`).join('');
 }
 function swM(t,m){
   document.getElementById(`${t}-method-hier`).style.display=m==='hier'?'block':'none';
@@ -583,8 +947,8 @@ function addM(t){
   rTray(t);inp.value='';
 }
 function doDownload(){
-  const codes=sel.cc.length?sel.cc.map(c=>c.code):['(none)'];
-  const lines=['TRANSFER HUB — COST CENTRE DATA EXTRACT','='+'='.repeat(39),`Generated: ${new Date().toLocaleString('en-GB')}`,'Requested by: Jane Doherty (7300RND — Oncology R&D)','','SELECTED COST CENTRES','-'.repeat(21),...sel.cc.map(c=>{const a=gca(c.code);return`${c.code}  |  ${c.name}  |  Dept: ${a.dept}  |  Local currency: ${a.cur}  |  Contact: ${c.contact||'—'}`;}),``,`END OF EXTRACT`];
+  const codes=getAllCostOut().length?getAllCostOut().map(c=>c.code):['(none)'];
+  const lines=['TRANSFER HUB — COST CENTRE DATA EXTRACT','='+'='.repeat(39),`Generated: ${new Date().toLocaleString('en-GB')}`,'Requested by: Jane Doherty (7300RND — Oncology R&D)','','SELECTED COST CENTRES','-'.repeat(21),...getAllCostOut().map(c=>{const a=gca(c.code);return`${c.code}  |  ${c.name}  |  Dept: ${a.dept}  |  Local currency: ${a.cur}  |  Contact: ${c.contact||'—'}`;}),``,`END OF EXTRACT`];
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const fn=`cost_centre_data_${codes[0].replace(/[^a-z0-9]/gi,'_')}.txt`;a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url);
   document.getElementById('dl-confirm').style.display='block';document.getElementById('dl-fn').textContent=`${fn} — downloaded successfully`;
@@ -597,14 +961,14 @@ const AZW=['Employee - Regular','Contingent Worker'];
 const WT=['Lab','Office','Remote','Field','Manufacturing','Clinical','Warehouse'];
 
 function buildCombos(){
-  const ccs=sel.cc.length?sel.cc:[{code:'—',name:'(none)'}];
+  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)',contact:''}];
   const gls=sel.gl.length?sel.gl:[{code:'—',name:'(none)'}];
   combos=[];
   ccs.forEach(cc=>{const a=gca(cc.code);gls.forEach(gl=>{combos.push({cc,gl,dept:a.dept,localCur:a.cur,product:'',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
   rCoTables();go('step4');
 }
 function buildFTEs(){
-  const ccs=sel.cc.length?sel.cc:[{code:'—',name:'(none)'}];
+  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)',contact:''}];
   const locs=sel.loc.length?sel.loc:[{code:'—',name:'(none)'}];
   fteRows=[];
   ccs.forEach(cc=>{locs.forEach(loc=>{const m=glm(loc.code);fteRows.push({cc,loc,city:m.city,country:m.country,azW:'Employee - Regular',wt:'Lab',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
@@ -707,7 +1071,29 @@ function buildReview(){
 
 function buildConfirm(){
   const n=document.getElementById('inp-bcname')?.value||'—';
-  document.getElementById('rv-confirm-body').innerHTML=`<div style="margin-bottom:10px;"><span style="font-size:12px;color:#666;">BC name</span><br><span style="font-weight:500;">${n}</span></div><div style="margin-bottom:10px;"><span style="font-size:12px;color:#666;">Cost centres</span><br>${sel.cc.map(c=>`<span class="cc-badge" style="margin-right:4px;">${c.code}</span>`).join('')||'—'}</div><div style="margin-bottom:10px;"><span style="font-size:12px;color:#666;">GL accounts</span><br>${sel.gl.map(g=>`<span class="gl-badge" style="margin-right:4px;">${g.code}</span>`).join('')||'—'}</div><div><span style="font-size:12px;color:#666;">FTE locations</span><br>${sel.loc.map(l=>`<span class="loc-badge" style="margin-right:4px;">${l.code}</span>`).join('')||'—'}</div>`;
+
+  const blocksHtml = bcBlocks.map((b,i)=>{
+    const out = (b.outSel||[]).map(c=>`<span class=\"cc-badge\" style=\"margin-right:4px;\">${c.code}</span>`).join('')||'—';
+    const inPart = (b.type==='full_cc')
+      ? ((b.parSel?`<span class=\"cc-badge\" style=\"margin-right:4px;\">${b.parSel.code}</span>`:'—'))
+      : ((b.inSel||[]).map(c=>`<span class=\"cc-badge\" style=\"margin-right:4px;\">${c.code}</span>`).join('')||'—');
+    const inLbl = (b.type==='full_cc')?'Cost in parent unit':'Cost in cost centres';
+    return `
+      <div style=\"margin-bottom:12px;padding:10px 12px;background:#f5f4f0;border-radius:8px;\">
+        <div style=\"font-size:12px;font-weight:500;margin-bottom:6px;\">Movement ${i+1}: ${bcTypeLabel(b.type)}</div>
+        <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">Cost out</div>
+        <div style=\"margin-bottom:8px;\">${out}</div>
+        <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">${inLbl}</div>
+        <div>${inPart}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('rv-confirm-body').innerHTML=
+    `<div style=\"margin-bottom:10px;\"><span style=\"font-size:12px;color:#666;\">BC name</span><br><span style=\"font-weight:500;\">${n}</span></div>`+
+    `<div style=\"margin-bottom:10px;\"><span style=\"font-size:12px;color:#666;\">Cost centre movements</span><br>${blocksHtml||'—'}</div>`+
+    `<div style=\"margin-bottom:10px;\"><span style=\"font-size:12px;color:#666;\">GL accounts</span><br>${sel.gl.map(g=>`<span class=\"gl-badge\" style=\"margin-right:4px;\">${g.code}</span>`).join('')||'—'}</div>`+
+    `<div><span style=\"font-size:12px;color:#666;\">FTE locations</span><br>${sel.loc.map(l=>`<span class=\"loc-badge\" style=\"margin-right:4px;\">${l.code}</span>`).join('')||'—'}</div>`;
+
   document.getElementById('rv-submit-time').textContent=new Date().toLocaleString('en-GB');
 }
 
@@ -724,7 +1110,8 @@ function go(id){
   if(id==='step7')buildReview();
   if(id==='confirmation')buildConfirm();
 }
-['cc','gl','loc'].forEach(t=>{rHier(t);rTray(t);});
+['gl','loc'].forEach(t=>{rHier(t);rTray(t);});
+initBCBlocks();
 go('dashboard');
 </script>
 </body>
