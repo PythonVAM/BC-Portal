@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Transfer Hub — Prototype</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; font-size: 14px; line-height: 1.5; }
+.proto-wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 0.5px solid #e0ded8; border-radius: 10px; padding: 10px 16px; margin-bottom: 12px; }
+.topbar-brand { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.topbar-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #185FA5; display: inline-block; }
+.topbar-nav { display: flex; gap: 4px; }
+.nav-btn { font-size: 12px; padding: 5px 12px; border: 0.5px solid #e0ded8; border-radius: 8px; cursor: pointer; background: transparent; color: #666; font-family: inherit; }
+.nav-btn:hover { background: #f5f4f0; }
+.nav-btn.active { background: #E6F1FB; border-color: #85B7EB; color: #0C447C; }
+.topbar-user { font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: #B5D4F4; color: #0C447C; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; }
+.profile-panel { background: #fff; border: 0.5px solid #e0ded8; border-radius: 10px; padding: 14px 20px; margin-bottom: 14px; display: flex; align-items: center; gap: 16px; }
+.profile-avatar { width: 44px; height: 44px; border-radius: 50%; background: #B5D4F4; color: #0C447C; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; flex-shrink: 0; }
+.profile-name { font-size: 15px; font-weight: 500; margin-bottom: 3px; }
+.profile-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.profile-dept-code { font-size: 11px; font-weight: 500; background: #E6F1FB; color: #0C447C; padding: 2px 8px; border-radius: 6px; }
+.profile-dept-name { font-size: 12px; color: #666; }
+.profile-divider-v { width: 0.5px; height: 20px; background: #e0ded8; }
+.profile-role { font-size: 12px; color: #666; }
+.screen { display: none; }
+.screen.active { display: block; }
+.card { background: #fff; border: 0.5px solid #e0ded8; border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; }
+.card-title { font-size: 14px; font-weight: 500; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 0.5px solid #e0ded8; }
+.kpi-group { margin-bottom: 16px; }
+.kpi-group-label { font-size: 12px; font-weight: 500; color: #666; margin-bottom: 8px; }
+.metrics-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.metric { background: #f5f4f0; border-radius: 8px; padding: 12px 14px; }
+.metric-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+.metric-value { font-size: 20px; font-weight: 500; }
+.section-label { font-size: 13px; font-weight: 500; margin: 20px 0 8px; display: flex; align-items: center; gap: 8px; }
+.count-pill { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+.pill-blue { background:#E6F1FB; color:#0C447C; }
+.pill-amber { background:#FAEEDA; color:#633806; }
+.pill-green { background:#EAF3DE; color:#27500A; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-row.full { grid-template-columns: 1fr; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: #666; }
+.field input,.field select,.field textarea { font-size: 13px; padding: 7px 10px; border: 0.5px solid #ccc; border-radius: 8px; font-family: inherit; background: #fff; color: #1a1a1a; }
+.field textarea { resize: vertical; min-height: 80px; }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btn { font-size: 13px; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+.btn-primary { background: #185FA5; border: none; color: #fff; }
+.btn-primary:hover { background: #0C447C; }
+.btn-secondary { background: transparent; border: 0.5px solid #ccc; color: #666; font-family: inherit; }
+.btn-secondary:hover { background: #f5f4f0; }
+.badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
+.badge-pending { background:#FAEEDA; color:#633806; }
+.badge-approved { background:#EAF3DE; color:#27500A; }
+.badge-rejected { background:#FCEBEB; color:#501313; }
+.badge-draft { background:#F1EFE8; color:#444441; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { font-size: 11px; color: #666; font-weight: 500; text-align: left; padding: 8px 10px; border-bottom: 0.5px solid #e0ded8; white-space: nowrap; }
+td { padding: 10px; border-bottom: 0.5px solid #e0ded8; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+.filter-bar input { font-size: 13px; padding: 6px 10px; border: 0.5px solid #ccc; border-radius: 8px; flex: 1; font-family: inherit; }
+.filter-bar select { font-size: 13px; padding: 6px 10px; border: 0.5px solid #ccc; border-radius: 8px; font-family: inherit; }
+.section-divider { border: none; border-top: 0.5px solid #e0ded8; margin: 16px 0 14px; }
+.section-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.timeline { border-left: 2px solid #ccc; padding-left: 16px; margin-top: 4px; }
+.timeline-item { margin-bottom: 14px; position: relative; }
+.timeline-item::before { content: ''; position: absolute; left: -21px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: #185FA5; border: 2px solid #fff; }
+.timeline-item.done::before { background: #3B6D11; }
+.timeline-item.pending::before { background: #BA7517; }
+.timeline-item.future::before { background: #ccc; }
+.timeline-name { font-size: 13px; }
+.timeline-meta { font-size: 11px; color: #888; }
+.approval-action-box { background: #E6F1FB; border: 0.5px solid #85B7EB; border-radius: 8px; padding: 14px 16px; margin-top: 8px; }
+.approval-action-box p { font-size: 13px; color: #0C447C; margin-bottom: 10px; }
+.approval-action-box textarea { width: 100%; font-size: 13px; padding: 7px 10px; border: 0.5px solid #85B7EB; border-radius: 8px; background: #fff; font-family: inherit; resize: vertical; min-height: 50px; margin-bottom: 8px; }
+.btn-approve { background: #3B6D11; border: none; color: #fff; font-size: 13px; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+.btn-reject { background: #A32D2D; border: none; color: #fff; font-size: 13px; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+.confirm-icon { width: 44px; height: 44px; border-radius: 50%; background: #EAF3DE; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.check { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; position: relative; }
+.check::after { content: ''; width: 6px; height: 10px; border: 2px solid #3B6D11; border-top: none; border-left: none; transform: rotate(45deg) translate(-1px,-1px); display: block; }
+.ref-badge { display: inline-block; background: #E6F1FB; color: #0C447C; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 8px; margin-bottom: 8px; }
+.divider { border: none; border-top: 0.5px solid #e0ded8; margin: 12px 0; }
+.step-indicator { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; }
+.step { display: flex; align-items: center; gap: 3px; font-size: 10px; white-space: nowrap; }
+.step-num { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; flex-shrink: 0; }
+.step.active .step-num { background: #185FA5; color: #fff; }
+.step.inactive .step-num { background: #f5f4f0; color: #888; border: 0.5px solid #ccc; }
+.step.done .step-num { background: #3B6D11; color: #fff; }
+.step.active .step-label { color: #1a1a1a; font-weight: 500; }
+.step.inactive .step-label,.step.done .step-label { color: #888; }
+.step-connector { flex: 1; height: 0.5px; background: #ccc; min-width: 3px; max-width: 14px; }
+.method-toggle { display: flex; margin-bottom: 16px; border: 0.5px solid #ccc; border-radius: 8px; overflow: hidden; width: fit-content; }
+.method-btn { font-size: 12px; padding: 7px 16px; cursor: pointer; background: transparent; border: none; color: #666; font-family: inherit; }
+.method-btn.active { background: #E6F1FB; color: #0C447C; font-weight: 500; }
+.method-btn:first-child { border-right: 0.5px solid #ccc; }
+.hierarchy-panel { border: 0.5px solid #ccc; border-radius: 8px; overflow: hidden; }
+.breadcrumb { font-size: 12px; padding: 8px 12px; background: #f5f4f0; border-bottom: 0.5px solid #e0ded8; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.breadcrumb span.bc-link { cursor: pointer; color: #185FA5; }
+.breadcrumb .sep,.breadcrumb .current { color: #888; }
+.hier-list { list-style: none; }
+.hier-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 0.5px solid #e0ded8; cursor: pointer; }
+.hier-item:last-child { border-bottom: none; }
+.hier-item:hover { background: #f5f4f0; }
+.hier-item.leaf-item:hover { background: #F1EFE8; }
+.hier-item.sel-row { background: #EAF3DE; }
+.hier-item.sel-row:hover { background: #C0DD97; }
+.hier-item-left { display: flex; align-items: center; gap: 10px; }
+.hier-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; flex-shrink: 0; }
+.hier-icon.folder { background: #E6F1FB; color: #185FA5; }
+.hier-icon.cc { background: #EAF3DE; color: #3B6D11; }
+.hier-icon.cc-chk { background: #3B6D11; color: #fff; }
+.hier-icon.gl { background: #FAEEDA; color: #633806; }
+.hier-icon.gl-chk { background: #BA7517; color: #fff; }
+.hier-icon.loc { background: #EEEDFE; color: #3C3489; }
+.hier-icon.loc-chk { background: #534AB7; color: #fff; }
+.hier-code { font-size: 11px; color: #888; }
+.hier-arrow { font-size: 14px; color: #888; }
+.hier-checkbox { width: 16px; height: 16px; border: 1.5px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hier-checkbox.checked { background: #185FA5; border-color: #185FA5; }
+.hier-checkbox.checked::after { content: ''; width: 4px; height: 7px; border: 1.5px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translate(-0.5px,-1px); display: block; }
+.sel-tray { margin-top: 16px; }
+.sel-tray-header { font-size: 12px; color: #666; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.sel-tray-clear { font-size: 11px; color: #A32D2D; cursor: pointer; border: none; background: none; font-family: inherit; padding: 0; }
+.sel-empty { font-size: 12px; color: #999; font-style: italic; }
+.cc-card { background: #f5f4f0; border: 0.5px solid #e0ded8; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+.cc-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.cc-card-title { display: flex; align-items: center; gap: 8px; }
+.cc-card-code { font-size: 12px; font-weight: 500; background: #EAF3DE; color: #27500A; padding: 2px 8px; border-radius: 6px; }
+.cc-card-name { font-size: 13px; }
+.cc-card-remove { font-size: 18px; color: #999; cursor: pointer; border: none; background: none; font-family: inherit; padding: 0 2px; }
+.cc-contact-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+.cc-contact-field input { font-size: 12px; padding: 6px 9px; width: 100%; border: 0.5px solid #ccc; border-radius: 6px; font-family: inherit; }
+.generic-tag { display: flex; align-items: center; gap: 8px; background: #f5f4f0; border: 0.5px solid #e0ded8; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
+.gl-tag-code { font-size: 12px; font-weight: 500; background: #FAEEDA; color: #633806; padding: 2px 8px; border-radius: 6px; }
+.loc-tag-code { font-size: 12px; font-weight: 500; background: #EEEDFE; color: #3C3489; padding: 2px 8px; border-radius: 6px; }
+.tag-name { font-size: 13px; flex: 1; }
+.tag-remove { font-size: 18px; color: #999; cursor: pointer; border: none; background: none; font-family: inherit; padding: 0 2px; }
+.manual-add-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
+.manual-add-row .field { flex: 1; }
+.btn-add { font-size: 13px; padding: 7px 14px; border-radius: 8px; cursor: pointer; font-family: inherit; background: #185FA5; border: none; color: #fff; white-space: nowrap; }
+.input-hint { font-size: 11px; color: #888; margin-top: 4px; }
+.path-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+.path-card { border: 0.5px solid #ccc; border-radius: 10px; padding: 20px; cursor: pointer; background: #fff; }
+.path-card:hover { border-color: #85B7EB; background: #F4F9FE; }
+.path-card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.path-card-icon.blue { background: #E6F1FB; }
+.path-card-icon.green { background: #EAF3DE; }
+.path-card-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.path-card-desc { font-size: 12px; color: #666; line-height: 1.6; }
+.path-card-action { font-size: 12px; color: #185FA5; margin-top: 12px; font-weight: 500; }
+.dl-box { background: #EAF3DE; border: 0.5px solid #97C459; border-radius: 8px; padding: 14px 16px; margin-top: 16px; }
+.dl-title { font-size: 13px; font-weight: 500; color: #27500A; margin-bottom: 3px; }
+.dl-desc { font-size: 12px; color: #3B6D11; }
+.out-section { margin-bottom: 20px; }
+.out-section-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fy-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; }
+.fy-current { background: #E6F1FB; color: #0C447C; }
+.fy-prev { background: #F1EFE8; color: #444441; }
+.fy-future { background: #EAF3DE; color: #27500A; }
+.cur-label { font-size: 11px; color: #888; font-style: italic; }
+.out-table-wrap { overflow-x: auto; border: 0.5px solid #e0ded8; border-radius: 8px; }
+.out-table { border-collapse: collapse; font-size: 12px; min-width: 100%; }
+.out-table th { font-size: 10px; color: #666; font-weight: 500; padding: 7px 8px; border-bottom: 0.5px solid #e0ded8; border-right: 0.5px solid #e0ded8; white-space: nowrap; background: #f5f4f0; text-align: left; }
+.out-table th:last-child { border-right: none; }
+.out-table th.col-num { text-align: right; min-width: 52px; }
+.out-table th.col-total { text-align: right; min-width: 68px; background: #E6F1FB; color: #0C447C; }
+.out-table th.col-ro { background: #F1EFE8; color: #5F5E5A; }
+.out-table td { padding: 5px 8px; border-bottom: 0.5px solid #e0ded8; border-right: 0.5px solid #e0ded8; vertical-align: middle; white-space: nowrap; }
+.out-table td:last-child { border-right: none; }
+.out-table tr:last-child td { border-bottom: none; }
+.out-table td.frozen { background: #f5f4f0; font-size: 11px; }
+.out-table td.ro-cell { background: #F1EFE8; font-size: 11px; color: #444; }
+.out-table td.total-cell { background: #E6F1FB; color: #0C447C; font-weight: 500; text-align: right; }
+.out-table tr.alt-row td { background: #fafaf8; }
+.out-table tr.alt-row td.ro-cell { background: #ece9e4; }
+.out-table tr.alt-row td.total-cell { background: #dce9f5; }
+.cc-badge { display: inline-block; background: #EAF3DE; color: #27500A; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 4px; }
+.gl-badge { display: inline-block; background: #FAEEDA; color: #633806; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 4px; }
+.loc-badge { display: inline-block; background: #EEEDFE; color: #3C3489; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 4px; }
+.num-input { width: 50px; text-align: right; font-size: 12px; padding: 3px 5px; border: 0.5px solid transparent; border-radius: 4px; background: transparent; font-family: inherit; }
+.num-input:hover { border-color: #ccc; background: #fff; }
+.num-input:focus { outline: none; border-color: #85B7EB; background: #fff; }
+.product-input { width: 74px; font-size: 11px; padding: 3px 5px; border: 0.5px solid transparent; border-radius: 4px; background: transparent; font-family: inherit; }
+.product-input:hover { border-color: #ccc; background: #fff; }
+.product-input:focus { outline: none; border-color: #85B7EB; background: #fff; }
+.cell-select { font-size: 11px; padding: 3px 4px; border: 0.5px solid transparent; border-radius: 4px; background: transparent; font-family: inherit; cursor: pointer; max-width: 136px; }
+.cell-select:hover { border-color: #ccc; background: #fff; }
+.cell-select:focus { outline: none; border-color: #85B7EB; background: #fff; }
+.out-hint { font-size: 12px; color: #666; margin-bottom: 16px; }
+.usd-note { font-size: 11px; color: #666; background: #f5f4f0; border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; display: inline-block; }
+.rv-section { margin-bottom: 16px; }
+.rv-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.rv-section-title { font-size: 13px; font-weight: 500; }
+.rv-edit { font-size: 11px; color: #185FA5; cursor: pointer; border: none; background: none; font-family: inherit; padding: 0; }
+.rv-edit:hover { text-decoration: underline; }
+.rv-block { background: #f5f4f0; border-radius: 8px; padding: 12px 14px; font-size: 12px; }
+.rv-row { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 0.5px solid #e0ded8; }
+.rv-row:last-child { border-bottom: none; }
+.rv-lbl { color: #666; min-width: 120px; flex-shrink: 0; }
+.rv-val { color: #1a1a1a; }
+.rv-divider { border: none; border-top: 0.5px solid #e0ded8; margin: 14px 0; }
+.rv-table-wrap { overflow-x: auto; border: 0.5px solid #e0ded8; border-radius: 8px; margin-bottom: 8px; }
+.rv-table { border-collapse: collapse; font-size: 11px; min-width: 100%; }
+.rv-table th { font-size: 10px; color: #666; font-weight: 500; padding: 6px 8px; border-bottom: 0.5px solid #e0ded8; border-right: 0.5px solid #e0ded8; white-space: nowrap; background: #f5f4f0; text-align: left; }
+.rv-table th:last-child { border-right: none; }
+.rv-table th.rn { text-align: right; }
+.rv-table th.rt { text-align: right; background: #E6F1FB; color: #0C447C; }
+.rv-table td { padding: 5px 8px; border-bottom: 0.5px solid #e0ded8; border-right: 0.5px solid #e0ded8; white-space: nowrap; vertical-align: middle; }
+.rv-table td:last-child { border-right: none; }
+.rv-table tr:last-child td { border-bottom: none; }
+.rv-table td.rn { text-align: right; }
+.rv-table td.rtot { background: #E6F1FB; color: #0C447C; font-weight: 500; text-align: right; }
+.rv-table td.rro { background: #F1EFE8; color: #444; }
+.rv-fy-label { font-size: 13px; font-weight: 500; margin: 10px 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rv-cur-label { font-size: 11px; color: #888; font-style: italic; font-weight: 400; }
+.rv-none { font-size: 12px; color: #999; font-style: italic; }
+.cur-toggle-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.cur-toggle-label { font-size: 12px; color: #666; }
+.cur-toggle { display: flex; border: 0.5px solid #ccc; border-radius: 8px; overflow: hidden; }
+.cur-btn { font-size: 12px; padding: 6px 14px; cursor: pointer; background: transparent; border: none; color: #666; font-family: inherit; white-space: nowrap; }
+.cur-btn.active { background: #185FA5; color: #fff; font-weight: 500; }
+.cur-btn:first-child { border-right: 0.5px solid #ccc; }
+.cur-note { font-size: 11px; color: #888; font-style: italic; }
+.submit-box { background: #E6F1FB; border: 0.5px solid #85B7EB; border-radius: 8px; padding: 16px 20px; margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.submit-box-text { font-size: 13px; color: #0C447C; }
+.btn-submit { background: #185FA5; border: none; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.btn-submit:hover { background: #0C447C; }
+
+/* --- Multiple cost centre movements (v6) --- */
+.bc-move-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 12px;}
+.bc-move-title{font-size:13px;font-weight:500;}
+.bc-move-list{display:flex;flex-direction:column;gap:12px;}
+.bc-block{border:0.5px solid #e0ded8;border-radius:10px;background:#fff;padding:14px 14px;}
+.bc-block-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.bc-block-left{display:flex;flex-direction:column;gap:6px;}
+.bc-block-label{font-size:12px;color:#666;}
+.bc-block-name{font-size:13px;font-weight:500;}
+.bc-block-actions{display:flex;align-items:center;gap:8px;}
+.bc-type-select{font-size:12px;padding:6px 10px;border:0.5px solid #ccc;border-radius:8px;background:#fff;font-family:inherit;color:#1a1a1a;}
+.btn-icon{font-size:12px;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;border:0.5px solid #ccc;background:transparent;color:#666;}
+.btn-icon:hover{background:#f5f4f0;}
+.bc-limit{font-size:11px;color:#A32D2D;margin:8px 0 0;display:none;}
+.cc-dual-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cc-pane{border:0.5px solid #e0ded8;border-radius:10px;padding:14px 14px;background:#fff;}
+.cc-pane-title{font-size:12px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.cc-pane-sub{font-size:12px;color:#666;margin-bottom:12px;line-height:1.6;}
+.cc-pane-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:#F1EFE8;color:#444441;white-space:nowrap;}
+.hier-item.disabled{opacity:.55;cursor:not-allowed;}
+.hier-item.disabled:hover{background:transparent;}
+
+</style>
+</head>
+<body>
+<div class="proto-wrap">
+
+<div class="topbar">
+  <div class="topbar-brand"><span class="dot"></span> Transfer Hub</div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="go('dashboard')">Dashboard</button>
+    <button class="nav-btn" onclick="go('step1')">New request</button>
+    <button class="nav-btn" onclick="go('approval')">Approvals</button>
+  </div>
+  <div class="topbar-user"><span>FY2025</span><div class="avatar">JD</div></div>
+</div>
+
+<div class="profile-panel">
+  <div class="profile-avatar">JD</div>
+  <div>
+    <div class="profile-name">Jane Doherty</div>
+    <div class="profile-meta">
+      <span class="profile-dept-code">7300RND</span>
+      <span class="profile-dept-name">Oncology R&amp;D</span>
+      <div class="profile-divider-v"></div>
+      <span class="profile-role">Finance Business Partner</span>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div class="kpi-group">
+    <div class="kpi-group-label">Boundary changes requested</div>
+    <div class="metrics-row">
+      <div class="metric"><div class="metric-label">Total requested</div><div class="metric-value">14</div></div>
+      <div class="metric"><div class="metric-label">Cost outbound</div><div class="metric-value">$1.1M</div></div>
+      <div class="metric"><div class="metric-label">FTEs outbound</div><div class="metric-value">9.5</div></div>
+    </div>
+  </div>
+  <div class="kpi-group">
+    <div class="kpi-group-label">Boundary changes received</div>
+    <div class="metrics-row">
+      <div class="metric"><div class="metric-label">Action required</div><div class="metric-value">3</div></div>
+      <div class="metric"><div class="metric-label">Cost inbound</div><div class="metric-value">$395K</div></div>
+      <div class="metric"><div class="metric-label">FTEs inbound</div><div class="metric-value">9.0</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-header-row">
+      <span style="font-size:15px;font-weight:500;">Boundary changes</span>
+      <button class="btn btn-primary" onclick="go('step1')">+ New request</button>
+    </div>
+    <div class="filter-bar">
+      <input type="text" placeholder="Search by reference, division, or requester..."/>
+      <select><option>All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Draft</option></select>
+    </div>
+    <div class="section-label">Boundary changes requested <span class="count-pill pill-blue">4</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Reference</th><th>To</th><th>Cost ($)</th><th>FTEs</th><th>Request sent to</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0024</td><td>Digital &amp; Tech</td><td>108,000</td><td>2.0</td><td>Sarah Okafor</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0023</td><td>Risk &amp; Compliance</td><td>54,100</td><td>—</td><td>Mark Henley</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0021</td><td>Retail Division</td><td>152,400</td><td>3.0</td><td>Tom Walsh</td><td><span class="badge badge-approved">Approved</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0019</td><td>Operations</td><td>—</td><td>0.5</td><td>Jane Doherty</td><td><span class="badge badge-draft">Draft</span></td></tr>
+      </tbody>
+    </table></div>
+    <hr class="section-divider"/>
+    <div class="section-label">Boundary changes received — action required <span class="count-pill pill-amber">3</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Reference</th><th>From</th><th>Cost ($)</th><th>FTEs</th><th>Requested by</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0026</td><td>Operations</td><td>69,850</td><td>—</td><td>Tom Walsh</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0025</td><td>Corporate Centre</td><td>—</td><td>1.0</td><td>Aisha Patel</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0022</td><td>Retail Division</td><td>38,100</td><td>1.5</td><td>James Liu</td><td><span class="badge badge-pending">Pending</span></td></tr>
+      </tbody>
+    </table></div>
+    <hr class="section-divider"/>
+    <div class="section-label">Boundary changes received — action complete <span class="count-pill pill-green">2</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Reference</th><th>From</th><th>Cost ($)</th><th>FTEs</th><th>Requested by</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0020</td><td>Digital &amp; Tech</td><td>85,090</td><td>—</td><td>Aisha Patel</td><td><span class="badge badge-rejected">Rejected</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0018</td><td>Operations</td><td>—</td><td>2.0</td><td>Mark Henley</td><td><span class="badge badge-approved">Approved</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- STEP 1 -->
+<div class="screen" id="screen-step1"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step1"></div>
+  <div class="form-row full" style="margin-bottom:16px;"><div class="field"><label>BC name</label><input type="text" id="inp-bcname" placeholder="Give this boundary change a short, descriptive name..."/></div></div>
+  <div class="form-row full"><div class="field"><label>BC description</label><textarea id="inp-bcdesc" style="min-height:120px;" placeholder="Describe the purpose and context of this boundary change..."></textarea></div></div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('dashboard')">Cancel</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step2')">Next →</button></div>
+</div></div>
+
+<!-- STEP 2 -->
+<div class="screen" id="screen-step2"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step2"></div>
+
+  <div style="font-size:13px;color:#666;margin-bottom:10px;">Add one or more cost centre movement blocks. Each block represents one boundary change instance with its own Cost out and Cost in selections.</div>
+
+  <div class="bc-move-header">
+    <div class="bc-move-title">Cost centre movements</div>
+    <button class="btn btn-primary" style="padding:8px 14px;font-size:12px;" onclick="addBcBlock()">+ Add movement</button>
+  </div>
+
+  <div class="bc-move-list" id="bc-move-list"></div>
+
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('step1')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step2b')">Next →</button></div>
+</div></div>
+<!-- STEP 2b -->
+
+<div class="screen" id="screen-step2b"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step2b"></div>
+  <div style="font-size:13px;color:#666;margin-bottom:20px;">Your cost centres are selected. How would you like to proceed?</div>
+  <div class="path-grid">
+    <div class="path-card" onclick="go('step3')">
+      <div class="path-card-icon blue"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="3" rx="1" fill="#185FA5"/><rect x="2" y="7.5" width="10" height="3" rx="1" fill="#185FA5"/><rect x="2" y="13" width="12" height="3" rx="1" fill="#185FA5"/></svg></div>
+      <div class="path-card-title">Continue to GL accounts</div>
+      <div class="path-card-desc">Select GL accounts and proceed to complete the boundary change request form.</div>
+      <div class="path-card-action">Continue →</div>
+    </div>
+    <div class="path-card" onclick="doDownload()">
+      <div class="path-card-icon green"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v9M9 11l-3-3M9 11l3-3" stroke="#3B6D11" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="13" width="14" height="3" rx="1" fill="#3B6D11"/></svg></div>
+      <div class="path-card-title">Download cost centre data</div>
+      <div class="path-card-desc">Download all available data for the selected cost centres as a file for offline reference.</div>
+      <div class="path-card-action">Download file</div>
+    </div>
+  </div>
+  <div id="dl-confirm" style="display:none;"><div class="dl-box"><div class="dl-title">Download ready</div><div class="dl-desc" id="dl-fn"></div></div></div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('step2')">← Back</button><button class="btn btn-secondary">Save as draft</button></div>
+</div></div>
+
+<!-- STEP 3 -->
+<div class="screen" id="screen-step3"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step3"></div>
+  <div style="font-size:13px;color:#666;margin-bottom:16px;">Select one or more GL accounts for this boundary change.</div>
+  <div class="method-toggle"><button class="method-btn active" id="gl-btn-hier" onclick="swM('gl','hier')">Browse hierarchy</button><button class="method-btn" id="gl-btn-manual" onclick="swM('gl','manual')">Enter manually</button></div>
+  <div id="gl-method-hier"><div class="hierarchy-panel"><div class="breadcrumb" id="gl-bc"></div><ul class="hier-list" id="gl-hl"></ul></div></div>
+  <div id="gl-method-manual" style="display:none;"><div class="manual-add-row"><div class="field"><label>GL account code</label><input type="text" id="gl-mi" placeholder="e.g. 5110-STAFF"/></div><button class="btn-add" onclick="addM('gl')">+ Add</button></div><div class="input-hint">Enter the GL account code exactly as it appears in the finance system.</div></div>
+  <div class="sel-tray"><div class="sel-tray-header"><span id="gl-cnt">No GL accounts selected</span><button class="sel-tray-clear" id="gl-clr" onclick="clrAll('gl')" style="display:none;">Remove all</button></div><div id="gl-tags"><span class="sel-empty">GL accounts you select will appear here.</span></div></div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('step2b')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="buildCombos()">Next →</button></div>
+</div></div>
+
+<!-- STEP 4: Cost Out -->
+<div class="screen" id="screen-step4"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step4"></div>
+  <p class="out-hint">Each row is a combination of cost centre and GL account. Enter values in USD. The local currency for each cost centre is shown for reference. Paste a row from Excel into any month cell to fill across automatically.</p>
+  <div class="usd-note">All amounts collected in USD ($) — local currency shown for reference only</div>
+  <div class="out-section">
+    <div class="out-section-title">Current year <span class="fy-badge fy-current">FY26</span> <span class="cur-label">values in USD</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Local currency</th><th>Product</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="co26"></tbody></table></div>
+  </div>
+  <div class="out-section">
+    <div class="out-section-title">Current year −1 <span class="fy-badge fy-prev">FY25</span> <span class="cur-label">values in USD</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Local currency</th><th>Product</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="co25"></tbody></table></div>
+  </div>
+  <div class="out-section">
+    <div class="out-section-title">Current year +1 to +3 <span class="fy-badge fy-future">FY27–29</span> <span class="cur-label">values in USD</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Local currency</th><th>Product</th><th class="col-num">FY27</th><th class="col-num">FY28</th><th class="col-num">FY29</th></tr></thead><tbody id="co2729"></tbody></table></div>
+  </div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('step3')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step5')">Next →</button></div>
+</div></div>
+
+<!-- STEP 5: FTE Locations -->
+<div class="screen" id="screen-step5"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step5"></div>
+  <div style="font-size:13px;color:#666;margin-bottom:16px;">Select one or more sites for this boundary change. Browse by country and city, or enter a site code directly.</div>
+  <div class="method-toggle"><button class="method-btn active" id="loc-btn-hier" onclick="swM('loc','hier')">Browse hierarchy</button><button class="method-btn" id="loc-btn-manual" onclick="swM('loc','manual')">Enter manually</button></div>
+  <div id="loc-method-hier"><div class="hierarchy-panel"><div class="breadcrumb" id="loc-bc"></div><ul class="hier-list" id="loc-hl"></ul></div></div>
+  <div id="loc-method-manual" style="display:none;"><div class="manual-add-row"><div class="field"><label>Site code</label><input type="text" id="loc-mi" placeholder="e.g. GB-LON-001"/></div><button class="btn-add" onclick="addM('loc')">+ Add</button></div><div class="input-hint">Enter the site code exactly as it appears in the property management system.</div></div>
+  <div class="sel-tray"><div class="sel-tray-header"><span id="loc-cnt">No locations selected</span><button class="sel-tray-clear" id="loc-clr" onclick="clrAll('loc')" style="display:none;">Remove all</button></div><div id="loc-tags"><span class="sel-empty">Sites you select will appear here.</span></div></div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('step4')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="buildFTEs()">Next →</button></div>
+</div></div>
+
+<!-- STEP 6: FTEs Out -->
+<div class="screen" id="screen-step6"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step6"></div>
+  <p class="out-hint">Each row is a combination of cost centre and location. City and Country are derived from the selected site. Set AZ Workforce and Worker Type per row, then enter FTE values. Paste from Excel into any month cell to fill across automatically.</p>
+  <div class="out-section"><div class="out-section-title">Current year <span class="fy-badge fy-current">FY26</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>Location</th><th class="col-ro">City</th><th class="col-ro">Country</th><th>AZ Workforce</th><th>Worker type</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="fte26"></tbody></table></div>
+  </div>
+  <div class="out-section"><div class="out-section-title">Current year −1 <span class="fy-badge fy-prev">FY25</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>Location</th><th class="col-ro">City</th><th class="col-ro">Country</th><th>AZ Workforce</th><th>Worker type</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="fte25"></tbody></table></div>
+  </div>
+  <div class="out-section"><div class="out-section-title">Current year +1 to +3 <span class="fy-badge fy-future">FY27–29</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>Location</th><th class="col-ro">City</th><th class="col-ro">Country</th><th>AZ Workforce</th><th>Worker type</th><th class="col-num">FY27</th><th class="col-num">FY28</th><th class="col-num">FY29</th></tr></thead><tbody id="fte2729"></tbody></table></div>
+  </div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('step5')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step7')">Next →</button></div>
+</div></div>
+
+<!-- STEP 7: Review & Submit -->
+<div class="screen" id="screen-step7"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step7"></div>
+  <div class="rv-section">
+    <div class="rv-section-hdr"><div class="rv-section-title">Boundary change details</div><button class="rv-edit" onclick="go('step1')">Edit</button></div>
+    <div class="rv-block">
+      <div class="rv-row"><span class="rv-lbl">BC name</span><span class="rv-val" id="rv-bcname">—</span></div>
+      <div class="rv-row"><span class="rv-lbl">BC description</span><span class="rv-val" id="rv-bcdesc" style="white-space:normal;">—</span></div>
+      <div class="rv-row"><span class="rv-lbl">Requested by</span><span class="rv-val">Jane Doherty · 7300RND Oncology R&amp;D</span></div>
+    </div>
+  </div>
+  <div class="rv-divider"></div>
+  <div class="rv-section">
+    <div class="rv-section-hdr"><div class="rv-section-title">Cost out</div><button class="rv-edit" onclick="go('step4')">Edit</button></div>
+    <div class="cur-toggle-wrap">
+      <span class="cur-toggle-label">Display amounts in:</span>
+      <div class="cur-toggle">
+        <button class="cur-btn active" id="cur-usd" onclick="setCur('usd')">USD ($)</button>
+        <button class="cur-btn" id="cur-local" onclick="setCur('local')">Local currency</button>
+      </div>
+      <span class="cur-note" id="cur-note"></span>
+    </div>
+    <div id="rv-costout"><span class="rv-none">No data entered</span></div>
+  </div>
+  <div class="rv-divider"></div>
+  <div class="rv-section">
+    <div class="rv-section-hdr"><div class="rv-section-title">FTE locations</div><button class="rv-edit" onclick="go('step5')">Edit</button></div>
+    <div class="rv-block"><div id="rv-locs" style="display:flex;flex-wrap:wrap;gap:6px;"><span class="rv-none">No locations selected</span></div></div>
+  </div>
+  <div class="rv-divider"></div>
+  <div class="rv-section">
+    <div class="rv-section-hdr"><div class="rv-section-title">FTEs out</div><button class="rv-edit" onclick="go('step6')">Edit</button></div>
+    <div id="rv-fteout"><span class="rv-none">No data entered</span></div>
+  </div>
+  <div class="submit-box">
+    <div class="submit-box-text">Review the information above and submit this boundary change request for approval.</div>
+    <button class="btn-submit" onclick="go('confirmation')">Submit for approval</button>
+  </div>
+  <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('step6')">← Back</button><button class="btn btn-secondary">Save as draft</button></div>
+</div></div>
+
+<!-- APPROVAL -->
+<div class="screen" id="screen-approval">
+  <div class="card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">
+      <div><div style="font-size:11px;color:#666;margin-bottom:4px;">Reference</div><div style="font-size:15px;font-weight:500;margin-bottom:6px;">TRF-2025-0024</div><span class="badge badge-pending">Pending</span></div>
+      <button class="btn btn-secondary" onclick="go('dashboard')" style="font-size:12px;padding:5px 12px;">← Back</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
+      <div><div style="font-size:12px;color:#666;margin-bottom:2px;">From</div><div style="font-size:13px;margin-bottom:12px;">Retail Division</div><div style="font-size:12px;color:#666;margin-bottom:2px;">To</div><div style="font-size:13px;margin-bottom:12px;">Digital &amp; Tech</div><div style="font-size:12px;color:#666;margin-bottom:2px;">Effective date</div><div style="font-size:13px;">01 May 2025</div></div>
+      <div><div style="font-size:12px;color:#666;margin-bottom:2px;">Cost amount (USD)</div><div style="font-size:13px;margin-bottom:12px;">$108,000</div><div style="font-size:12px;color:#666;margin-bottom:2px;">FTE quantity</div><div style="font-size:13px;margin-bottom:12px;">2.0 FTE</div><div style="font-size:12px;color:#666;margin-bottom:2px;">Requested by</div><div style="font-size:13px;">Sarah Okafor · 28 Mar 2025</div></div>
+    </div>
+    <hr class="divider"/>
+    <div style="font-size:12px;color:#666;margin-bottom:2px;">Business justification</div>
+    <div style="font-size:13px;line-height:1.6;">Transfer of two analyst FTEs and associated salary costs from Retail Division to Digital &amp; Tech in support of the Q2 digital channel migration project.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Approval workflow</div>
+    <div class="timeline">
+      <div class="timeline-item done"><div class="timeline-name">Request submitted</div><div class="timeline-meta">Sarah Okafor · 28 Mar 2025, 09:14</div></div>
+      <div class="timeline-item pending"><div class="timeline-name">Awaiting approval — David Marsh (Finance Director)</div><div class="timeline-meta">Assigned 28 Mar 2025 · No response yet</div></div>
+      <div class="timeline-item future"><div class="timeline-name">Transfer processed by Finance Operations</div><div class="timeline-meta">Triggered on approval</div></div>
+      <div class="timeline-item future"><div class="timeline-name">Confirmation sent to requester</div><div class="timeline-meta">Triggered on completion</div></div>
+    </div>
+    <div class="approval-action-box">
+      <p>You are the assigned approver for this request. Review the details above and add a comment before approving or rejecting.</p>
+      <textarea placeholder="Add a comment (optional)..."></textarea>
+      <div style="display:flex;gap:8px;"><button class="btn-approve" onclick="go('confirmation')">Approve</button><button class="btn-reject">Reject</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRMATION -->
+<div class="screen" id="screen-confirmation">
+  <div class="card" style="max-width:560px;margin:0 auto;">
+    <div style="text-align:center;padding:8px 0 20px;">
+      <div class="confirm-icon"><div class="check"></div></div>
+      <div style="font-size:16px;font-weight:500;margin-bottom:6px;">Boundary change request submitted</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px;">Your request has been sent for approval.</div>
+      <div class="ref-badge">TRF-2025-0025</div>
+    </div>
+    <hr class="divider"/>
+    <div id="rv-confirm-body" style="font-size:13px;margin-bottom:16px;"></div>
+    <hr class="divider"/>
+    <div style="font-size:12px;color:#666;margin-bottom:14px;">Submitted: <span id="rv-submit-time"></span></div>
+    <div class="btn-row" style="justify-content:center;"><button class="btn btn-secondary" onclick="go('dashboard')">Back to dashboard</button><button class="btn btn-primary" onclick="go('step1')">Submit another request</button></div>
+  </div>
+</div>
+
+</div>
+<script>
+const SL=['Details','Cost centres','GL accounts','Cost out','FTE locations','FTEs out','Review'];
+const AM={step1:0,step2:1,step2b:1,step3:2,step4:3,step5:4,step6:5,step7:6};
+function si(id){const a=AM[id]??-1;return'<div class="step-indicator">'+SL.map((l,i)=>{const d=i<a,ac=i===a;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
+
+const FX={USD:1,GBP:1.27,EUR:1.09};
+function fmt(n){if(n===null||n===undefined||isNaN(n))return'—';return n.toLocaleString('en-US',{maximumFractionDigits:0});}
+
+let curMode='usd';
+function setCur(mode){
+  curMode=mode;
+  document.getElementById('cur-usd').classList.toggle('active',mode==='usd');
+  document.getElementById('cur-local').classList.toggle('active',mode==='local');
+  document.getElementById('cur-note').textContent=mode==='local'?'Values converted using illustrative FX rates (GBP 1.27, EUR 1.09)':'';
+  renderCostOutReview();
+}
+
+const ccAttr={'1110':{dept:'Finance',cur:'GBP'},'1120':{dept:'Finance',cur:'GBP'},'1130':{dept:'Finance',cur:'GBP'},'1210':{dept:'HR & People',cur:'GBP'},'1220':{dept:'HR & People',cur:'GBP'},'2110':{dept:'Operations',cur:'GBP'},'2120':{dept:'Operations',cur:'GBP'},'5110':{dept:'Digital & Tech',cur:'GBP'},'5120':{dept:'Digital & Tech',cur:'USD'},'7300RND-CC-041':{dept:'Oncology R&D',cur:'GBP'},'7300RND-CC-042':{dept:'Oncology R&D',cur:'GBP'},'7300RND-CC-043':{dept:'Oncology R&D',cur:'EUR'},'7400RND-CC-051':{dept:'Immunology R&D',cur:'GBP'},'7400RND-CC-052':{dept:'Immunology R&D',cur:'USD'}};
+function gca(c){return ccAttr[c]||{dept:'—',cur:'GBP'};}
+const locMeta={'GB-LON-001':{city:'London',country:'United Kingdom'},'GB-LON-002':{city:'London',country:'United Kingdom'},'GB-LON-003':{city:'London',country:'United Kingdom'},'GB-CAM-001':{city:'Cambridge',country:'United Kingdom'},'GB-CAM-002':{city:'Cambridge',country:'United Kingdom'},'GB-MAN-001':{city:'Manchester',country:'United Kingdom'},'GB-MAN-002':{city:'Manchester',country:'United Kingdom'},'US-NYC-001':{city:'New York',country:'United States'},'US-NYC-002':{city:'New York',country:'United States'},'US-BOS-001':{city:'Boston',country:'United States'},'US-BOS-002':{city:'Boston',country:'United States'},'US-SFO-001':{city:'San Francisco',country:'United States'},'US-SFO-002':{city:'San Francisco',country:'United States'},'DE-MUC-001':{city:'Munich',country:'Germany'},'DE-MUC-002':{city:'Munich',country:'Germany'},'DE-BER-001':{city:'Berlin',country:'Germany'},'CH-BSL-001':{city:'Basel',country:'Switzerland'},'CH-BSL-002':{city:'Basel',country:'Switzerland'},'CH-ZRH-001':{city:'Zurich',country:'Switzerland'},'JP-TYO-001':{city:'Tokyo',country:'Japan'},'JP-TYO-002':{city:'Tokyo',country:'Japan'}};
+function glm(c){return locMeta[c]||{city:'—',country:'—'};}
+
+const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre',children:[{code:'1100',name:'Finance',children:[{code:'1110',name:'FP&A',leaf:true},{code:'1120',name:'Financial Reporting',leaf:true},{code:'1130',name:'Treasury',leaf:true}]},{code:'1200',name:'HR & People',children:[{code:'1210',name:'Talent Acquisition',leaf:true},{code:'1220',name:'Learning & Development',leaf:true}]}]},{code:'2000',name:'Operations',children:[{code:'2100',name:'Supply Chain',children:[{code:'2110',name:'Procurement',leaf:true},{code:'2120',name:'Logistics',leaf:true}]}]},{code:'5000',name:'Digital & Tech',children:[{code:'5100',name:'Engineering',children:[{code:'5110',name:'Platform Engineering',leaf:true},{code:'5120',name:'Data & Analytics',leaf:true}]}]},{code:'7000',name:'R&D Division',children:[{code:'7300',name:'Oncology R&D',children:[{code:'7300RND-CC-041',name:'Clinical Trials',leaf:true},{code:'7300RND-CC-042',name:'Drug Discovery',leaf:true},{code:'7300RND-CC-043',name:'Regulatory Affairs',leaf:true}]},{code:'7400',name:'Immunology R&D',children:[{code:'7400RND-CC-051',name:'Pre-clinical Research',leaf:true},{code:'7400RND-CC-052',name:'Biomarkers',leaf:true}]}]}]};
+const glTree={name:'GL accounts',children:[{code:'5000',name:'Staff costs',children:[{code:'5100',name:'Permanent headcount',children:[{code:'5110-STAFF',name:'Salaries & wages',leaf:true},{code:'5115-NI',name:'Employer NI',leaf:true},{code:'5120-PENS',name:'Pension contributions',leaf:true}]},{code:'5200',name:'Variable pay',children:[{code:'5210-BONUS',name:'Bonus & incentives',leaf:true},{code:'5220-OT',name:'Overtime',leaf:true}]},{code:'5300',name:'Contingent labour',children:[{code:'5310-CONT',name:'Contractor fees',leaf:true},{code:'5320-TEMP',name:'Temporary staff',leaf:true}]}]},{code:'6000',name:'Non-staff costs',children:[{code:'6100',name:'Travel & expenses',children:[{code:'6110-TRAV',name:'Business travel',leaf:true},{code:'6120-ENT',name:'Entertainment',leaf:true}]},{code:'6200',name:'IT & software',children:[{code:'6210-LIC',name:'Software licences',leaf:true},{code:'6220-HW',name:'Hardware',leaf:true}]}]},{code:'7000',name:'Research & development',children:[{code:'7100',name:'Clinical',children:[{code:'7110-CLIN',name:'Clinical trial costs',leaf:true},{code:'7120-REG',name:'Regulatory submissions',leaf:true}]}]}]};
+const locTree={name:'All locations',children:[{name:'United Kingdom',code:'GB',children:[{name:'London',code:'GB-LON',children:[{code:'GB-LON-001',name:'Canary Wharf HQ',leaf:true},{code:'GB-LON-002',name:'Paddington Research Centre',leaf:true},{code:'GB-LON-003',name:'Southwark Operations Hub',leaf:true}]},{name:'Cambridge',code:'GB-CAM',children:[{code:'GB-CAM-001',name:'Cambridge Science Park',leaf:true},{code:'GB-CAM-002',name:"Addenbrooke's Site",leaf:true}]},{name:'Manchester',code:'GB-MAN',children:[{code:'GB-MAN-001',name:'Spinningfields Office',leaf:true},{code:'GB-MAN-002',name:'MediaCity Hub',leaf:true}]}]},{name:'United States',code:'US',children:[{name:'New York',code:'US-NYC',children:[{code:'US-NYC-001',name:'Midtown Manhattan Office',leaf:true},{code:'US-NYC-002',name:'Brooklyn R&D Lab',leaf:true}]},{name:'Boston',code:'US-BOS',children:[{code:'US-BOS-001',name:'Kendall Square Campus',leaf:true},{code:'US-BOS-002',name:'Longwood Medical Site',leaf:true}]},{name:'San Francisco',code:'US-SFO',children:[{code:'US-SFO-001',name:'Mission Bay Office',leaf:true},{code:'US-SFO-002',name:'South of Market Hub',leaf:true}]}]},{name:'Germany',code:'DE',children:[{name:'Munich',code:'DE-MUC',children:[{code:'DE-MUC-001',name:'Schwabing Research Park',leaf:true},{code:'DE-MUC-002',name:'Airport Business Centre',leaf:true}]},{name:'Berlin',code:'DE-BER',children:[{code:'DE-BER-001',name:'Mitte Innovation Hub',leaf:true}]}]},{name:'Switzerland',code:'CH',children:[{name:'Basel',code:'CH-BSL',children:[{code:'CH-BSL-001',name:'Basel Life Sciences Campus',leaf:true},{code:'CH-BSL-002',name:'Novartis District Site',leaf:true}]},{name:'Zurich',code:'CH-ZRH',children:[{code:'CH-ZRH-001',name:'Zurich Science Hub',leaf:true}]}]},{name:'Japan',code:'JP',children:[{name:'Tokyo',code:'JP-TYO',children:[{code:'JP-TYO-001',name:'Shinjuku Office',leaf:true},{code:'JP-TYO-002',name:'Shibuya R&D Centre',leaf:true}]}]}]};
+
+
+// --- Cost centre pairing model (v6) ---
+let bcBlocks=[]; // [{id,type,outSel[],inSel[],parSel,paths:{out:[],in:[],par:[]}}]
+let _bcSeq=1;
+
+function bcTypeLabel(t){
+  return t==='partial_oto'?'Partial BC — One to One'
+    : t==='partial_otm'?'Partial BC — One to Many'
+    : t==='partial_mto'?'Partial BC — Many to One'
+    : 'Full Cost Centre BC';
+}
+
+function maxForType(t,side){
+  if(t==='partial_oto') return (side==='out'||side==='in')?1:0;
+  if(t==='partial_otm') return side==='out'?1:999;
+  if(t==='partial_mto') return side==='in'?1:999;
+  if(t==='full_cc') return side==='par'?1:999;
+  return 999;
+}
+
+function mkPaths(){return [{name:'Organisation',node:ccTree}];}
+
+function mkBlock(type='partial_oto'){
+  const id=`bc-${_bcSeq++}`;
+  return {id,type,outSel:[],inSel:[],parSel:null,paths:{out:mkPaths(),in:mkPaths(),par:mkPaths()}};
+}
+
+function addBcBlock(type){
+  bcBlocks.push(mkBlock(type||'partial_oto'));
+  renderBcBlocks();
+}
+
+function removeBcBlock(id){
+  bcBlocks = bcBlocks.filter(b=>b.id!==id);
+  if(!bcBlocks.length) bcBlocks=[mkBlock('partial_oto')];
+  renderBcBlocks();
+}
+
+function setBlockType(id,newType){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  b.type=newType;
+  if(newType==='full_cc') b.inSel=[]; else b.parSel=null;
+  if(maxForType(newType,'out')===1 && b.outSel.length>1) b.outSel=[b.outSel[0]];
+  if(maxForType(newType,'in')===1 && b.inSel.length>1) b.inSel=[b.inSel[0]];
+  renderBcBlocks();
+}
+
+function showBlockLimit(id,msg){
+  const el=document.getElementById(`${id}-limit`);
+  if(!el) return;
+  el.textContent=msg;
+  el.style.display='block';
+  clearTimeout(showBlockLimit._t);
+  showBlockLimit._t=setTimeout(()=>{el.style.display='none';},2200);
+}
+
+function swM3(id,side,m){
+  document.getElementById(`${id}-${side}-method-hier`).style.display = m==='hier'?'block':'none';
+  document.getElementById(`${id}-${side}-method-manual`).style.display = m==='manual'?'block':'none';
+  document.getElementById(`${id}-${side}-btn-hier`).classList.toggle('active',m==='hier');
+  document.getElementById(`${id}-${side}-btn-manual`).classList.toggle('active',m==='manual');
+}
+
+function navH3(id,side,i){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  b.paths[side]=b.paths[side].slice(0,i+1);
+  rHier3(id,side);
+}
+
+function isSel3(b,side,code){
+  if(side==='par') return b.parSel && b.parSel.code===code;
+  const arr = side==='out'?b.outSel:b.inSel;
+  return arr.some(x=>x.code===code);
+}
+
+function togLeaf3(id,side,code,name){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const max=maxForType(b.type,side);
+  const arr = side==='out'?b.outSel:b.inSel;
+  const exists=arr.some(x=>x.code===code);
+  if(exists){
+    const next=arr.filter(x=>x.code!==code);
+    if(side==='out') b.outSel=next; else b.inSel=next;
+  }else{
+    if(max===1 && arr.length>=1){
+      const next=[{code,name,contact:''}];
+      if(side==='out') b.outSel=next; else b.inSel=next;
+      showBlockLimit(id,'Selection updated to maintain the limit for this movement type.');
+    }else{
+      arr.push({code,name,contact:''});
+    }
+  }
+  rHier3(id,side); rTray3(id,side);
+}
+
+function togParent3(id,code,name){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  if(b.parSel && b.parSel.code===code) b.parSel=null;
+  else b.parSel={code,name};
+  rHier3(id,'par'); rTray3(id,'par');
+}
+
+function updContact3(id,side,code,val){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const arr = side==='out'?b.outSel:b.inSel;
+  const it=arr.find(x=>x.code===code);
+  if(it) it.contact=val;
+}
+
+function remSel3(id,side,code){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  if(side==='par') b.parSel=null;
+  else if(side==='out') b.outSel=b.outSel.filter(x=>x.code!==code);
+  else b.inSel=b.inSel.filter(x=>x.code!==code);
+  rHier3(id,side); rTray3(id,side);
+}
+
+function clrAll3(id,side){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  if(side==='par') b.parSel=null;
+  if(side==='out') b.outSel=[];
+  if(side==='in') b.inSel=[];
+  rHier3(id,side); rTray3(id,side);
+}
+
+function addManual3(id,side){
+  const inp=document.getElementById(`${id}-${side}-mi`);
+  if(!inp) return;
+  const code=inp.value.trim();
+  if(!code){inp.value='';return;}
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b){inp.value='';return;}
+
+  if(side==='par'){
+    b.parSel={code,name:'Manual entry'};
+    inp.value='';
+    rTray3(id,'par');
+    return;
+  }
+
+  const max=maxForType(b.type,side);
+  const arr = side==='out'?b.outSel:b.inSel;
+  if(arr.some(x=>x.code===code)){inp.value='';return;}
+  if(max===1 && arr.length>=1){
+    const next=[{code,name:'Manual entry',contact:''}];
+    if(side==='out') b.outSel=next; else b.inSel=next;
+    showBlockLimit(id,'Selection updated to maintain the limit for this movement type.');
+  }else{
+    arr.push({code,name:'Manual entry',contact:''});
+  }
+  inp.value='';
+  rTray3(id,side); rHier3(id,side);
+}
+
+function rHier3(id,side){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const paths=b.paths[side];
+  const cur=paths[paths.length-1].node;
+  const bcEl=document.getElementById(`${id}-${side}-bc`);
+  if(bcEl){
+    bcEl.innerHTML = paths.map((p,i)=> i<paths.length-1 ? `<span class=\"bc-link\" onclick=\"navH3('${id}','${side}',${i})\">${p.name}</span><span class=\"sep\"> › </span>` : `<span class=\"current\">${p.name}</span>`).join('');
+  }
+  const list=document.getElementById(`${id}-${side}-hl`);
+  if(!list) return;
+  list.innerHTML='';
+
+  (cur.children||[]).forEach(child=>{
+    const li=document.createElement('li');
+
+    if(side==='par'){
+      const selected = (!child.leaf) && isSel3(b,'par',child.code);
+      li.className='hier-item'+(selected?' sel-row':'')+(child.leaf?' disabled':'');
+      if(child.leaf){
+        li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon cc\">CC</div><div><div style=\"font-size:13px;\">${child.name}</div><div class=\"hier-code\">${child.code}</div></div></div><span class=\"hier-arrow\">—</span>`;
+      }else{
+        li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon folder\">▶</div><div><div style=\"font-size:13px;\">${child.name}</div>${child.code?`<div class=\"hier-code\">${child.code}</div>`:''}</div></div><div style=\"display:flex;align-items:center;gap:10px;\"><div class=\"hier-checkbox ${selected?'checked':''}\" title=\"Select this parent unit\"></div><span class=\"hier-arrow\">›</span></div>`;
+        li.onclick=()=>{b.paths.par.push({name:child.name,node:child}); rHier3(id,'par');};
+        li.querySelector('.hier-checkbox').onclick=(ev)=>{ev.stopPropagation(); togParent3(id,child.code,child.name);};
+      }
+      list.appendChild(li);
+      return;
+    }
+
+    const s = child.leaf && isSel3(b,side,child.code);
+    li.className='hier-item'+(child.leaf?' leaf-item':'')+(s?' sel-row':'');
+    if(child.leaf){
+      li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon ${s?'cc-chk':'cc'}\">CC</div><div><div style=\"font-size:13px;\">${child.name}</div><div class=\"hier-code\">${child.code}</div></div></div><div class=\"hier-checkbox ${s?'checked':''}\"></div>`;
+      li.onclick=()=>togLeaf3(id,side,child.code,child.name);
+    }else{
+      li.innerHTML = `<div class=\"hier-item-left\"><div class=\"hier-icon folder\">▶</div><div><div style=\"font-size:13px;\">${child.name}</div>${child.code?`<div class=\"hier-code\">${child.code}</div>`:''}</div></div><span class=\"hier-arrow\">›</span>`;
+      li.onclick=()=>{b.paths[side].push({name:child.name,node:child}); rHier3(id,side);};
+    }
+    list.appendChild(li);
+  });
+}
+
+function rTray3(id,side){
+  const b=bcBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const cnt=document.getElementById(`${id}-${side}-cnt`);
+  const clr=document.getElementById(`${id}-${side}-clr`);
+  const cards=document.getElementById(`${id}-${side}-cards`);
+  if(!cnt||!clr||!cards) return;
+
+  if(side==='par'){
+    if(!b.parSel){
+      cnt.textContent='No parent unit selected';
+      clr.style.display='none';
+      cards.innerHTML='<span class=\"sel-empty\">The parent unit you select will appear here.</span>';
+      return;
+    }
+    cnt.textContent='1 parent unit selected';
+    clr.style.display='inline';
+    cards.innerHTML = `<div class=\"generic-tag\"><span class=\"gl-tag-code\">${b.parSel.code}</span><span class=\"tag-name\">${b.parSel.name}</span><button class=\"tag-remove\" onclick=\"remSel3('${id}','par','${b.parSel.code}')\">×</button></div>`;
+    return;
+  }
+
+  const arr = side==='out'?b.outSel:b.inSel;
+  if(!arr.length){
+    cnt.textContent='No cost centres selected';
+    clr.style.display='none';
+    cards.innerHTML='<span class=\"sel-empty\">Cost centres you select will appear here.</span>';
+    return;
+  }
+  cnt.textContent = arr.length===1?'1 cost centre selected':`${arr.length} cost centres selected`;
+  clr.style.display='inline';
+  cards.innerHTML = arr.map(c=>
+    `<div class=\"cc-card\">
+      <div class=\"cc-card-header\">
+        <div class=\"cc-card-title\"><span class=\"cc-card-code\">${c.code}</span><span class=\"cc-card-name\">${c.name}</span></div>
+        <button class=\"cc-card-remove\" onclick=\"remSel3('${id}','${side}','${c.code}')\">×</button>
+      </div>
+      <div class=\"cc-contact-field\">
+        <div class=\"cc-contact-label\">Contact person</div>
+        <input type=\"text\" placeholder=\"Name or email...\" value=\"${c.contact||''}\" oninput=\"updContact3('${id}','${side}','${c.code}',this.value)\"/>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function blockHTML(b,idx){
+  const isFull = b.type==='full_cc';
+  const outLimit=maxForType(b.type,'out');
+  const inLimit=maxForType(b.type,'in');
+
+  const rightTitle = isFull?'Cost in parent unit':'Cost in cost centres';
+  const rightSide = isFull?'par':'in';
+  const rightHint = isFull
+    ? 'For full cost centre boundary changes, select the parent unit (not an individual cost centre) that the Cost out cost centre(s) will move into.'
+    : 'Select Cost in cost centres (the destination). Limits apply based on the selected movement type.';
+
+  const rightManualLbl = isFull?'Parent unit code':'Cost centre code';
+  const rightManualPh = isFull?'e.g. 7300':'e.g. 7300RND-CC-041';
+
+  const outPill = outLimit==999?'No limit':`Select ${outLimit}`;
+  const inPill  = isFull?'Select 1':(inLimit==999?'No limit':`Select ${inLimit}`);
+
+  return `
+  <div class=\"bc-block\" id=\"${b.id}-block\">
+    <div class=\"bc-block-top\">
+      <div class=\"bc-block-left\">
+        <div class=\"bc-block-label\">Movement ${idx+1}</div>
+        <div class=\"bc-block-name\">${bcTypeLabel(b.type)}</div>
+      </div>
+      <div class=\"bc-block-actions\">
+        <select class=\"bc-type-select\" onchange=\"setBlockType('${b.id}',this.value)\">
+          <option value=\"partial_oto\" ${b.type==='partial_oto'?'selected':''}>Partial BC — One to One</option>
+          <option value=\"partial_otm\" ${b.type==='partial_otm'?'selected':''}>Partial BC — One to Many</option>
+          <option value=\"partial_mto\" ${b.type==='partial_mto'?'selected':''}>Partial BC — Many to One</option>
+          <option value=\"full_cc\" ${b.type==='full_cc'?'selected':''}>Full Cost Centre BC</option>
+        </select>
+        <button class=\"btn-icon\" onclick=\"removeBcBlock('${b.id}')\">Remove</button>
+      </div>
+    </div>
+
+    <div class=\"bc-limit\" id=\"${b.id}-limit\"></div>
+
+    <div class=\"cc-dual-grid\">
+
+      <div class=\"cc-pane\">
+        <div class=\"cc-pane-title\"><span>Cost out cost centres</span><span class=\"cc-pane-badge\">${outPill}</span></div>
+        <div class=\"cc-pane-sub\">Select one or more Cost out cost centres. Add a contact person for each Cost out cost centre.</div>
+
+        <div class=\"method-toggle\"><button class=\"method-btn active\" id=\"${b.id}-out-btn-hier\" onclick=\"swM3('${b.id}','out','hier')\">Browse hierarchy</button><button class=\"method-btn\" id=\"${b.id}-out-btn-manual\" onclick=\"swM3('${b.id}','out','manual')\">Enter manually</button></div>
+        <div id=\"${b.id}-out-method-hier\"><div class=\"hierarchy-panel\"><div class=\"breadcrumb\" id=\"${b.id}-out-bc\"></div><ul class=\"hier-list\" id=\"${b.id}-out-hl\"></ul></div></div>
+        <div id=\"${b.id}-out-method-manual\" style=\"display:none;\"><div class=\"manual-add-row\"><div class=\"field\"><label>Cost centre code</label><input type=\"text\" id=\"${b.id}-out-mi\" placeholder=\"e.g. 7300RND-CC-042\"/></div><button class=\"btn-add\" onclick=\"addManual3('${b.id}','out')\">+ Add</button></div><div class=\"input-hint\">Enter the cost centre code exactly as it appears in the finance system.</div></div>
+
+        <div class=\"sel-tray\"><div class=\"sel-tray-header\"><span id=\"${b.id}-out-cnt\">No cost centres selected</span><button class=\"sel-tray-clear\" id=\"${b.id}-out-clr\" onclick=\"clrAll3('${b.id}','out')\" style=\"display:none;\">Remove all</button></div><div id=\"${b.id}-out-cards\"><span class=\"sel-empty\">Cost centres you select will appear here.</span></div></div>
+      </div>
+
+      <div class=\"cc-pane\">
+        <div class=\"cc-pane-title\"><span>${rightTitle}</span><span class=\"cc-pane-badge\">${inPill}</span></div>
+        <div class=\"cc-pane-sub\">${rightHint}</div>
+
+        <div class=\"method-toggle\"><button class=\"method-btn active\" id=\"${b.id}-${rightSide}-btn-hier\" onclick=\"swM3('${b.id}','${rightSide}','hier')\">Browse hierarchy</button><button class=\"method-btn\" id=\"${b.id}-${rightSide}-btn-manual\" onclick=\"swM3('${b.id}','${rightSide}','manual')\">Enter manually</button></div>
+        <div id=\"${b.id}-${rightSide}-method-hier\"><div class=\"hierarchy-panel\"><div class=\"breadcrumb\" id=\"${b.id}-${rightSide}-bc\"></div><ul class=\"hier-list\" id=\"${b.id}-${rightSide}-hl\"></ul></div></div>
+        <div id=\"${b.id}-${rightSide}-method-manual\" style=\"display:none;\"><div class=\"manual-add-row\"><div class=\"field\"><label>${rightManualLbl}</label><input type=\"text\" id=\"${b.id}-${rightSide}-mi\" placeholder=\"${rightManualPh}\"/></div><button class=\"btn-add\" onclick=\"addManual3('${b.id}','${rightSide}')\">+ Add</button></div><div class=\"input-hint\">${isFull?'Enter the parent unit code (organisation unit), not a leaf cost centre.':'Enter the cost centre code exactly as it appears in the finance system.'}</div></div>
+
+        <div class=\"sel-tray\"><div class=\"sel-tray-header\"><span id=\"${b.id}-${rightSide}-cnt\">${isFull?'No parent unit selected':'No cost centres selected'}</span><button class=\"sel-tray-clear\" id=\"${b.id}-${rightSide}-clr\" onclick=\"clrAll3('${b.id}','${rightSide}')\" style=\"display:none;\">${isFull?'Remove':'Remove all'}</button></div><div id=\"${b.id}-${rightSide}-cards\"><span class=\"sel-empty\">${isFull?'The parent unit you select will appear here.':'Cost centres you select will appear here.'}</span></div></div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function renderBcBlocks(){
+  const host=document.getElementById('bc-move-list');
+  if(!host) return;
+  host.innerHTML = bcBlocks.map((b,i)=>blockHTML(b,i)).join('');
+  bcBlocks.forEach(b=>{
+    rHier3(b.id,'out'); rTray3(b.id,'out');
+    if(b.type==='full_cc'){ rHier3(b.id,'par'); rTray3(b.id,'par'); }
+    else { rHier3(b.id,'in'); rTray3(b.id,'in'); }
+  });
+}
+
+function initBCBlocks(){
+  if(!bcBlocks.length) bcBlocks=[mkBlock('partial_oto')];
+  renderBcBlocks();
+}
+
+function getAllCostOut(){
+  const map=new Map();
+  bcBlocks.forEach(b=>{(b.outSel||[]).forEach(c=>{if(!map.has(c.code)) map.set(c.code,c);});});
+  return Array.from(map.values());
+}
+
+const paths={gl:[{name:'GL accounts',node:glTree}],loc:[{name:'All locations',node:locTree}]};
+const sel={gl:[],loc:[]};
+const isSel=(t,c)=>sel[t].some(x=>x.code===c);
+const icoCls=(t,s)=>t==='gl'?(s?'gl-chk':'gl'):(s?'loc-chk':'loc');
+const icoLbl=(t)=>t==='gl'?'GL':'Site';
+const IDS={gl:{bc:'gl-bc',hl:'gl-hl'},loc:{bc:'loc-bc',hl:'loc-hl'}};
+
+function rHier(t){
+  const pa=paths[t];const cur=pa[pa.length-1].node;
+  document.getElementById(IDS[t].bc).innerHTML=pa.map((p,i)=>i<pa.length-1?`<span class="bc-link" onclick="navH('${t}',${i})">${p.name}</span><span class="sep"> › </span>`:`<span class="current">${p.name}</span>`).join('');
+  const list=document.getElementById(IDS[t].hl);list.innerHTML='';
+  (cur.children||[]).forEach(child=>{
+    const li=document.createElement('li');const s=child.leaf&&isSel(t,child.code);
+    li.className='hier-item'+(child.leaf?' leaf-item':'')+(s?' sel-row':'');
+    if(child.leaf){
+      li.innerHTML=`<div class="hier-item-left"><div class="hier-icon ${icoCls(t,s)}">${icoLbl(t)}</div><div><div style="font-size:13px;">${child.name}</div><div class="hier-code">${child.code}</div></div></div><div class="hier-checkbox ${s?'checked':''}"></div>`;
+      li.onclick=()=>togI(t,child.code,child.name);
+    }else{
+      li.innerHTML=`<div class="hier-item-left"><div class="hier-icon folder">▶</div><div><div style="font-size:13px;">${child.name}</div>${child.code?`<div class="hier-code">${child.code}</div>`:''}</div></div><span class="hier-arrow">›</span>`;
+      li.onclick=()=>{paths[t].push({name:child.name,node:child});rHier(t);};
+    }
+    list.appendChild(li);
+  });
+}
+function navH(t,i){paths[t]=paths[t].slice(0,i+1);rHier(t);}
+function togI(t,code,name){isSel(t,code)?sel[t]=sel[t].filter(x=>x.code!==code):sel[t].push({code,name,...(t==='cc'?{contact:''}:{})});rHier(t);rTray(t);}
+function remI(t,code){sel[t]=sel[t].filter(x=>x.code!==code);rHier(t);rTray(t);}
+function clrAll(t){sel[t]=[];rHier(t);rTray(t);}
+function updContact(code,val){const c=getAllCostOut().find(x=>x.code===code);if(c)c.contact=val;}
+
+function rTray(t){
+ const cfg={gl:{el:'gl-tags',cnt:'gl-cnt',cb:'gl-clr',cc:'gl-tag-code',lbl:'GL accounts',s:'GL account'},loc:{el:'loc-tags',cnt:'loc-cnt',cb:'loc-clr',cc:'loc-tag-code',lbl:'locations',s:'location'}};
+ const c=cfg[t];
+ if(!c) return;
+ const el=document.getElementById(c.el),cnt=document.getElementById(c.cnt),cb=document.getElementById(c.cb);
+ const items=sel[t];
+ if(!items.length){
+  el.innerHTML=`<span class="sel-empty">${c.lbl.charAt(0).toUpperCase()+c.lbl.slice(1)} you select will appear here.</span>`;
+  cnt.textContent=`No ${c.lbl} selected`;
+  cb.style.display='none';
+  return;
+ }
+ cnt.textContent=items.length===1?`1 ${c.s} selected`:`${items.length} ${c.lbl} selected`;
+ cb.style.display='inline';
+ el.innerHTML=items.map(g=>`<div class="generic-tag"><span class="${c.cc}">${g.code}</span><span class="tag-name">${g.name}</span><button class="tag-remove" onclick="remI('${t}','${g.code}')">×</button></div>`).join('');
+}
+function swM(t,m){
+  document.getElementById(`${t}-method-hier`).style.display=m==='hier'?'block':'none';
+  document.getElementById(`${t}-method-manual`).style.display=m==='manual'?'block':'none';
+  document.getElementById(`${t}-btn-hier`).classList.toggle('active',m==='hier');
+  document.getElementById(`${t}-btn-manual`).classList.toggle('active',m==='manual');
+}
+function addM(t){
+  const inp=document.getElementById(`${t}-mi`);const code=inp.value.trim();
+  if(!code||isSel(t,code)){inp.value='';return;}
+  sel[t].push({code,name:'Manual entry',...(t==='cc'?{contact:''}:{})});
+  rTray(t);inp.value='';
+}
+function doDownload(){
+  const codes=getAllCostOut().length?getAllCostOut().map(c=>c.code):['(none)'];
+  const lines=['TRANSFER HUB — COST CENTRE DATA EXTRACT','='+'='.repeat(39),`Generated: ${new Date().toLocaleString('en-GB')}`,'Requested by: Jane Doherty (7300RND — Oncology R&D)','','SELECTED COST CENTRES','-'.repeat(21),...getAllCostOut().map(c=>{const a=gca(c.code);return`${c.code}  |  ${c.name}  |  Dept: ${a.dept}  |  Local currency: ${a.cur}  |  Contact: ${c.contact||'—'}`;}),``,`END OF EXTRACT`];
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  const fn=`cost_centre_data_${codes[0].replace(/[^a-z0-9]/gi,'_')}.txt`;a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url);
+  document.getElementById('dl-confirm').style.display='block';document.getElementById('dl-fn').textContent=`${fn} — downloaded successfully`;
+}
+
+let combos=[],fteRows=[];
+const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FYF=['FY27','FY28','FY29'];
+const AZW=['Employee - Regular','Contingent Worker'];
+const WT=['Lab','Office','Remote','Field','Manufacturing','Clinical','Warehouse'];
+
+function buildCombos(){
+  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)',contact:''}];
+  const gls=sel.gl.length?sel.gl:[{code:'—',name:'(none)'}];
+  combos=[];
+  ccs.forEach(cc=>{const a=gca(cc.code);gls.forEach(gl=>{combos.push({cc,gl,dept:a.dept,localCur:a.cur,product:'',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
+  rCoTables();go('step4');
+}
+function buildFTEs(){
+  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)',contact:''}];
+  const locs=sel.loc.length?sel.loc:[{code:'—',name:'(none)'}];
+  fteRows=[];
+  ccs.forEach(cc=>{locs.forEach(loc=>{const m=glm(loc.code);fteRows.push({cc,loc,city:m.city,country:m.country,azW:'Employee - Regular',wt:'Lab',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
+  rFteTables();go('step6');
+}
+function recalc(tbId,ri,arr,fk){
+  const t=arr[ri][fk].reduce((s,v)=>{const n=parseFloat(v);return s+(isNaN(n)?0:n);},0);
+  const cell=document.getElementById(`${tbId}-tot-${ri}`);
+  if(cell)cell.textContent=t===0?'—':t.toLocaleString('en-US',{maximumFractionDigits:0});
+}
+function onPaste(e,ri,sc,fk,tbId,mc,arr){
+  const text=(e.clipboardData||window.clipboardData).getData('text');
+  const vals=text.split(/\r?\n/)[0].split('\t');if(vals.length<=1)return;
+  e.preventDefault();
+  vals.forEach((v,i)=>{const col=sc+i;if(col>=mc)return;arr[ri][fk][col]=v.trim().replace(/,/g,'');});
+  if(fk!=='fy2729')recalc(tbId,ri,arr,fk);
+  const cols=fk==='fy2729'?FYF:MO;
+  cols.forEach((_,ci)=>{const inp=document.querySelector(`input[data-tb="${tbId}"][data-row="${ri}"][data-col="${ci}"]`);if(inp)inp.value=arr[ri][fk][ci]||'';});
+  const row=document.querySelector(`#${tbId} tr:nth-child(${ri+1})`);
+  if(row){row.style.outline='2px solid #97C459';setTimeout(()=>{row.style.outline='';},600);}
+}
+function rCoTable(tbId,fk,hasTot){
+  const tb=document.getElementById(tbId);tb.innerHTML='';
+  const mc=fk==='fy2729'?3:12;const cols=fk==='fy2729'?FYF:MO;
+  combos.forEach((row,ri)=>{
+    const tr=document.createElement('tr');if(ri%2===1)tr.className='alt-row';
+    const cells=cols.map((c,ci)=>`<td><input class="num-input" type="text" placeholder="0" value="${row[fk][ci]||''}" data-tb="${tbId}" data-row="${ri}" data-col="${ci}" oninput="combos[${ri}]['${fk}'][${ci}]=this.value;${hasTot?`recalc('${tbId}',${ri},combos,'${fk}')`:''}" onpaste="onPaste(event,${ri},${ci},'${fk}','${tbId}',${mc},combos)"/></td>`).join('');
+    const tot=hasTot?`<td class="total-cell" id="${tbId}-tot-${ri}">—</td>`:'';
+    tr.innerHTML=`<td class="frozen"><span class="cc-badge">${row.cc.code}</span><br><span style="font-size:11px;color:#888;">${row.cc.name}</span></td><td class="frozen"><span class="gl-badge">${row.gl.code}</span><br><span style="font-size:11px;color:#888;">${row.gl.name}</span></td><td class="ro-cell">${row.dept}</td><td class="ro-cell">${row.localCur}</td><td><input class="product-input" type="text" placeholder="Product…" value="${row.product}" oninput="combos[${ri}].product=this.value"/></td>${cells}${tot}`;
+    tb.appendChild(tr);
+  });
+}
+function rCoTables(){rCoTable('co26','fy26',true);rCoTable('co25','fy25',true);rCoTable('co2729','fy2729',false);}
+function rFteTable(tbId,fk,hasTot){
+  const tb=document.getElementById(tbId);tb.innerHTML='';
+  const mc=fk==='fy2729'?3:12;const cols=fk==='fy2729'?FYF:MO;
+  fteRows.forEach((row,ri)=>{
+    const tr=document.createElement('tr');if(ri%2===1)tr.className='alt-row';
+    const cells=cols.map((c,ci)=>`<td><input class="num-input" type="text" placeholder="0" value="${row[fk][ci]||''}" data-tb="${tbId}" data-row="${ri}" data-col="${ci}" oninput="fteRows[${ri}]['${fk}'][${ci}]=this.value;${hasTot?`recalc('${tbId}',${ri},fteRows,'${fk}')`:''}" onpaste="onPaste(event,${ri},${ci},'${fk}','${tbId}',${mc},fteRows)"/></td>`).join('');
+    const tot=hasTot?`<td class="total-cell" id="${tbId}-tot-${ri}">—</td>`:'';
+    tr.innerHTML=`<td class="frozen"><span class="cc-badge">${row.cc.code}</span><br><span style="font-size:11px;color:#888;">${row.cc.name}</span></td><td class="frozen"><span class="loc-badge">${row.loc.code}</span><br><span style="font-size:11px;color:#888;">${row.loc.name}</span></td><td class="ro-cell">${row.city}</td><td class="ro-cell">${row.country}</td><td><select class="cell-select" onchange="fteRows[${ri}].azW=this.value">${AZW.map(o=>`<option${o===row.azW?' selected':''}>${o}</option>`).join('')}</select></td><td><select class="cell-select" onchange="fteRows[${ri}].wt=this.value">${WT.map(o=>`<option${o===row.wt?' selected':''}>${o}</option>`).join('')}</select></td>${cells}${tot}`;
+    tb.appendChild(tr);
+  });
+}
+function rFteTables(){rFteTable('fte26','fy26',true);rFteTable('fte25','fy25',true);rFteTable('fte2729','fy2729',false);}
+
+function renderCostOutReview(){
+  const coEl=document.getElementById('rv-costout');
+  if(!combos.length){coEl.innerHTML='<span class="rv-none">No data entered</span>';return;}
+  const isUSD=curMode==='usd';
+  const fys=[{fk:'fy26',label:'Current year (FY26)',cols:MO,tot:true},{fk:'fy25',label:'Current year −1 (FY25)',cols:MO,tot:true},{fk:'fy2729',label:'Current year +1 to +3 (FY27–29)',cols:FYF,tot:false}];
+  coEl.innerHTML=fys.map(({fk,label,cols,tot})=>{
+    const hasAny=combos.some(r=>r[fk].some(v=>v!==''));
+    if(!hasAny)return`<div class="rv-fy-label">${label}</div><div class="rv-none" style="margin-bottom:8px;">No values entered</div>`;
+    const curNote=isUSD?'values in USD':'values in local currency';
+    return`<div class="rv-fy-label">${label} <span class="rv-cur-label">${curNote}</span></div>
+    <div class="rv-table-wrap"><table class="rv-table"><thead><tr>
+      <th>Cost centre</th><th>GL account</th><th>Product</th>
+      ${!isUSD?'<th>Currency</th>':''}
+      ${cols.map(c=>`<th class="rn">${c}</th>`).join('')}
+      ${tot?'<th class="rt">Total</th>':''}
+    </tr></thead><tbody>
+    ${combos.map((r,ri)=>{
+      const localCur=r.localCur||'GBP';
+      const rate=isUSD?1:(1/(FX[localCur]||1));
+      const cvt=(v)=>{const n=parseFloat(v);return isNaN(n)||v===''?null:Math.round(n*rate);};
+      const vals=r[fk].map(cvt);
+      const rowTotal=tot?vals.reduce((s,v)=>s+(v===null?0:v),0):null;
+      return`<tr${ri%2===1?' style="background:#fafaf8;"':''}>
+        <td><span class="cc-badge">${r.cc.code}</span></td>
+        <td><span class="gl-badge">${r.gl.code}</span></td>
+        <td>${r.product||'—'}</td>
+        ${!isUSD?`<td class="rro">${localCur}</td>`:''}
+        ${vals.map(v=>`<td class="rn">${v===null?'—':fmt(v)}</td>`).join('')}
+        ${rowTotal!==null?`<td class="rtot">${rowTotal===0?'—':fmt(rowTotal)}</td>`:''}
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+  }).join('');
+}
+
+function buildReview(){
+  document.getElementById('rv-bcname').textContent=document.getElementById('inp-bcname')?.value||'—';
+  document.getElementById('rv-bcdesc').textContent=document.getElementById('inp-bcdesc')?.value||'—';
+  renderCostOutReview();
+  const locEl=document.getElementById('rv-locs');
+  if(!sel.loc.length){locEl.innerHTML='<span class="rv-none">No locations selected</span>';}
+  else{locEl.innerHTML=sel.loc.map(l=>{const m=glm(l.code);return`<span class="loc-badge" style="margin-right:4px;">${l.code} — ${l.name} (${m.city}, ${m.country})</span>`;}).join('');}
+  const fteEl=document.getElementById('rv-fteout');
+  if(!fteRows.length){fteEl.innerHTML='<span class="rv-none">No data entered</span>';}
+  else{
+    const fys=[{fk:'fy26',label:'Current year (FY26)',cols:MO,tot:true},{fk:'fy25',label:'Current year −1 (FY25)',cols:MO,tot:true},{fk:'fy2729',label:'Current year +1 to +3 (FY27–29)',cols:FYF,tot:false}];
+    fteEl.innerHTML=fys.map(({fk,label,cols,tot})=>{
+      const hasAny=fteRows.some(r=>r[fk].some(v=>v!==''));
+      if(!hasAny)return`<div class="rv-fy-label">${label}</div><div class="rv-none" style="margin-bottom:8px;">No values entered</div>`;
+      return`<div class="rv-fy-label">${label}</div><div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Cost centre</th><th>Location</th><th class="rro">City</th><th class="rro">Country</th><th>AZ Workforce</th><th>Worker type</th>${cols.map(c=>`<th class="rn">${c}</th>`).join('')}${tot?'<th class="rt">Total</th>':''}</tr></thead><tbody>${fteRows.map((r,ri)=>{const t=tot?r[fk].reduce((s,v)=>{const n=parseFloat(v);return s+(isNaN(n)?0:n);},0):null;return`<tr${ri%2===1?' style="background:#fafaf8;"':''}><td><span class="cc-badge">${r.cc.code}</span></td><td><span class="loc-badge">${r.loc.code}</span></td><td class="rro">${r.city}</td><td class="rro">${r.country}</td><td>${r.azW}</td><td>${r.wt}</td>${r[fk].map(v=>`<td class="rn">${v||'—'}</td>`).join('')}${t!==null?`<td class="rtot">${t===0?'—':t.toLocaleString('en-US',{maximumFractionDigits:0})}</td>`:''}</tr>`;}).join('')}</tbody></table></div>`;
+    }).join('');
+  }
+}
+
+function buildConfirm(){
+  const n=document.getElementById('inp-bcname')?.value||'—';
+
+  const blocksHtml = bcBlocks.map((b,i)=>{
+    const out = (b.outSel||[]).map(c=>`<span class=\"cc-badge\" style=\"margin-right:4px;\">${c.code}</span>`).join('')||'—';
+    const inPart = (b.type==='full_cc')
+      ? ((b.parSel?`<span class=\"cc-badge\" style=\"margin-right:4px;\">${b.parSel.code}</span>`:'—'))
+      : ((b.inSel||[]).map(c=>`<span class=\"cc-badge\" style=\"margin-right:4px;\">${c.code}</span>`).join('')||'—');
+    const inLbl = (b.type==='full_cc')?'Cost in parent unit':'Cost in cost centres';
+    return `
+      <div style=\"margin-bottom:12px;padding:10px 12px;background:#f5f4f0;border-radius:8px;\">
+        <div style=\"font-size:12px;font-weight:500;margin-bottom:6px;\">Movement ${i+1}: ${bcTypeLabel(b.type)}</div>
+        <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">Cost out</div>
+        <div style=\"margin-bottom:8px;\">${out}</div>
+        <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">${inLbl}</div>
+        <div>${inPart}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('rv-confirm-body').innerHTML=
+    `<div style=\"margin-bottom:10px;\"><span style=\"font-size:12px;color:#666;\">BC name</span><br><span style=\"font-weight:500;\">${n}</span></div>`+
+    `<div style=\"margin-bottom:10px;\"><span style=\"font-size:12px;color:#666;\">Cost centre movements</span><br>${blocksHtml||'—'}</div>`+
+    `<div style=\"margin-bottom:10px;\"><span style=\"font-size:12px;color:#666;\">GL accounts</span><br>${sel.gl.map(g=>`<span class=\"gl-badge\" style=\"margin-right:4px;\">${g.code}</span>`).join('')||'—'}</div>`+
+    `<div><span style=\"font-size:12px;color:#666;\">FTE locations</span><br>${sel.loc.map(l=>`<span class=\"loc-badge\" style=\"margin-right:4px;\">${l.code}</span>`).join('')||'—'}</div>`;
+
+  document.getElementById('rv-submit-time').textContent=new Date().toLocaleString('en-GB');
+}
+
+const NAV={dashboard:0,step1:1,step2:1,step2b:1,step3:1,step4:1,step5:1,step6:1,step7:1,approval:2,confirmation:2};
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const btns=document.querySelectorAll('.nav-btn');
+  if(NAV[id]!==undefined&&btns[NAV[id]])btns[NAV[id]].classList.add('active');
+  const siEl=document.getElementById('si-'+id);
+  if(siEl)siEl.innerHTML=si(id);
+  if(id!=='step2b'){const dc=document.getElementById('dl-confirm');if(dc)dc.style.display='none';}
+  if(id==='step7')buildReview();
+  if(id==='confirmation')buildConfirm();
+}
+['gl','loc'].forEach(t=>{rHier(t);rTray(t);});
+initBCBlocks();
+go('dashboard');
+</script>
+</body>
+</html>
