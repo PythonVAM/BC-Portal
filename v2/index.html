@@ -134,8 +134,6 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .cc-card-code { font-size: 12px; font-weight: 500; background: #EAF3DE; color: #27500A; padding: 2px 8px; border-radius: 6px; }
 .cc-card-name { font-size: 13px; }
 .cc-card-remove { font-size: 18px; color: #999; cursor: pointer; border: none; background: none; font-family: inherit; padding: 0 2px; }
-.cc-contact-label { font-size: 11px; color: #666; margin-bottom: 4px; }
-.cc-contact-field input { font-size: 12px; padding: 6px 9px; width: 100%; border: 0.5px solid #ccc; border-radius: 6px; font-family: inherit; }
 .generic-tag { display: flex; align-items: center; gap: 8px; background: #f5f4f0; border: 0.5px solid #e0ded8; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
 .gl-tag-code { font-size: 12px; font-weight: 500; background: #FAEEDA; color: #633806; padding: 2px 8px; border-radius: 6px; }
 .loc-tag-code { font-size: 12px; font-weight: 500; background: #EEEDFE; color: #3C3489; padding: 2px 8px; border-radius: 6px; }
@@ -232,7 +230,7 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .btn-submit { background: #185FA5; border: none; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .btn-submit:hover { background: #0C447C; }
 
-/* --- Multiple cost centre movements (v6) --- */
+/* --- Cost centre movements (v8) --- */
 .bc-move-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 12px;}
 .bc-move-title{font-size:13px;font-weight:500;}
 .bc-move-list{display:flex;flex-direction:column;gap:12px;}
@@ -350,16 +348,12 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 
 <!-- STEP 2 -->
 <div class="screen" id="screen-step2"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step2"></div>
-
-  <div style="font-size:13px;color:#666;margin-bottom:10px;">Add one or more cost centre movement blocks. Each block represents one boundary change instance with its own Cost out and Cost in selections.</div>
-
+  <div style="font-size:13px;color:#666;margin-bottom:10px;">Add one or more cost centre movement blocks. Each block represents one boundary change instance with its own Cost out and receiving selections. The contact is derived automatically from the receiving cost centre.</div>
   <div class="bc-move-header">
     <div class="bc-move-title">Cost centre movements</div>
     <button class="btn btn-primary" style="padding:8px 14px;font-size:12px;" onclick="addBcBlock()">+ Add movement</button>
   </div>
-
   <div class="bc-move-list" id="bc-move-list"></div>
-
   <div class="btn-row"><button class="btn btn-secondary" onclick="go('step1')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step2b')">Next →</button></div>
 </div></div>
 <!-- STEP 2b -->
@@ -545,6 +539,21 @@ function setCur(mode){
 }
 
 const ccAttr={'1110':{dept:'Finance',cur:'GBP'},'1120':{dept:'Finance',cur:'GBP'},'1130':{dept:'Finance',cur:'GBP'},'1210':{dept:'HR & People',cur:'GBP'},'1220':{dept:'HR & People',cur:'GBP'},'2110':{dept:'Operations',cur:'GBP'},'2120':{dept:'Operations',cur:'GBP'},'5110':{dept:'Digital & Tech',cur:'GBP'},'5120':{dept:'Digital & Tech',cur:'USD'},'7300RND-CC-041':{dept:'Oncology R&D',cur:'GBP'},'7300RND-CC-042':{dept:'Oncology R&D',cur:'GBP'},'7300RND-CC-043':{dept:'Oncology R&D',cur:'EUR'},'7400RND-CC-051':{dept:'Immunology R&D',cur:'GBP'},'7400RND-CC-052':{dept:'Immunology R&D',cur:'USD'}};
+
+// Illustrative owner mapping used to derive contact from receiving cost centre
+const ccOwner={
+  '1110':'Mark Henley','1120':'Mark Henley','1130':'Mark Henley',
+  '1210':'Aisha Patel','1220':'Aisha Patel',
+  '2110':'Tom Walsh','2120':'Tom Walsh',
+  '5110':'Sarah Okafor','5120':'Sarah Okafor',
+  '7300RND-CC-041':'Jane Doherty','7300RND-CC-042':'Jane Doherty','7300RND-CC-043':'Jane Doherty',
+  '7400RND-CC-051':'James Liu','7400RND-CC-052':'James Liu'
+};
+const parentOwner={
+  '1000':'Mark Henley','2000':'Tom Walsh','5000':'Sarah Okafor',
+  '7000':'Jane Doherty','7300':'Jane Doherty','7400':'James Liu'
+};
+
 function gca(c){return ccAttr[c]||{dept:'—',cur:'GBP'};}
 const locMeta={'GB-LON-001':{city:'London',country:'United Kingdom'},'GB-LON-002':{city:'London',country:'United Kingdom'},'GB-LON-003':{city:'London',country:'United Kingdom'},'GB-CAM-001':{city:'Cambridge',country:'United Kingdom'},'GB-CAM-002':{city:'Cambridge',country:'United Kingdom'},'GB-MAN-001':{city:'Manchester',country:'United Kingdom'},'GB-MAN-002':{city:'Manchester',country:'United Kingdom'},'US-NYC-001':{city:'New York',country:'United States'},'US-NYC-002':{city:'New York',country:'United States'},'US-BOS-001':{city:'Boston',country:'United States'},'US-BOS-002':{city:'Boston',country:'United States'},'US-SFO-001':{city:'San Francisco',country:'United States'},'US-SFO-002':{city:'San Francisco',country:'United States'},'DE-MUC-001':{city:'Munich',country:'Germany'},'DE-MUC-002':{city:'Munich',country:'Germany'},'DE-BER-001':{city:'Berlin',country:'Germany'},'CH-BSL-001':{city:'Basel',country:'Switzerland'},'CH-BSL-002':{city:'Basel',country:'Switzerland'},'CH-ZRH-001':{city:'Zurich',country:'Switzerland'},'JP-TYO-001':{city:'Tokyo',country:'Japan'},'JP-TYO-002':{city:'Tokyo',country:'Japan'}};
 function glm(c){return locMeta[c]||{city:'—',country:'—'};}
@@ -554,7 +563,7 @@ const glTree={name:'GL accounts',children:[{code:'5000',name:'Staff costs',child
 const locTree={name:'All locations',children:[{name:'United Kingdom',code:'GB',children:[{name:'London',code:'GB-LON',children:[{code:'GB-LON-001',name:'Canary Wharf HQ',leaf:true},{code:'GB-LON-002',name:'Paddington Research Centre',leaf:true},{code:'GB-LON-003',name:'Southwark Operations Hub',leaf:true}]},{name:'Cambridge',code:'GB-CAM',children:[{code:'GB-CAM-001',name:'Cambridge Science Park',leaf:true},{code:'GB-CAM-002',name:"Addenbrooke's Site",leaf:true}]},{name:'Manchester',code:'GB-MAN',children:[{code:'GB-MAN-001',name:'Spinningfields Office',leaf:true},{code:'GB-MAN-002',name:'MediaCity Hub',leaf:true}]}]},{name:'United States',code:'US',children:[{name:'New York',code:'US-NYC',children:[{code:'US-NYC-001',name:'Midtown Manhattan Office',leaf:true},{code:'US-NYC-002',name:'Brooklyn R&D Lab',leaf:true}]},{name:'Boston',code:'US-BOS',children:[{code:'US-BOS-001',name:'Kendall Square Campus',leaf:true},{code:'US-BOS-002',name:'Longwood Medical Site',leaf:true}]},{name:'San Francisco',code:'US-SFO',children:[{code:'US-SFO-001',name:'Mission Bay Office',leaf:true},{code:'US-SFO-002',name:'South of Market Hub',leaf:true}]}]},{name:'Germany',code:'DE',children:[{name:'Munich',code:'DE-MUC',children:[{code:'DE-MUC-001',name:'Schwabing Research Park',leaf:true},{code:'DE-MUC-002',name:'Airport Business Centre',leaf:true}]},{name:'Berlin',code:'DE-BER',children:[{code:'DE-BER-001',name:'Mitte Innovation Hub',leaf:true}]}]},{name:'Switzerland',code:'CH',children:[{name:'Basel',code:'CH-BSL',children:[{code:'CH-BSL-001',name:'Basel Life Sciences Campus',leaf:true},{code:'CH-BSL-002',name:'Novartis District Site',leaf:true}]},{name:'Zurich',code:'CH-ZRH',children:[{code:'CH-ZRH-001',name:'Zurich Science Hub',leaf:true}]}]},{name:'Japan',code:'JP',children:[{name:'Tokyo',code:'JP-TYO',children:[{code:'JP-TYO-001',name:'Shinjuku Office',leaf:true},{code:'JP-TYO-002',name:'Shibuya R&D Centre',leaf:true}]}]}]};
 
 
-// --- Cost centre pairing model (v6) ---
+// --- Cost centre pairing model (v8) ---
 let bcBlocks=[]; // [{id,type,outSel[],inSel[],parSel,paths:{out:[],in:[],par:[]}}]
 let _bcSeq=1;
 
@@ -562,6 +571,7 @@ function bcTypeLabel(t){
   return t==='partial_oto'?'Partial BC — One to One'
     : t==='partial_otm'?'Partial BC — One to Many'
     : t==='partial_mto'?'Partial BC — Many to One'
+    : t==='partial_mtm'?'Partial BC — Many to Many'
     : 'Full Cost Centre BC';
 }
 
@@ -569,6 +579,7 @@ function maxForType(t,side){
   if(t==='partial_oto') return (side==='out'||side==='in')?1:0;
   if(t==='partial_otm') return side==='out'?1:999;
   if(t==='partial_mto') return side==='in'?1:999;
+  if(t==='partial_mtm') return (side==='out'||side==='in')?999:0;
   if(t==='full_cc') return side==='par'?1:999;
   return 999;
 }
@@ -610,6 +621,18 @@ function showBlockLimit(id,msg){
   showBlockLimit._t=setTimeout(()=>{el.style.display='none';},2200);
 }
 
+function deriveContactsForBlock(b){
+  // Contact derived from receiving cost centre(s) (or receiving parent unit for full CC)
+  if(b.type==='full_cc'){
+    if(!b.parSel) return ['Unassigned'];
+    return [parentOwner[b.parSel.code]||ccOwner[b.parSel.code]||'Unassigned'];
+  }
+  if(!b.inSel || !b.inSel.length) return ['Unassigned'];
+  const set=new Set();
+  b.inSel.forEach(cc=>set.add(ccOwner[cc.code]||'Unassigned'));
+  return Array.from(set);
+}
+
 function swM3(id,side,m){
   document.getElementById(`${id}-${side}-method-hier`).style.display = m==='hier'?'block':'none';
   document.getElementById(`${id}-${side}-method-manual`).style.display = m==='manual'?'block':'none';
@@ -641,11 +664,11 @@ function togLeaf3(id,side,code,name){
     if(side==='out') b.outSel=next; else b.inSel=next;
   }else{
     if(max===1 && arr.length>=1){
-      const next=[{code,name,contact:''}];
+      const next=[{code,name}];
       if(side==='out') b.outSel=next; else b.inSel=next;
       showBlockLimit(id,'Selection updated to maintain the limit for this movement type.');
     }else{
-      arr.push({code,name,contact:''});
+      arr.push({code,name});
     }
   }
   rHier3(id,side); rTray3(id,side);
@@ -657,14 +680,6 @@ function togParent3(id,code,name){
   if(b.parSel && b.parSel.code===code) b.parSel=null;
   else b.parSel={code,name};
   rHier3(id,'par'); rTray3(id,'par');
-}
-
-function updContact3(id,side,code,val){
-  const b=bcBlocks.find(x=>x.id===id);
-  if(!b) return;
-  const arr = side==='out'?b.outSel:b.inSel;
-  const it=arr.find(x=>x.code===code);
-  if(it) it.contact=val;
 }
 
 function remSel3(id,side,code){
@@ -704,11 +719,11 @@ function addManual3(id,side){
   const arr = side==='out'?b.outSel:b.inSel;
   if(arr.some(x=>x.code===code)){inp.value='';return;}
   if(max===1 && arr.length>=1){
-    const next=[{code,name:'Manual entry',contact:''}];
+    const next=[{code,name:'Manual entry'}];
     if(side==='out') b.outSel=next; else b.inSel=next;
     showBlockLimit(id,'Selection updated to maintain the limit for this movement type.');
   }else{
-    arr.push({code,name:'Manual entry',contact:''});
+    arr.push({code,name:'Manual entry'});
   }
   inp.value='';
   rTray3(id,side); rHier3(id,side);
@@ -788,16 +803,7 @@ function rTray3(id,side){
   cnt.textContent = arr.length===1?'1 cost centre selected':`${arr.length} cost centres selected`;
   clr.style.display='inline';
   cards.innerHTML = arr.map(c=>
-    `<div class=\"cc-card\">
-      <div class=\"cc-card-header\">
-        <div class=\"cc-card-title\"><span class=\"cc-card-code\">${c.code}</span><span class=\"cc-card-name\">${c.name}</span></div>
-        <button class=\"cc-card-remove\" onclick=\"remSel3('${id}','${side}','${c.code}')\">×</button>
-      </div>
-      <div class=\"cc-contact-field\">
-        <div class=\"cc-contact-label\">Contact person</div>
-        <input type=\"text\" placeholder=\"Name or email...\" value=\"${c.contact||''}\" oninput=\"updContact3('${id}','${side}','${c.code}',this.value)\"/>
-      </div>
-    </div>`
+    `<div class=\"generic-tag\"><span class=\"cc-card-code\">${c.code}</span><span class=\"tag-name\">${c.name}</span><button class=\"tag-remove\" onclick=\"remSel3('${id}','${side}','${c.code}')\">×</button></div>`
   ).join('');
 }
 
@@ -810,7 +816,7 @@ function blockHTML(b,idx){
   const rightSide = isFull?'par':'in';
   const rightHint = isFull
     ? 'For full cost centre boundary changes, select the parent unit (not an individual cost centre) that the Cost out cost centre(s) will move into.'
-    : 'Select Cost in cost centres (the destination). Limits apply based on the selected movement type.';
+    : 'Select receiving Cost in cost centres. Limits apply based on the selected movement type.';
 
   const rightManualLbl = isFull?'Parent unit code':'Cost centre code';
   const rightManualPh = isFull?'e.g. 7300':'e.g. 7300RND-CC-041';
@@ -818,18 +824,23 @@ function blockHTML(b,idx){
   const outPill = outLimit==999?'No limit':`Select ${outLimit}`;
   const inPill  = isFull?'Select 1':(inLimit==999?'No limit':`Select ${inLimit}`);
 
+  const contacts = deriveContactsForBlock(b);
+  const contactText = contacts.length?contacts.join(', '):'Unassigned';
+
   return `
   <div class=\"bc-block\" id=\"${b.id}-block\">
     <div class=\"bc-block-top\">
       <div class=\"bc-block-left\">
         <div class=\"bc-block-label\">Movement ${idx+1}</div>
         <div class=\"bc-block-name\">${bcTypeLabel(b.type)}</div>
+        <div class=\"bc-block-label\">Derived contact: <span style=\"color:#1a1a1a;\">${contactText}</span></div>
       </div>
       <div class=\"bc-block-actions\">
         <select class=\"bc-type-select\" onchange=\"setBlockType('${b.id}',this.value)\">
           <option value=\"partial_oto\" ${b.type==='partial_oto'?'selected':''}>Partial BC — One to One</option>
           <option value=\"partial_otm\" ${b.type==='partial_otm'?'selected':''}>Partial BC — One to Many</option>
           <option value=\"partial_mto\" ${b.type==='partial_mto'?'selected':''}>Partial BC — Many to One</option>
+          <option value=\"partial_mtm\" ${b.type==='partial_mtm'?'selected':''}>Partial BC — Many to Many</option>
           <option value=\"full_cc\" ${b.type==='full_cc'?'selected':''}>Full Cost Centre BC</option>
         </select>
         <button class=\"btn-icon\" onclick=\"removeBcBlock('${b.id}')\">Remove</button>
@@ -842,7 +853,7 @@ function blockHTML(b,idx){
 
       <div class=\"cc-pane\">
         <div class=\"cc-pane-title\"><span>Cost out cost centres</span><span class=\"cc-pane-badge\">${outPill}</span></div>
-        <div class=\"cc-pane-sub\">Select one or more Cost out cost centres. Add a contact person for each Cost out cost centre.</div>
+        <div class=\"cc-pane-sub\">Select Cost out cost centres for this movement.</div>
 
         <div class=\"method-toggle\"><button class=\"method-btn active\" id=\"${b.id}-out-btn-hier\" onclick=\"swM3('${b.id}','out','hier')\">Browse hierarchy</button><button class=\"method-btn\" id=\"${b.id}-out-btn-manual\" onclick=\"swM3('${b.id}','out','manual')\">Enter manually</button></div>
         <div id=\"${b.id}-out-method-hier\"><div class=\"hierarchy-panel\"><div class=\"breadcrumb\" id=\"${b.id}-out-bc\"></div><ul class=\"hier-list\" id=\"${b.id}-out-hl\"></ul></div></div>
@@ -961,14 +972,14 @@ const AZW=['Employee - Regular','Contingent Worker'];
 const WT=['Lab','Office','Remote','Field','Manufacturing','Clinical','Warehouse'];
 
 function buildCombos(){
-  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)',contact:''}];
+  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)'}];
   const gls=sel.gl.length?sel.gl:[{code:'—',name:'(none)'}];
   combos=[];
   ccs.forEach(cc=>{const a=gca(cc.code);gls.forEach(gl=>{combos.push({cc,gl,dept:a.dept,localCur:a.cur,product:'',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
   rCoTables();go('step4');
 }
 function buildFTEs(){
-  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)',contact:''}];
+  const ccs=getAllCostOut().length?getAllCostOut():[{code:'—',name:'(none)'}];
   const locs=sel.loc.length?sel.loc:[{code:'—',name:'(none)'}];
   fteRows=[];
   ccs.forEach(cc=>{locs.forEach(loc=>{const m=glm(loc.code);fteRows.push({cc,loc,city:m.city,country:m.country,azW:'Employee - Regular',wt:'Lab',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
@@ -1071,20 +1082,22 @@ function buildReview(){
 
 function buildConfirm(){
   const n=document.getElementById('inp-bcname')?.value||'—';
-
-  const blocksHtml = bcBlocks.map((b,i)=>{
+  const blocksHtml = (bcBlocks||[]).map((b,i)=>{
     const out = (b.outSel||[]).map(c=>`<span class=\"cc-badge\" style=\"margin-right:4px;\">${c.code}</span>`).join('')||'—';
     const inPart = (b.type==='full_cc')
       ? ((b.parSel?`<span class=\"cc-badge\" style=\"margin-right:4px;\">${b.parSel.code}</span>`:'—'))
       : ((b.inSel||[]).map(c=>`<span class=\"cc-badge\" style=\"margin-right:4px;\">${c.code}</span>`).join('')||'—');
     const inLbl = (b.type==='full_cc')?'Cost in parent unit':'Cost in cost centres';
+    const contacts = deriveContactsForBlock(b).join(', ');
     return `
       <div style=\"margin-bottom:12px;padding:10px 12px;background:#f5f4f0;border-radius:8px;\">
         <div style=\"font-size:12px;font-weight:500;margin-bottom:6px;\">Movement ${i+1}: ${bcTypeLabel(b.type)}</div>
         <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">Cost out</div>
         <div style=\"margin-bottom:8px;\">${out}</div>
         <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">${inLbl}</div>
-        <div>${inPart}</div>
+        <div style=\"margin-bottom:8px;\">${inPart}</div>
+        <div style=\"font-size:12px;color:#666;margin-bottom:4px;\">Derived contact</div>
+        <div>${contacts||'Unassigned'}</div>
       </div>`;
   }).join('');
 
