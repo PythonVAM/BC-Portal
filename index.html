@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- please publish -->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -14,7 +13,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .topbar-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #185FA5; display: inline-block; }
 .topbar-nav { display: flex; gap: 4px; }
 .nav-btn { font-size: 12px; padding: 5px 12px; border: 0.5px solid #e0ded8; border-radius: 8px; cursor: pointer; background: transparent; color: #666; font-family: inherit; }
-.nav-btn:hover { background: #f5f4f0; color: #1a1a1a; }
+.nav-btn:hover { background: #f5f4f0; }
 .nav-btn.active { background: #E6F1FB; border-color: #85B7EB; color: #0C447C; }
 .topbar-user { font-size: 12px; color: #666; display: flex; align-items: center; gap: 8px; }
 .avatar { width: 28px; height: 28px; border-radius: 50%; background: #B5D4F4; color: #0C447C; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; }
@@ -38,9 +37,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .metric-value { font-size: 20px; font-weight: 500; }
 .section-label { font-size: 13px; font-weight: 500; margin: 20px 0 8px; display: flex; align-items: center; gap: 8px; }
 .count-pill { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
-.pill-blue { background: #E6F1FB; color: #0C447C; }
-.pill-amber { background: #FAEEDA; color: #633806; }
-.pill-green { background: #EAF3DE; color: #27500A; }
+.pill-blue { background:#E6F1FB; color:#0C447C; }
+.pill-amber { background:#FAEEDA; color:#633806; }
+.pill-green { background:#EAF3DE; color:#27500A; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .form-row.full { grid-template-columns: 1fr; }
 .field { display: flex; flex-direction: column; gap: 4px; }
@@ -54,10 +53,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-secondary { background: transparent; border: 0.5px solid #ccc; color: #666; font-family: inherit; }
 .btn-secondary:hover { background: #f5f4f0; }
 .badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
-.badge-pending { background: #FAEEDA; color: #633806; }
-.badge-approved { background: #EAF3DE; color: #27500A; }
-.badge-rejected { background: #FCEBEB; color: #501313; }
-.badge-draft { background: #F1EFE8; color: #444441; }
+.badge-pending { background:#FAEEDA; color:#633806; }
+.badge-approved { background:#EAF3DE; color:#27500A; }
+.badge-rejected { background:#FCEBEB; color:#501313; }
+.badge-draft { background:#F1EFE8; color:#444441; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { font-size: 11px; color: #666; font-weight: 500; text-align: left; padding: 8px 10px; border-bottom: 0.5px solid #e0ded8; white-space: nowrap; }
@@ -159,11 +158,12 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .dl-title { font-size: 13px; font-weight: 500; color: #27500A; margin-bottom: 3px; }
 .dl-desc { font-size: 12px; color: #3B6D11; }
 .out-section { margin-bottom: 20px; }
-.out-section-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.out-section-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .fy-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; }
 .fy-current { background: #E6F1FB; color: #0C447C; }
 .fy-prev { background: #F1EFE8; color: #444441; }
 .fy-future { background: #EAF3DE; color: #27500A; }
+.cur-label { font-size: 11px; color: #888; font-style: italic; }
 .out-table-wrap { overflow-x: auto; border: 0.5px solid #e0ded8; border-radius: 8px; }
 .out-table { border-collapse: collapse; font-size: 12px; min-width: 100%; }
 .out-table th { font-size: 10px; color: #666; font-weight: 500; padding: 7px 8px; border-bottom: 0.5px solid #e0ded8; border-right: 0.5px solid #e0ded8; white-space: nowrap; background: #f5f4f0; text-align: left; }
@@ -193,6 +193,7 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .cell-select:hover { border-color: #ccc; background: #fff; }
 .cell-select:focus { outline: none; border-color: #85B7EB; background: #fff; }
 .out-hint { font-size: 12px; color: #666; margin-bottom: 16px; }
+.usd-note { font-size: 11px; color: #666; background: #f5f4f0; border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; display: inline-block; }
 .rv-section { margin-bottom: 16px; }
 .rv-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .rv-section-title { font-size: 13px; font-weight: 500; }
@@ -216,8 +217,16 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .rv-table td.rn { text-align: right; }
 .rv-table td.rtot { background: #E6F1FB; color: #0C447C; font-weight: 500; text-align: right; }
 .rv-table td.rro { background: #F1EFE8; color: #444; }
-.rv-fy-label { font-size: 11px; font-weight: 500; color: #666; margin: 10px 0 4px; }
+.rv-fy-label { font-size: 13px; font-weight: 500; margin: 10px 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rv-cur-label { font-size: 11px; color: #888; font-style: italic; font-weight: 400; }
 .rv-none { font-size: 12px; color: #999; font-style: italic; }
+.cur-toggle-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.cur-toggle-label { font-size: 12px; color: #666; }
+.cur-toggle { display: flex; border: 0.5px solid #ccc; border-radius: 8px; overflow: hidden; }
+.cur-btn { font-size: 12px; padding: 6px 14px; cursor: pointer; background: transparent; border: none; color: #666; font-family: inherit; white-space: nowrap; }
+.cur-btn.active { background: #185FA5; color: #fff; font-weight: 500; }
+.cur-btn:first-child { border-right: 0.5px solid #ccc; }
+.cur-note { font-size: 11px; color: #888; font-style: italic; }
 .submit-box { background: #E6F1FB; border: 0.5px solid #85B7EB; border-radius: 8px; padding: 16px 20px; margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .submit-box-text { font-size: 13px; color: #0C447C; }
 .btn-submit { background: #185FA5; border: none; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: inherit; white-space: nowrap; }
@@ -256,7 +265,7 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
     <div class="kpi-group-label">Boundary changes requested</div>
     <div class="metrics-row">
       <div class="metric"><div class="metric-label">Total requested</div><div class="metric-value">14</div></div>
-      <div class="metric"><div class="metric-label">Cost outbound</div><div class="metric-value">£890K</div></div>
+      <div class="metric"><div class="metric-label">Cost outbound</div><div class="metric-value">$1.1M</div></div>
       <div class="metric"><div class="metric-label">FTEs outbound</div><div class="metric-value">9.5</div></div>
     </div>
   </div>
@@ -264,7 +273,7 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
     <div class="kpi-group-label">Boundary changes received</div>
     <div class="metrics-row">
       <div class="metric"><div class="metric-label">Action required</div><div class="metric-value">3</div></div>
-      <div class="metric"><div class="metric-label">Cost inbound</div><div class="metric-value">£310K</div></div>
+      <div class="metric"><div class="metric-label">Cost inbound</div><div class="metric-value">$395K</div></div>
       <div class="metric"><div class="metric-label">FTEs inbound</div><div class="metric-value">9.0</div></div>
     </div>
   </div>
@@ -279,30 +288,30 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
     </div>
     <div class="section-label">Boundary changes requested <span class="count-pill pill-blue">4</span></div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Reference</th><th>To</th><th>Cost (£)</th><th>FTEs</th><th>Request sent to</th><th>Status</th></tr></thead>
+      <thead><tr><th>Reference</th><th>To</th><th>Cost ($)</th><th>FTEs</th><th>Request sent to</th><th>Status</th></tr></thead>
       <tbody>
-        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0024</td><td>Digital &amp; Tech</td><td>85,000</td><td>2.0</td><td>Sarah Okafor</td><td><span class="badge badge-pending">Pending</span></td></tr>
-        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0023</td><td>Risk &amp; Compliance</td><td>42,500</td><td>—</td><td>Mark Henley</td><td><span class="badge badge-pending">Pending</span></td></tr>
-        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0021</td><td>Retail Division</td><td>120,000</td><td>3.0</td><td>Tom Walsh</td><td><span class="badge badge-approved">Approved</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0024</td><td>Digital &amp; Tech</td><td>108,000</td><td>2.0</td><td>Sarah Okafor</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0023</td><td>Risk &amp; Compliance</td><td>54,100</td><td>—</td><td>Mark Henley</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0021</td><td>Retail Division</td><td>152,400</td><td>3.0</td><td>Tom Walsh</td><td><span class="badge badge-approved">Approved</span></td></tr>
         <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0019</td><td>Operations</td><td>—</td><td>0.5</td><td>Jane Doherty</td><td><span class="badge badge-draft">Draft</span></td></tr>
       </tbody>
     </table></div>
     <hr class="section-divider"/>
     <div class="section-label">Boundary changes received — action required <span class="count-pill pill-amber">3</span></div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Reference</th><th>From</th><th>Cost (£)</th><th>FTEs</th><th>Requested by</th><th>Status</th></tr></thead>
+      <thead><tr><th>Reference</th><th>From</th><th>Cost ($)</th><th>FTEs</th><th>Requested by</th><th>Status</th></tr></thead>
       <tbody>
-        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0026</td><td>Operations</td><td>55,000</td><td>—</td><td>Tom Walsh</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0026</td><td>Operations</td><td>69,850</td><td>—</td><td>Tom Walsh</td><td><span class="badge badge-pending">Pending</span></td></tr>
         <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0025</td><td>Corporate Centre</td><td>—</td><td>1.0</td><td>Aisha Patel</td><td><span class="badge badge-pending">Pending</span></td></tr>
-        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0022</td><td>Retail Division</td><td>30,000</td><td>1.5</td><td>James Liu</td><td><span class="badge badge-pending">Pending</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0022</td><td>Retail Division</td><td>38,100</td><td>1.5</td><td>James Liu</td><td><span class="badge badge-pending">Pending</span></td></tr>
       </tbody>
     </table></div>
     <hr class="section-divider"/>
     <div class="section-label">Boundary changes received — action complete <span class="count-pill pill-green">2</span></div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Reference</th><th>From</th><th>Cost (£)</th><th>FTEs</th><th>Requested by</th><th>Status</th></tr></thead>
+      <thead><tr><th>Reference</th><th>From</th><th>Cost ($)</th><th>FTEs</th><th>Requested by</th><th>Status</th></tr></thead>
       <tbody>
-        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0020</td><td>Digital &amp; Tech</td><td>67,000</td><td>—</td><td>Aisha Patel</td><td><span class="badge badge-rejected">Rejected</span></td></tr>
+        <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0020</td><td>Digital &amp; Tech</td><td>85,090</td><td>—</td><td>Aisha Patel</td><td><span class="badge badge-rejected">Rejected</span></td></tr>
         <tr class="clickable" onclick="go('approval')"><td>TRF-2025-0018</td><td>Operations</td><td>—</td><td>2.0</td><td>Mark Henley</td><td><span class="badge badge-approved">Approved</span></td></tr>
       </tbody>
     </table></div>
@@ -359,15 +368,19 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 
 <!-- STEP 4: Cost Out -->
 <div class="screen" id="screen-step4"><div class="card"><div class="card-title">New boundary change request</div><div id="si-step4"></div>
-  <p class="out-hint">Each row is a combination of cost centre and GL account. Dept and Currency are inherited from the cost centre. Paste a row from Excel into any month cell to fill across automatically.</p>
-  <div class="out-section"><div class="out-section-title">Current year <span class="fy-badge fy-current">FY26</span></div>
-    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Currency</th><th>Product</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="co26"></tbody></table></div>
+  <p class="out-hint">Each row is a combination of cost centre and GL account. Enter values in USD. The local currency for each cost centre is shown for reference. Paste a row from Excel into any month cell to fill across automatically.</p>
+  <div class="usd-note">All amounts collected in USD ($) — local currency shown for reference only</div>
+  <div class="out-section">
+    <div class="out-section-title">Current year <span class="fy-badge fy-current">FY26</span> <span class="cur-label">values in USD</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Local currency</th><th>Product</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="co26"></tbody></table></div>
   </div>
-  <div class="out-section"><div class="out-section-title">Current year −1 <span class="fy-badge fy-prev">FY25</span></div>
-    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Currency</th><th>Product</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="co25"></tbody></table></div>
+  <div class="out-section">
+    <div class="out-section-title">Current year −1 <span class="fy-badge fy-prev">FY25</span> <span class="cur-label">values in USD</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Local currency</th><th>Product</th><th class="col-num">Jan</th><th class="col-num">Feb</th><th class="col-num">Mar</th><th class="col-num">Apr</th><th class="col-num">May</th><th class="col-num">Jun</th><th class="col-num">Jul</th><th class="col-num">Aug</th><th class="col-num">Sep</th><th class="col-num">Oct</th><th class="col-num">Nov</th><th class="col-num">Dec</th><th class="col-total">Year total</th></tr></thead><tbody id="co25"></tbody></table></div>
   </div>
-  <div class="out-section"><div class="out-section-title">Current year +1 to +3 <span class="fy-badge fy-future">FY27–29</span></div>
-    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Currency</th><th>Product</th><th class="col-num">FY27</th><th class="col-num">FY28</th><th class="col-num">FY29</th></tr></thead><tbody id="co2729"></tbody></table></div>
+  <div class="out-section">
+    <div class="out-section-title">Current year +1 to +3 <span class="fy-badge fy-future">FY27–29</span> <span class="cur-label">values in USD</span></div>
+    <div class="out-table-wrap"><table class="out-table"><thead><tr><th>Cost centre</th><th>GL account</th><th class="col-ro">Dept</th><th class="col-ro">Local currency</th><th>Product</th><th class="col-num">FY27</th><th class="col-num">FY28</th><th class="col-num">FY29</th></tr></thead><tbody id="co2729"></tbody></table></div>
   </div>
   <div class="btn-row"><button class="btn btn-secondary" onclick="go('step3')">← Back</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="go('step5')">Next →</button></div>
 </div></div>
@@ -410,6 +423,14 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
   <div class="rv-divider"></div>
   <div class="rv-section">
     <div class="rv-section-hdr"><div class="rv-section-title">Cost out</div><button class="rv-edit" onclick="go('step4')">Edit</button></div>
+    <div class="cur-toggle-wrap">
+      <span class="cur-toggle-label">Display amounts in:</span>
+      <div class="cur-toggle">
+        <button class="cur-btn active" id="cur-usd" onclick="setCur('usd')">USD ($)</button>
+        <button class="cur-btn" id="cur-local" onclick="setCur('local')">Local currency</button>
+      </div>
+      <span class="cur-note" id="cur-note"></span>
+    </div>
     <div id="rv-costout"><span class="rv-none">No data entered</span></div>
   </div>
   <div class="rv-divider"></div>
@@ -437,8 +458,8 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
       <button class="btn btn-secondary" onclick="go('dashboard')" style="font-size:12px;padding:5px 12px;">← Back</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
-      <div><div style="font-size:12px;color:#666;margin-bottom:2px;">From</div><div style="font-size:13px;margin-bottom:12px;">Retail Division (CC-1042)</div><div style="font-size:12px;color:#666;margin-bottom:2px;">To</div><div style="font-size:13px;margin-bottom:12px;">Digital &amp; Tech (CC-2087)</div><div style="font-size:12px;color:#666;margin-bottom:2px;">Effective date</div><div style="font-size:13px;">01 May 2025</div></div>
-      <div><div style="font-size:12px;color:#666;margin-bottom:2px;">Cost amount</div><div style="font-size:13px;margin-bottom:12px;">£85,000</div><div style="font-size:12px;color:#666;margin-bottom:2px;">FTE quantity</div><div style="font-size:13px;margin-bottom:12px;">2.0 FTE</div><div style="font-size:12px;color:#666;margin-bottom:2px;">Requested by</div><div style="font-size:13px;">Sarah Okafor · 28 Mar 2025</div></div>
+      <div><div style="font-size:12px;color:#666;margin-bottom:2px;">From</div><div style="font-size:13px;margin-bottom:12px;">Retail Division</div><div style="font-size:12px;color:#666;margin-bottom:2px;">To</div><div style="font-size:13px;margin-bottom:12px;">Digital &amp; Tech</div><div style="font-size:12px;color:#666;margin-bottom:2px;">Effective date</div><div style="font-size:13px;">01 May 2025</div></div>
+      <div><div style="font-size:12px;color:#666;margin-bottom:2px;">Cost amount (USD)</div><div style="font-size:13px;margin-bottom:12px;">$108,000</div><div style="font-size:12px;color:#666;margin-bottom:2px;">FTE quantity</div><div style="font-size:13px;margin-bottom:12px;">2.0 FTE</div><div style="font-size:12px;color:#666;margin-bottom:2px;">Requested by</div><div style="font-size:13px;">Sarah Okafor · 28 Mar 2025</div></div>
     </div>
     <hr class="divider"/>
     <div style="font-size:12px;color:#666;margin-bottom:2px;">Business justification</div>
@@ -477,17 +498,22 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
   </div>
 </div>
 
-</div><!-- end proto-wrap -->
-
+</div>
 <script>
 const SL=['Details','Cost centres','GL accounts','Cost out','FTE locations','FTEs out','Review'];
 const AM={step1:0,step2:1,step2b:1,step3:2,step4:3,step5:4,step6:5,step7:6};
-function si(id){
-  const a=AM[id]??-1;
-  return '<div class="step-indicator">'+SL.map((l,i)=>{
-    const d=i<a,ac=i===a;
-    return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<SL.length-1?'<div class="step-connector"></div>':'');
-  }).join('')+'</div>';
+function si(id){const a=AM[id]??-1;return'<div class="step-indicator">'+SL.map((l,i)=>{const d=i<a,ac=i===a;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
+
+const FX={USD:1,GBP:1.27,EUR:1.09};
+function fmt(n){if(n===null||n===undefined||isNaN(n))return'—';return n.toLocaleString('en-US',{maximumFractionDigits:0});}
+
+let curMode='usd';
+function setCur(mode){
+  curMode=mode;
+  document.getElementById('cur-usd').classList.toggle('active',mode==='usd');
+  document.getElementById('cur-local').classList.toggle('active',mode==='local');
+  document.getElementById('cur-note').textContent=mode==='local'?'Values converted using illustrative FX rates (GBP 1.27, EUR 1.09)':'';
+  renderCostOutReview();
 }
 
 const ccAttr={'1110':{dept:'Finance',cur:'GBP'},'1120':{dept:'Finance',cur:'GBP'},'1130':{dept:'Finance',cur:'GBP'},'1210':{dept:'HR & People',cur:'GBP'},'1220':{dept:'HR & People',cur:'GBP'},'2110':{dept:'Operations',cur:'GBP'},'2120':{dept:'Operations',cur:'GBP'},'5110':{dept:'Digital & Tech',cur:'GBP'},'5120':{dept:'Digital & Tech',cur:'USD'},'7300RND-CC-041':{dept:'Oncology R&D',cur:'GBP'},'7300RND-CC-042':{dept:'Oncology R&D',cur:'GBP'},'7300RND-CC-043':{dept:'Oncology R&D',cur:'EUR'},'7400RND-CC-051':{dept:'Immunology R&D',cur:'GBP'},'7400RND-CC-052':{dept:'Immunology R&D',cur:'USD'}};
@@ -558,7 +584,7 @@ function addM(t){
 }
 function doDownload(){
   const codes=sel.cc.length?sel.cc.map(c=>c.code):['(none)'];
-  const lines=['TRANSFER HUB — COST CENTRE DATA EXTRACT','='+'='.repeat(39),`Generated: ${new Date().toLocaleString('en-GB')}`,'Requested by: Jane Doherty (7300RND — Oncology R&D)','','SELECTED COST CENTRES','-'.repeat(21),...sel.cc.map(c=>{const a=gca(c.code);return`${c.code}  |  ${c.name}  |  Dept: ${a.dept}  |  Currency: ${a.cur}  |  Contact: ${c.contact||'—'}`;}),``,`END OF EXTRACT`];
+  const lines=['TRANSFER HUB — COST CENTRE DATA EXTRACT','='+'='.repeat(39),`Generated: ${new Date().toLocaleString('en-GB')}`,'Requested by: Jane Doherty (7300RND — Oncology R&D)','','SELECTED COST CENTRES','-'.repeat(21),...sel.cc.map(c=>{const a=gca(c.code);return`${c.code}  |  ${c.name}  |  Dept: ${a.dept}  |  Local currency: ${a.cur}  |  Contact: ${c.contact||'—'}`;}),``,`END OF EXTRACT`];
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const fn=`cost_centre_data_${codes[0].replace(/[^a-z0-9]/gi,'_')}.txt`;a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url);
   document.getElementById('dl-confirm').style.display='block';document.getElementById('dl-fn').textContent=`${fn} — downloaded successfully`;
@@ -574,7 +600,7 @@ function buildCombos(){
   const ccs=sel.cc.length?sel.cc:[{code:'—',name:'(none)'}];
   const gls=sel.gl.length?sel.gl:[{code:'—',name:'(none)'}];
   combos=[];
-  ccs.forEach(cc=>{const a=gca(cc.code);gls.forEach(gl=>{combos.push({cc,gl,dept:a.dept,cur:a.cur,product:'',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
+  ccs.forEach(cc=>{const a=gca(cc.code);gls.forEach(gl=>{combos.push({cc,gl,dept:a.dept,localCur:a.cur,product:'',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
   rCoTables();go('step4');
 }
 function buildFTEs(){
@@ -584,11 +610,10 @@ function buildFTEs(){
   ccs.forEach(cc=>{locs.forEach(loc=>{const m=glm(loc.code);fteRows.push({cc,loc,city:m.city,country:m.country,azW:'Employee - Regular',wt:'Lab',fy26:Array(12).fill(''),fy25:Array(12).fill(''),fy2729:Array(3).fill('')});});});
   rFteTables();go('step6');
 }
-
 function recalc(tbId,ri,arr,fk){
   const t=arr[ri][fk].reduce((s,v)=>{const n=parseFloat(v);return s+(isNaN(n)?0:n);},0);
   const cell=document.getElementById(`${tbId}-tot-${ri}`);
-  if(cell)cell.textContent=t===0?'—':t.toLocaleString('en-GB',{maximumFractionDigits:0});
+  if(cell)cell.textContent=t===0?'—':t.toLocaleString('en-US',{maximumFractionDigits:0});
 }
 function onPaste(e,ri,sc,fk,tbId,mc,arr){
   const text=(e.clipboardData||window.clipboardData).getData('text');
@@ -608,7 +633,7 @@ function rCoTable(tbId,fk,hasTot){
     const tr=document.createElement('tr');if(ri%2===1)tr.className='alt-row';
     const cells=cols.map((c,ci)=>`<td><input class="num-input" type="text" placeholder="0" value="${row[fk][ci]||''}" data-tb="${tbId}" data-row="${ri}" data-col="${ci}" oninput="combos[${ri}]['${fk}'][${ci}]=this.value;${hasTot?`recalc('${tbId}',${ri},combos,'${fk}')`:''}" onpaste="onPaste(event,${ri},${ci},'${fk}','${tbId}',${mc},combos)"/></td>`).join('');
     const tot=hasTot?`<td class="total-cell" id="${tbId}-tot-${ri}">—</td>`:'';
-    tr.innerHTML=`<td class="frozen"><span class="cc-badge">${row.cc.code}</span><br><span style="font-size:11px;color:#888;">${row.cc.name}</span></td><td class="frozen"><span class="gl-badge">${row.gl.code}</span><br><span style="font-size:11px;color:#888;">${row.gl.name}</span></td><td class="ro-cell">${row.dept}</td><td class="ro-cell">${row.cur}</td><td><input class="product-input" type="text" placeholder="Product…" value="${row.product}" oninput="combos[${ri}].product=this.value"/></td>${cells}${tot}`;
+    tr.innerHTML=`<td class="frozen"><span class="cc-badge">${row.cc.code}</span><br><span style="font-size:11px;color:#888;">${row.cc.name}</span></td><td class="frozen"><span class="gl-badge">${row.gl.code}</span><br><span style="font-size:11px;color:#888;">${row.gl.name}</span></td><td class="ro-cell">${row.dept}</td><td class="ro-cell">${row.localCur}</td><td><input class="product-input" type="text" placeholder="Product…" value="${row.product}" oninput="combos[${ri}].product=this.value"/></td>${cells}${tot}`;
     tb.appendChild(tr);
   });
 }
@@ -626,19 +651,45 @@ function rFteTable(tbId,fk,hasTot){
 }
 function rFteTables(){rFteTable('fte26','fy26',true);rFteTable('fte25','fy25',true);rFteTable('fte2729','fy2729',false);}
 
+function renderCostOutReview(){
+  const coEl=document.getElementById('rv-costout');
+  if(!combos.length){coEl.innerHTML='<span class="rv-none">No data entered</span>';return;}
+  const isUSD=curMode==='usd';
+  const fys=[{fk:'fy26',label:'Current year (FY26)',cols:MO,tot:true},{fk:'fy25',label:'Current year −1 (FY25)',cols:MO,tot:true},{fk:'fy2729',label:'Current year +1 to +3 (FY27–29)',cols:FYF,tot:false}];
+  coEl.innerHTML=fys.map(({fk,label,cols,tot})=>{
+    const hasAny=combos.some(r=>r[fk].some(v=>v!==''));
+    if(!hasAny)return`<div class="rv-fy-label">${label}</div><div class="rv-none" style="margin-bottom:8px;">No values entered</div>`;
+    const curNote=isUSD?'values in USD':'values in local currency';
+    return`<div class="rv-fy-label">${label} <span class="rv-cur-label">${curNote}</span></div>
+    <div class="rv-table-wrap"><table class="rv-table"><thead><tr>
+      <th>Cost centre</th><th>GL account</th><th>Product</th>
+      ${!isUSD?'<th>Currency</th>':''}
+      ${cols.map(c=>`<th class="rn">${c}</th>`).join('')}
+      ${tot?'<th class="rt">Total</th>':''}
+    </tr></thead><tbody>
+    ${combos.map((r,ri)=>{
+      const localCur=r.localCur||'GBP';
+      const rate=isUSD?1:(1/(FX[localCur]||1));
+      const cvt=(v)=>{const n=parseFloat(v);return isNaN(n)||v===''?null:Math.round(n*rate);};
+      const vals=r[fk].map(cvt);
+      const rowTotal=tot?vals.reduce((s,v)=>s+(v===null?0:v),0):null;
+      return`<tr${ri%2===1?' style="background:#fafaf8;"':''}>
+        <td><span class="cc-badge">${r.cc.code}</span></td>
+        <td><span class="gl-badge">${r.gl.code}</span></td>
+        <td>${r.product||'—'}</td>
+        ${!isUSD?`<td class="rro">${localCur}</td>`:''}
+        ${vals.map(v=>`<td class="rn">${v===null?'—':fmt(v)}</td>`).join('')}
+        ${rowTotal!==null?`<td class="rtot">${rowTotal===0?'—':fmt(rowTotal)}</td>`:''}
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+  }).join('');
+}
+
 function buildReview(){
   document.getElementById('rv-bcname').textContent=document.getElementById('inp-bcname')?.value||'—';
   document.getElementById('rv-bcdesc').textContent=document.getElementById('inp-bcdesc')?.value||'—';
-  const coEl=document.getElementById('rv-costout');
-  if(!combos.length){coEl.innerHTML='<span class="rv-none">No data entered</span>';}
-  else{
-    const fys=[{fk:'fy26',label:'Current year (FY26)',cols:MO,tot:true},{fk:'fy25',label:'Current year −1 (FY25)',cols:MO,tot:true},{fk:'fy2729',label:'Current year +1 to +3 (FY27–29)',cols:FYF,tot:false}];
-    coEl.innerHTML=fys.map(({fk,label,cols,tot})=>{
-      const hasAny=combos.some(r=>r[fk].some(v=>v!==''));
-      if(!hasAny)return`<div class="rv-fy-label">${label}</div><div class="rv-none" style="margin-bottom:8px;">No values entered</div>`;
-      return`<div class="rv-fy-label">${label}</div><div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Cost centre</th><th>GL account</th><th>Product</th>${cols.map(c=>`<th class="rn">${c}</th>`).join('')}${tot?'<th class="rt">Total</th>':''}</tr></thead><tbody>${combos.map((r,ri)=>{const t=tot?r[fk].reduce((s,v)=>{const n=parseFloat(v);return s+(isNaN(n)?0:n);},0):null;return`<tr${ri%2===1?' style="background:#fafaf8;"':''}><td><span class="cc-badge">${r.cc.code}</span></td><td><span class="gl-badge">${r.gl.code}</span></td><td>${r.product||'—'}</td>${r[fk].map(v=>`<td class="rn">${v||'—'}</td>`).join('')}${t!==null?`<td class="rtot">${t===0?'—':t.toLocaleString('en-GB',{maximumFractionDigits:0})}</td>`:''}</tr>`;}).join('')}</tbody></table></div>`;
-    }).join('');
-  }
+  renderCostOutReview();
   const locEl=document.getElementById('rv-locs');
   if(!sel.loc.length){locEl.innerHTML='<span class="rv-none">No locations selected</span>';}
   else{locEl.innerHTML=sel.loc.map(l=>{const m=glm(l.code);return`<span class="loc-badge" style="margin-right:4px;">${l.code} — ${l.name} (${m.city}, ${m.country})</span>`;}).join('');}
@@ -649,7 +700,7 @@ function buildReview(){
     fteEl.innerHTML=fys.map(({fk,label,cols,tot})=>{
       const hasAny=fteRows.some(r=>r[fk].some(v=>v!==''));
       if(!hasAny)return`<div class="rv-fy-label">${label}</div><div class="rv-none" style="margin-bottom:8px;">No values entered</div>`;
-      return`<div class="rv-fy-label">${label}</div><div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Cost centre</th><th>Location</th><th class="rro">City</th><th class="rro">Country</th><th>AZ Workforce</th><th>Worker type</th>${cols.map(c=>`<th class="rn">${c}</th>`).join('')}${tot?'<th class="rt">Total</th>':''}</tr></thead><tbody>${fteRows.map((r,ri)=>{const t=tot?r[fk].reduce((s,v)=>{const n=parseFloat(v);return s+(isNaN(n)?0:n);},0):null;return`<tr${ri%2===1?' style="background:#fafaf8;"':''}><td><span class="cc-badge">${r.cc.code}</span></td><td><span class="loc-badge">${r.loc.code}</span></td><td class="rro">${r.city}</td><td class="rro">${r.country}</td><td>${r.azW}</td><td>${r.wt}</td>${r[fk].map(v=>`<td class="rn">${v||'—'}</td>`).join('')}${t!==null?`<td class="rtot">${t===0?'—':t.toLocaleString('en-GB',{maximumFractionDigits:0})}</td>`:''}</tr>`;}).join('')}</tbody></table></div>`;
+      return`<div class="rv-fy-label">${label}</div><div class="rv-table-wrap"><table class="rv-table"><thead><tr><th>Cost centre</th><th>Location</th><th class="rro">City</th><th class="rro">Country</th><th>AZ Workforce</th><th>Worker type</th>${cols.map(c=>`<th class="rn">${c}</th>`).join('')}${tot?'<th class="rt">Total</th>':''}</tr></thead><tbody>${fteRows.map((r,ri)=>{const t=tot?r[fk].reduce((s,v)=>{const n=parseFloat(v);return s+(isNaN(n)?0:n);},0):null;return`<tr${ri%2===1?' style="background:#fafaf8;"':''}><td><span class="cc-badge">${r.cc.code}</span></td><td><span class="loc-badge">${r.loc.code}</span></td><td class="rro">${r.city}</td><td class="rro">${r.country}</td><td>${r.azW}</td><td>${r.wt}</td>${r[fk].map(v=>`<td class="rn">${v||'—'}</td>`).join('')}${t!==null?`<td class="rtot">${t===0?'—':t.toLocaleString('en-US',{maximumFractionDigits:0})}</td>`:''}</tr>`;}).join('')}</tbody></table></div>`;
     }).join('');
   }
 }
@@ -673,7 +724,6 @@ function go(id){
   if(id==='step7')buildReview();
   if(id==='confirmation')buildConfirm();
 }
-
 ['cc','gl','loc'].forEach(t=>{rHier(t);rTray(t);});
 go('dashboard');
 </script>
