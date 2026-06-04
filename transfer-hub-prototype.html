@@ -4693,37 +4693,29 @@ function renderCiFteCoSummaryTable(){
       ${exp26?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
     </tr>`:''}`;
 
-  // Group rows by CC's BC department (FTE rows don't carry project/product, so we use ccAttr.bcDept)
-  const pairsForGrouping=allRows.map(p=>({ccCode:p.ccCode, row:p.row}));
-  const deptGroups=groupPairsByCcDept(pairsForGrouping);
-  const scope='ci-step3-fteco-summary';
-  const sections=deptGroups.map(g=>{
-    const expanded=isDeptExpanded(scope, g.dept);
-    if(!expanded){
-      return deptGroupCollapsedRow({dept:g.dept, viewDept:g.dept, rows:g.pairs.map(p=>p.row)}, fmtFte, scope, null, ciExp);
-    }
-    const tbody=g.pairs.map(({ccCode,row},gi)=>{
-      const t25=rowTotal(row.fy25),t26=rowTotal(row.fy26);
-      const mo25=exp25?MO.map((_,mi)=>`<td>${fmtFte(row.fy25[mi]||0)}</td>`).join(''):'';
-      const mo26=exp26?MO.map((_,mi)=>`<td>${fmtFte(row.fy26[mi]||0)}</td>`).join(''):'';
-      return`<tr${gi%2===1?' class="alt-row"':''}>
-        <td class="td-left"><span class="cc-badge-out">${ccCode}</span></td>
-        <td class="td-left">${deptChipFor(ccCode)}</td>
-        <td class="td-left">${row.loc||'—'}</td>
-        <td class="td-left">${row.city||'—'}</td>
-        <td class="td-left">${row.country||'—'}</td>
-        <td class="td-left">${row.azW||'—'}</td>
-        <td class="td-left">${row.wt||'—'}</td>
-        <td class="td-total">${fmtFte(t25)}</td>${mo25}
-        <td class="td-total">${fmtFte(t26)}</td>${mo26}
-        <td class="td-future">${fmtFte(row.fy27||0)}</td>
-        <td class="td-future">${fmtFte(row.fy28||0)}</td>
-        <td class="td-future">${fmtFte(row.fy29||0)}</td>
-      </tr>`;
-    }).join('');
-    return `${deptSectionLabel(g.dept,null,{scope})}<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  // One flat table sorted Dept → CC (FTE rows don't carry project/product, so we use ccAttr.bcDept).
+  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
+  allRows.sort((a,b)=>{const da=deptOrder[gca(a.ccCode)?.bcDept]??9,db=deptOrder[gca(b.ccCode)?.bcDept]??9;if(da!==db)return da-db;return a.ccCode.localeCompare(b.ccCode);});
+  const tbody=allRows.map(({ccCode,row},gi)=>{
+    const t25=rowTotal(row.fy25),t26=rowTotal(row.fy26);
+    const mo25=exp25?MO.map((_,mi)=>`<td>${fmtFte(row.fy25[mi]||0)}</td>`).join(''):'';
+    const mo26=exp26?MO.map((_,mi)=>`<td>${fmtFte(row.fy26[mi]||0)}</td>`).join(''):'';
+    return`<tr${gi%2===1?' class="alt-row"':''}>
+      <td class="td-left"><span class="cc-badge-out">${ccCode}</span></td>
+      <td class="td-left">${deptChipFor(ccCode)}</td>
+      <td class="td-left">${row.loc||'—'}</td>
+      <td class="td-left">${row.city||'—'}</td>
+      <td class="td-left">${row.country||'—'}</td>
+      <td class="td-left">${row.azW||'—'}</td>
+      <td class="td-left">${row.wt||'—'}</td>
+      <td class="td-total">${fmtFte(t25)}</td>${mo25}
+      <td class="td-total">${fmtFte(t26)}</td>${mo26}
+      <td class="td-future">${fmtFte(row.fy27||0)}</td>
+      <td class="td-future">${fmtFte(row.fy28||0)}</td>
+      <td class="td-future">${fmtFte(row.fy29||0)}</td>
+    </tr>`;
   }).join('');
-  el.innerHTML=sections||'<span class="rv-none" style="font-size:12px;">No FTE data.</span>';
+  el.innerHTML=allRows.length?`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No FTE data.</span>';
 }
 
 /* Cost Out summary at top of multi-CC Cost In step 2 — read-only, expandable */
@@ -4740,10 +4732,13 @@ function renderCiCoSummaryTable(){
   let allRows=[];
   incoming.forEach(ccCode=>{(bc.ccData[ccCode]||[]).forEach(row=>allRows.push({ccCode,row}));});
 
-  const detailCellRO=(row)=>{
-    if(row.projectName||row.uv)return `<div style="display:flex;align-items:center;gap:6px;"><span>${row.projectName||row.prod||'—'}</span>${uvChipFor(row.uv)}</div>`;
-    if(row.productName){const nb=row.isNonBrand?' <span class="non-brand-pill">Non Brand</span>':'';return `${row.productName}${nb}`;}
-    return row.prod||'';
+  const na='<td class="td-left cod-na">N/A</td>';
+  const uniCells=(row)=>{
+    const isRnd=!!(row.project||row.projectName||row.uv);
+    const isSmm=!isRnd&&!!(row.product||row.productName);
+    return (isSmm?`<td class="td-left">${row.productName||row.prod||'—'}</td>`:na)
+      +(isRnd?`<td class="td-left">${row.projectName||row.prod||'—'}</td>`:na)
+      +(isRnd?`<td class="td-left">${row.uv||'—'}</td>`:na);
   };
 
   const thead=`
@@ -4751,7 +4746,9 @@ function renderCiCoSummaryTable(){
       <th class="th-left sticky sticky-0"${hasSubRow?' rowspan="2"':''} style="min-width:110px;">Cost centre</th>
       <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:60px;">Dept</th>
       <th class="th-left sticky sticky-1"${hasSubRow?' rowspan="2"':''} style="min-width:110px;left:170px;">GL account</th>
-      <th class="th-left sticky sticky-2"${hasSubRow?' rowspan="2"':''} style="min-width:150px;left:280px;">Product / Project</th>
+      <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:130px;">Product</th>
+      <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:140px;">Project</th>
+      <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:56px;">UV</th>
       <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiCoSummaryTable();renderCiOthersTable('cost');renderCiTable();">FY25 ${exp25?'▼':'▶'}</th>
       <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiCoSummaryTable();renderCiOthersTable('cost');renderCiTable();">FY26 ${exp26?'▼':'▶'}</th>
       <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
@@ -4763,46 +4760,26 @@ function renderCiCoSummaryTable(){
       ${exp26?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
     </tr>`:''}`;
 
-  // Group allRows by dept (peeking inside row), preserving the {ccCode, row} pair shape
-  const buckets={'R&D':[],'SMM':[],'GL':[]};
-  allRows.forEach(p=>{
-    const r=p.row;
-    if(r.project||r.projectName||r.uv)buckets['R&D'].push(p);
-    else if(r.product||r.productName)buckets['SMM'].push(p);
-    else buckets['GL'].push(p);
-  });
-  const deptGroups=[];
-  if(buckets['R&D'].length)deptGroups.push({dept:'R&D',pairs:buckets['R&D']});
-  if(buckets['SMM'].length)deptGroups.push({dept:'SMM',pairs:buckets['SMM']});
-  if(buckets['GL'].length)deptGroups.push({dept:null,pairs:buckets['GL']});
-
-  const scope='ci-step2-co-summary';
-  const sections=deptGroups.map(g=>{
-    const expanded=isDeptExpanded(scope, g.dept);
-    if(!expanded){
-      // Use the shared helper, but our row-format is {ccCode, row} so we flatten to row-only for aggregation
-      return deptGroupCollapsedRow({dept:g.dept,viewDept:g.dept,rows:g.pairs.map(p=>p.row)}, fmt, scope, null, ciExp);
-    }
-    // Expanded: render the section header + dept-specific table
-    const tbody=g.pairs.map(({ccCode,row},gi)=>{
-      const t25=rowTotal(row.fy25),t26=rowTotal(row.fy26);
-      const mo25=exp25?MO.map((_,mi)=>`<td>${fmt(row.fy25[mi]||0)}</td>`).join(''):'';
-      const mo26=exp26?MO.map((_,mi)=>`<td>${fmt(row.fy26[mi]||0)}</td>`).join(''):'';
-      return`<tr${gi%2===1?' class="alt-row"':''}>
-        <td class="td-left sticky sticky-0"><span class="cc-badge-out">${ccCode}</span></td>
-        <td class="td-left">${deptChipFor(ccCode)}</td>
-        <td class="td-left sticky sticky-1" style="left:170px;"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-        <td class="td-left sticky sticky-2" style="left:280px;">${detailCellRO(row)}</td>
-        <td class="td-total">${fmt(t25)}</td>${mo25}
-        <td class="td-total">${fmt(t26)}</td>${mo26}
-        <td class="td-future">${fmt(row.fy27||0)}</td>
-        <td class="td-future">${fmt(row.fy28||0)}</td>
-        <td class="td-future">${fmt(row.fy29||0)}</td>
-      </tr>`;
-    }).join('');
-    return `${deptSectionLabel(g.dept,null,{scope})}<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  // One flat table sorted Dept → CC (values in $m).
+  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
+  allRows.sort((a,b)=>{const da=deptOrder[gca(a.ccCode)?.bcDept]??9,db=deptOrder[gca(b.ccCode)?.bcDept]??9;if(da!==db)return da-db;return a.ccCode.localeCompare(b.ccCode);});
+  const tbody=allRows.map(({ccCode,row},gi)=>{
+    const t25=rowTotal(row.fy25),t26=rowTotal(row.fy26);
+    const mo25=exp25?MO.map((_,mi)=>`<td>${fmtM(row.fy25[mi]||0)}</td>`).join(''):'';
+    const mo26=exp26?MO.map((_,mi)=>`<td>${fmtM(row.fy26[mi]||0)}</td>`).join(''):'';
+    return`<tr${gi%2===1?' class="alt-row"':''}>
+      <td class="td-left sticky sticky-0"><span class="cc-badge-out">${ccCode}</span></td>
+      <td class="td-left">${deptChipFor(ccCode)}</td>
+      <td class="td-left sticky sticky-1" style="left:170px;"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
+      ${uniCells(row)}
+      <td class="td-total">${fmtM(t25)}</td>${mo25}
+      <td class="td-total">${fmtM(t26)}</td>${mo26}
+      <td class="td-future">${fmtM(row.fy27||0)}</td>
+      <td class="td-future">${fmtM(row.fy28||0)}</td>
+      <td class="td-future">${fmtM(row.fy29||0)}</td>
+    </tr>`;
   }).join('');
-  el.innerHTML=sections||'<span class="rv-none" style="font-size:12px;">No Cost Out data.</span>';
+  el.innerHTML=allRows.length?`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No Cost Out data.</span>';
 }
 
 /* ── Other Cost In contributors section ──
@@ -4868,8 +4845,8 @@ function renderCiOthersTable(mode){
     return (fk==='fy27'||fk==='fy28'||fk==='fy29')?(row[fk]||0):rowTotal(row[fk]||[]);
   }
 
-  const sym=mode==='cost'?'$':'';
-  const fmtVal=mode==='cost'?fmt:fmtFte;
+  const sym='';
+  const fmtVal=mode==='cost'?fmtM:fmtFte;
   function fmtNeg(v){return v<0?'('+sym+fmtVal(Math.abs(v))+')':sym+fmtVal(v);}
 
   function valCells(row,pending){
@@ -4918,7 +4895,7 @@ function renderCiOthersTable(mode){
     :"renderCiFteCoSummaryTable();renderCiOthersTable('fte');renderCiFteTable();";
 
   const masterCols=mode==='cost'
-    ?['Cost centre','Dept','GL account','Product']
+    ?['Cost centre','Dept','GL account','Product','Project','UV']
     :['Cost centre','Dept','Location','City','Country','AZ Workforce','Worker type'];
 
   function buildThead(){
@@ -4939,10 +4916,15 @@ function renderCiOthersTable(mode){
   function masterCells(sr){
     const {ccCode,row}=sr;
     if(mode==='cost'){
+      const isRnd=!!(row.project||row.projectName||row.uv);
+      const isSmm=!isRnd&&!!(row.product||row.productName);
+      const na='<td class="ci-td-left cod-na">N/A</td>';
       return`<td class="ci-td-left"><span class="cc-badge-out">${ccCode}</span></td>
         <td class="ci-td-left">${deptChipFor(ccCode)}</td>
         <td class="ci-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-        <td class="ci-td-left">${row.prod||''}</td>`;
+        ${isSmm?`<td class="ci-td-left">${row.productName||row.prod||'—'}</td>`:na}
+        ${isRnd?`<td class="ci-td-left">${row.projectName||row.prod||'—'}</td>`:na}
+        ${isRnd?`<td class="ci-td-left">${row.uv||'—'}</td>`:na}`;
     }
     return`<td class="ci-td-left"><span class="cc-badge-out">${ccCode}</span></td>
       <td class="ci-td-left">${deptChipFor(ccCode)}</td>
@@ -4956,89 +4938,18 @@ function renderCiOthersTable(mode){
   // Stash ccCode on source rows for net calc lookup
   sourceRows.forEach(sr=>{sr.row._ccCode=sr.ccCode;});
 
-  // Group source rows by dept. For 'cost' mode use row content; for 'fte' use CC's bcDept.
-  function groupSourceRows(pairs) {
-    if (mode==='cost') {
-      const buckets={'R&D':[],'SMM':[],'GL':[]};
-      pairs.forEach(p=>{
-        const r=p.row;
-        if(r.project||r.projectName||r.uv)buckets['R&D'].push(p);
-        else if(r.product||r.productName)buckets['SMM'].push(p);
-        else buckets['GL'].push(p);
-      });
-      const out=[];
-      if(buckets['R&D'].length)out.push({dept:'R&D',pairs:buckets['R&D']});
-      if(buckets['SMM'].length)out.push({dept:'SMM',pairs:buckets['SMM']});
-      if(buckets['GL'].length)out.push({dept:null,pairs:buckets['GL']});
-      return out;
-    }
-    return groupPairsByCcDept(pairs);
-  }
-  const dGroups=groupSourceRows(sourceRows);
+  // One flat unified table — all source rows in a single group (no dept sub-grouping/collapse).
+  const dGroups=[{dept:null,pairs:sourceRows}];
 
   // Render a person's block as dept-grouped collapsible sections
   function renderPersonGroupedBody(p, responded, blockScope) {
     return dGroups.map(g=>{
-      const expanded=isDeptExpanded(blockScope, g.dept);
-      if(!expanded){
-        // Aggregate row across the person's responses for these source rows
-        const agg={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-        const isPending=!responded;
-        if(!isPending){
-          g.pairs.forEach(sr=>{
-            const pr=findPersonRow(p,sr.ccCode,sr.row);
-            if(!pr)return;
-            (pr.fy25||[]).forEach((v,mi)=>{agg.fy25[mi]+=Number(v)||0;});
-            (pr.fy26||[]).forEach((v,mi)=>{agg.fy26[mi]+=Number(v)||0;});
-            agg.fy27+=Number(pr.fy27)||0;
-            agg.fy28+=Number(pr.fy28)||0;
-            agg.fy29+=Number(pr.fy29)||0;
-          });
-        }
-        const pillHtml=g.dept==='R&D'?'<span class="dept-chip dept-chip-rnd" style="font-size:10px;">R&D</span>':
-                       g.dept==='SMM'?'<span class="dept-chip dept-chip-smm" style="font-size:10px;">SMM</span>':
-                       g.dept==='G&A'?'<span class="dept-chip dept-chip-ga" style="font-size:10px;">G&A</span>':'';
-        const sLabel=mode==='cost'?(g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level'):(g.dept||'G&A');
-        // Cells from valCells, but feeding our agg row (or 'pending' marker if not responded)
-        const cells=isPending
-          ? (function(){
-              // Render '—' across all cells
-              const o=[];
-              if(exp25){o.push(`<td class="ci-th-total ci-td-pending">—</td>`);MO.forEach(()=>o.push(`<td class="ci-td-pending">—</td>`));}
-              else o.push(`<td class="ci-td-pending">—</td>`);
-              if(exp26){o.push(`<td class="ci-th-total ci-td-pending">—</td>`);MO.forEach(()=>o.push(`<td class="ci-td-pending">—</td>`));}
-              else o.push(`<td class="ci-td-pending">—</td>`);
-              ['fy27','fy28','fy29'].forEach(()=>o.push(`<td class="ci-td-pending">—</td>`));
-              return o.join('');
-            })()
-          : valCells(agg, false);
-        const safeScope=String(blockScope).replace(/"/g,'&quot;');
-        const safeDept=String(g.dept||'GL').replace(/"/g,'&quot;');
-        return `<div style="margin-bottom:6px;border:0.5px solid #e0ded8;border-radius:6px;background:#fafaf8;">
-          <div style="overflow-x:auto;"><table class="ci-others-table" style="margin:0;"><thead><tr>
-            <th class="ci-th-left" style="min-width:240px;background:#f5f4f0;"${hasSubRow?' rowspan="2"':''}>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <button class="dept-expand-btn" onclick="toggleCiDeptGroup('${safeScope}','${safeDept}')" style="font-size:10px;padding:1px 6px;border:0.5px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;">▶ Expand</button>
-                <span style="font-size:11px;font-weight:500;color:#666;">${sLabel}</span>
-                ${pillHtml}
-                <span style="font-size:10px;color:#999;font-style:italic;margin-left:4px;">${g.pairs.length} ${g.pairs.length===1?'row':'rows'}</span>
-              </div>
-            </th>
-            <th class="ci-th-fy" colspan="${exp25?13:1}">FY25 ${exp25?'▼':'▶'}</th>
-            <th class="ci-th-fy" colspan="${exp26?13:1}">FY26 ${exp26?'▼':'▶'}</th>
-            <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
-            <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
-            <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
-          </tr>${hasSubRow?`<tr>${exp25?`<th class="ci-th-total">Total</th>${moTh}`:''}${exp26?`<th class="ci-th-total">Total</th>${moTh}`:''}</tr>`:''}
-          </thead><tbody><tr><td class="ci-td-left" style="color:#888;font-style:italic;font-size:11px;">Aggregate of ${g.pairs.length} ${g.pairs.length===1?'row':'rows'}</td>${cells}</tr></tbody></table></div>
-        </div>`;
-      }
-      // Expanded: standard dept-section label + table with the full rows
+      // Flat unified table with the full rows.
       const tbody=g.pairs.map((sr,si)=>{
         const pr=findPersonRow(p,sr.ccCode,sr.row);
         return`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${valCells(pr,!responded||!pr)}</tr>`;
       }).join('');
-      return `${deptSectionLabel(g.dept,null,{scope:blockScope})}<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
+      return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
     }).join('');
   }
 
@@ -5062,65 +4973,9 @@ function renderCiOthersTable(mode){
   const netLabel=mode==='cost'?'Net available cost':'Net available FTEs';
   const netScope=`ci-others-${mode}:net`;
   const netSections=dGroups.map(g=>{
-    const expanded=isDeptExpanded(netScope, g.dept);
-    if(!expanded){
-      // Aggregate net values across the group
-      const agg={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-      g.pairs.forEach(sr=>{
-        function netVal(fk,mi){
-          const co=getRowValue(sr.row,fk,mi);
-          let othersAbs=0;
-          otherPersons.forEach(p=>{
-            const pr=findPersonRow(p,sr.ccCode,sr.row);
-            if(pr)othersAbs+=Math.abs(getRowValue(pr,fk,mi));
-          });
-          return co-othersAbs;
-        }
-        [0,1,2,3,4,5,6,7,8,9,10,11].forEach(mi=>{agg.fy25[mi]+=netVal('fy25',mi);agg.fy26[mi]+=netVal('fy26',mi);});
-        agg.fy27+=netVal('fy27');agg.fy28+=netVal('fy28');agg.fy29+=netVal('fy29');
-      });
-      // Render aggregate using netCells-like format: emit netCell visuals
-      function aggCellsForNet(row){
-        function nc(v,isSubtotal){
-          const cls=(v<0?'ci-td-neg ':v>0?'ci-td-pos ':'')+(isSubtotal?'ci-th-total':'');
-          return`<td class="${cls}" style="font-weight:600;">${fmtNeg(v)}</td>`;
-        }
-        const cells=[];
-        if(exp25){cells.push(nc(rowTotal(row.fy25),true));MO.forEach((_,mi)=>cells.push(nc(row.fy25[mi]||0,false)));}
-        else cells.push(nc(rowTotal(row.fy25),false));
-        if(exp26){cells.push(nc(rowTotal(row.fy26),true));MO.forEach((_,mi)=>cells.push(nc(row.fy26[mi]||0,false)));}
-        else cells.push(nc(rowTotal(row.fy26),false));
-        ['fy27','fy28','fy29'].forEach(fk=>cells.push(nc(row[fk]||0,false)));
-        return cells.join('');
-      }
-      const pillHtml=g.dept==='R&D'?'<span class="dept-chip dept-chip-rnd" style="font-size:10px;">R&D</span>':
-                     g.dept==='SMM'?'<span class="dept-chip dept-chip-smm" style="font-size:10px;">SMM</span>':
-                     g.dept==='G&A'?'<span class="dept-chip dept-chip-ga" style="font-size:10px;">G&A</span>':'';
-      const sLabel=mode==='cost'?(g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level'):(g.dept||'G&A');
-      const safeScope=netScope.replace(/"/g,'&quot;');
-      const safeDept=String(g.dept||'GL').replace(/"/g,'&quot;');
-      return `<div style="margin-bottom:6px;border:0.5px solid #e0ded8;border-radius:6px;background:#fafaf8;">
-        <div style="overflow-x:auto;"><table class="ci-others-table" style="margin:0;"><thead><tr>
-          <th class="ci-th-left" style="min-width:240px;background:#f5f4f0;"${hasSubRow?' rowspan="2"':''}>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <button class="dept-expand-btn" onclick="toggleCiDeptGroup('${safeScope}','${safeDept}')" style="font-size:10px;padding:1px 6px;border:0.5px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;">▶ Expand</button>
-              <span style="font-size:11px;font-weight:500;color:#666;">${sLabel}</span>
-              ${pillHtml}
-              <span style="font-size:10px;color:#999;font-style:italic;margin-left:4px;">${g.pairs.length} ${g.pairs.length===1?'row':'rows'}</span>
-            </div>
-          </th>
-          <th class="ci-th-fy" colspan="${exp25?13:1}">FY25 ${exp25?'▼':'▶'}</th>
-          <th class="ci-th-fy" colspan="${exp26?13:1}">FY26 ${exp26?'▼':'▶'}</th>
-          <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
-          <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
-          <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
-        </tr>${hasSubRow?`<tr>${exp25?`<th class="ci-th-total">Total</th>${moTh}`:''}${exp26?`<th class="ci-th-total">Total</th>${moTh}`:''}</tr>`:''}
-        </thead><tbody><tr><td class="ci-td-left" style="color:#888;font-style:italic;font-size:11px;">Aggregate of ${g.pairs.length} ${g.pairs.length===1?'row':'rows'}</td>${aggCellsForNet(agg)}</tr></tbody></table></div>
-      </div>`;
-    }
-    // Expanded
+    // Flat unified Net Available table.
     const tbody=g.pairs.map((sr,si)=>`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${netCells({...sr.row,_ccCode:sr.ccCode})}</tr>`).join('');
-    return `${deptSectionLabel(g.dept,null,{scope:netScope})}<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
+    return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
   }).join('');
   const netBlock=`<div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -5150,7 +5005,9 @@ function renderCiTable(){
     <th class="th-left sticky sticky-0"${hasSubRow?' rowspan="2"':''} style="min-width:110px;">Cost centre</th>
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:60px;">Dept</th>
     <th class="th-left sticky sticky-1"${hasSubRow?' rowspan="2"':''} style="min-width:110px;left:170px;">GL account</th>
-    <th class="th-left sticky sticky-2"${hasSubRow?' rowspan="2"':''} style="min-width:150px;left:280px;">Product / Project</th>
+    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:130px;">Product</th>
+    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:140px;">Project</th>
+    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:56px;">UV</th>
     <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiCoSummaryTable();renderCiOthersTable('cost');renderCiTable();">FY25 ${exp25?'▼':'▶'}</th>
     <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiCoSummaryTable();renderCiOthersTable('cost');renderCiTable();">FY26 ${exp26?'▼':'▶'}</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
@@ -5162,45 +5019,45 @@ function renderCiTable(){
     ${exp26?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
   </tr>`:''}`;
 
-  const detailCell=(row)=>{
-    if(row.projectName||row.uv){
-      return `<div style="display:flex;align-items:center;gap:6px;"><span>${row.projectName||row.prod||'—'}</span>${uvChipFor(row.uv)}</div>`;
-    }
-    if(row.productName){
-      const nb=row.isNonBrand?' <span class="non-brand-pill">Non Brand</span>':'';
-      return `${row.productName}${nb}`;
-    }
-    return row.prod||'';
+  const na='<td class="td-left cod-na">N/A</td>';
+  const uniCells=(row)=>{
+    const isRnd=!!(row.project||row.projectName||row.uv);
+    const isSmm=!isRnd&&!!(row.product||row.productName);
+    return (isSmm?`<td class="td-left">${row.productName||row.prod||'—'}</td>`:na)
+      +(isRnd?`<td class="td-left">${row.projectName||row.prod||'—'}</td>`:na)
+      +(isRnd?`<td class="td-left">${row.uv||'—'}</td>`:na);
   };
 
   const tbody=ciData.map((row,ri)=>{
     const rc=ri%2===1?'alt-row':'';
     const t26=rowTotal(row.fy26),t25=rowTotal(row.fy25);
-    const mo26=exp26?MO.map((_,mi)=>`<td><input class="num-input" id="ci-inp-${ri}-fy26-${mi}" value="${row.fy26[mi]||''}" placeholder="0"/></td>`).join(''):'';
-    const mo25=exp25?MO.map((_,mi)=>`<td><input class="num-input" id="ci-inp-${ri}-fy25-${mi}" value="${row.fy25[mi]||''}" placeholder="0"/></td>`).join(''):'';
+    const mo26=exp26?MO.map((_,mi)=>`<td><input class="num-input" id="ci-inp-${ri}-fy26-${mi}" value="${row.fy26[mi]?fmtM(row.fy26[mi]):''}" placeholder="0.00"/></td>`).join(''):'';
+    const mo25=exp25?MO.map((_,mi)=>`<td><input class="num-input" id="ci-inp-${ri}-fy25-${mi}" value="${row.fy25[mi]?fmtM(row.fy25[mi]):''}" placeholder="0.00"/></td>`).join(''):'';
     return`<tr id="ci-tr-${ri}" class="${rc}">
       <td class="td-left sticky sticky-0"><span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${row.cc||'—'}</span></td>
       <td class="td-left">${deptChipFor(row.cc)}</td>
       <td class="td-left sticky sticky-1" style="left:170px;"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-      <td class="td-left sticky sticky-2" style="left:280px;">${detailCell(row)}</td>
-      <td class="td-total" id="ci-tot-${ri}-fy25">${fmt(t25)}</td>${mo25}
-      <td class="td-total" id="ci-tot-${ri}-fy26">${fmt(t26)}</td>${mo26}
-      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy27" value="${row.fy27||''}" placeholder="0"/></td>
-      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy28" value="${row.fy28||''}" placeholder="0"/></td>
-      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy29" value="${row.fy29||''}" placeholder="0"/></td>
+      ${uniCells(row)}
+      <td class="td-total" id="ci-tot-${ri}-fy25">${fmtM(t25)}</td>${mo25}
+      <td class="td-total" id="ci-tot-${ri}-fy26">${fmtM(t26)}</td>${mo26}
+      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy27" value="${row.fy27?fmtM(row.fy27):''}" placeholder="0.00"/></td>
+      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy28" value="${row.fy28?fmtM(row.fy28):''}" placeholder="0.00"/></td>
+      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy29" value="${row.fy29?fmtM(row.fy29):''}" placeholder="0.00"/></td>
     </tr>`;
   }).join('');
 
   wrap.innerHTML=`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 
+  // Inputs are in USD millions; scale back to dollars (round to whole $) for balance math.
+  const toUsd=raw=>Math.round((Number(String(raw).replace(/,/g,''))||0)*1e6);
   ciData.forEach((_,ri)=>{
     ['fy26','fy25'].forEach(fk=>{MO.forEach((_,mi)=>{
       const el=document.getElementById(`ci-inp-${ri}-${fk}-${mi}`);
-      if(el)el.addEventListener('input',()=>{ciData[ri][fk][mi]=el.value===''?0:Number(el.value.replace(/,/g,''));
-        const tot=rowTotal(ciData[ri][fk]);const te=document.getElementById(`ci-tot-${ri}-${fk}`);if(te)te.textContent=fmt(tot);});
+      if(el)el.addEventListener('input',()=>{ciData[ri][fk][mi]=toUsd(el.value);
+        const tot=rowTotal(ciData[ri][fk]);const te=document.getElementById(`ci-tot-${ri}-${fk}`);if(te)te.textContent=fmtM(tot);});
     });});
     ['fy27','fy28','fy29'].forEach(fk=>{const el=document.getElementById(`ci-inp-${ri}-${fk}`);
-      if(el)el.addEventListener('input',()=>{ciData[ri][fk]=el.value===''?0:Number(el.value.replace(/,/g,''));});});
+      if(el)el.addEventListener('input',()=>{ciData[ri][fk]=toUsd(el.value);});});
   });
 }
 
