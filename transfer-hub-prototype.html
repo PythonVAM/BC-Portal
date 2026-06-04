@@ -1692,27 +1692,24 @@ function renderCoSelect(){
 
   const deptOrder={'R&D':0,'SMM':1,'G&A':2};
   const byDeptCc=(a,b)=>{const da=deptOrder[gca(a.code).bcDept]??99,db=deptOrder[gca(b.code).bcDept]??99;if(da!==db)return da-db;return a.code.localeCompare(b.code);};
-  const na='<td class="cod-na">N/A</td>';
-  // Shared identity header — same six columns as the Detail screen.
-  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:46px;">Dept</th><th style="min-width:170px;">GL account</th><th style="min-width:140px;">Product</th><th style="min-width:150px;">Project</th><th style="min-width:58px;">UV</th>`;
+  // Identity header — the Select screen rolls up at GL level only (Product/Project/UV
+  // are chosen on the next Detail screen, so they aren't columns here).
+  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:46px;">Dept</th><th style="min-width:170px;">GL account</th>`;
   const fyHead=`<th class="cod-num th-fy-sel">FY25</th><th class="cod-num th-fy-sel">FY26</th><th class="cod-num th-fut-sel">FY27</th><th class="cod-num th-fut-sel">FY28</th><th class="cod-num th-fut-sel">FY29</th>`;
 
   // One row per GL rollup for a CC. Product/Project/UV are N/A here — they're set
   // on the next (Detail) screen. Full CC rows are read-only (locked, pre-ticked).
   const glRows=(cc,readOnly)=>{
     const cur=gca(cc.code).cur||'USD';
-    const shape=coShape(cc.code);
     return glRollup(cc.code).map((g,i)=>{
       const ticked=coGlPicked.has(g.glKey);
-      const under=shape==='gl'?'':`<span style="color:#999;margin-left:6px;">${g.count} ${shape==='gl+product'?'product':'project × UV'} ${g.count===1?'row':'rows'} on next screen</span>`;
       const rowAttrs=readOnly?'':` data-co-row="${g.glKey}" data-co-group="partials" onclick="onCoSelRowClick(event,this.dataset.coRow,this.dataset.coGroup)" style="cursor:pointer;"`;
       const cbHandler=readOnly?'':` onclick="onCoSelCheckboxClick(event,'${g.glKey}',this.closest('tr').dataset.coGroup)"`;
       return `<tr class="${i%2===1?'co-alt':''}${ticked?'':' co-row-unticked'}${readOnly?' cod-full-row':''}"${rowAttrs}>
         <td class="cosel-chk"><input type="checkbox" ${ticked?'checked':''} ${readOnly?'disabled':''}${cbHandler}/></td>
         <td class="cosel-cc-cell">${cc.code}${cc.name?' — '+cc.name:''}</td>
         <td>${deptChipFor(cc.code)}</td>
-        <td>${g.gln||g.gl}${under}</td>
-        ${na}${na}${na}
+        <td>${g.gln||g.gl}</td>
         <td class="cod-num">${fmtM(toLocal(g.fy25,cur))}</td>
         <td class="cod-num">${fmtM(toLocal(g.fy26,cur))}</td>
         <td class="cod-num">${fmtM(toLocal(g.fy27,cur))}</td>
@@ -1733,7 +1730,7 @@ function renderCoSelect(){
     html+=`<div class="cod-cc-hdr" data-co-group="partials">
         <span class="shape-tag">Select cost to transfer</span>
         <span style="font-size:11px;color:#888;">${partials.length} partial cost ${partials.length===1?'centre':'centres'} · <b style="color:#1a1a1a;">${pPicked}</b> of ${pTotal} GLs</span>
-        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Values in USD millions ($m) · Product / Project / UV are set on the next screen.</span>
+        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Values in USD millions ($m).</span>
       </div>
       <div class="cosel-tbl-wrap"><table class="cosel-tbl cod-tbl">
         <thead><tr>
