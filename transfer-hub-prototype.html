@@ -1392,51 +1392,6 @@ function rowTotal(arr){return arr.reduce((s,v)=>s+(isNaN(Number(v))?0:Number(v))
    and the data cells for one row. Callers provide the row object and a value
    formatter to control how numbers are rendered (currency, FTEs, sign etc).
 */
-/* ── Dept-aware identity columns for read-only summary tables ──
-   A row's "view dept" is its bcDept. R&D rows show Project + UV, SMM rows show
-   Product, others show GL only. */
-function rvIdentityHead(viewDept,opts){
-  const hasSub=fyHasSubRow();const rs=hasSub?' rowspan="2"':'';
-  const showCc=!!(opts&&opts.showCc);
-  const cells=[];
-  if(showCc){
-    cells.push(`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:110px;"${rs}>Cost centre</th>`);
-    cells.push(`<th class="rv-th-left" style="min-width:55px;"${rs}>Dept</th>`);
-  }
-  if(viewDept==='R&D'){
-    cells.push(`<th class="rv-th-left" style="min-width:170px;"${rs}>Project</th>`);
-    cells.push(`<th class="rv-th-left" style="min-width:80px;"${rs}>UV</th>`);
-    cells.push(`<th class="rv-th-left" style="min-width:110px;"${rs}>GL account</th>`);
-  } else if(viewDept==='SMM'){
-    cells.push(`<th class="rv-th-left" style="min-width:170px;"${rs}>Product</th>`);
-    cells.push(`<th class="rv-th-left" style="min-width:110px;"${rs}>GL account</th>`);
-  } else {
-    cells.push(`<th class="rv-th-left" style="min-width:110px;"${rs}>GL account</th>`);
-  }
-  return cells.join('');
-}
-function rvIdentityCells(viewDept,row,opts){
-  const showCc=!!(opts&&opts.showCc);
-  const ccStyle=(opts&&opts.ccBadgeStyle)||'';
-  const cells=[];
-  if(showCc){
-    const cc=row.cc||row.ccCode||row._cc||'—';
-    cells.push(`<td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out"${ccStyle?` style="${ccStyle}"`:''}>${cc}</span></td>`);
-    cells.push(`<td class="rv-td-left">${deptChipFor(cc)}</td>`);
-  }
-  if(viewDept==='R&D'){
-    cells.push(`<td class="rv-td-left"><div style="font-size:10px;color:#999;">${row.taName||'—'}${row.productName?' · '+row.productName:''}</div><div>${row.projectName||row.prod||'—'}</div></td>`);
-    cells.push(`<td class="rv-td-left">${uvChipFor(row.uv)}</td>`);
-    cells.push(`<td class="rv-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>`);
-  } else if(viewDept==='SMM'){
-    const nb=row.isNonBrand?' <span class="non-brand-pill">Non Brand</span>':'';
-    cells.push(`<td class="rv-td-left"><div style="font-size:10px;color:#999;">${row.taName||''}</div><div>${row.productName||row.prod||'—'}${nb}</div></td>`);
-    cells.push(`<td class="rv-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>`);
-  } else {
-    cells.push(`<td class="rv-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>`);
-  }
-  return cells.join('');
-}
 /* ── Unified read-only identity columns ──
    Fixed columns matching the Cost Out screens: (CC · Dept ·) GL · Product · Project · UV.
    Columns a row's shape doesn't use render as a greyed "N/A". `showCc` adds the
@@ -1460,140 +1415,6 @@ function roUniIdCells(row,showCc){
 }
 // Cost formatter in $m with negative-as-red-parens (read-only tables).
 function fmtCostM(v){const n=Number(v)||0;if(n<0)return '<span style="color:#A32D2D;">('+fmtM(Math.abs(n))+')</span>';return fmtM(n);}
-function groupRowsByDept(rows){
-  // Bucket by the row's effective shape: project→R&D view, product→SMM view, else GL-only.
-  const buckets={'R&D':[],'SMM':[],'GL':[]};
-  rows.forEach(r=>{
-    if(r.project||r.projectName||r.uv)buckets['R&D'].push(r);
-    else if(r.product||r.productName)buckets['SMM'].push(r);
-    else buckets['GL'].push(r);
-  });
-  const out=[];
-  if(buckets['R&D'].length)out.push({dept:'R&D',viewDept:'R&D',rows:buckets['R&D']});
-  if(buckets['SMM'].length)out.push({dept:'SMM',viewDept:'SMM',rows:buckets['SMM']});
-  if(buckets['GL'].length)out.push({dept:null,viewDept:null,rows:buckets['GL']});
-  return out;
-}
-/* Group {ccCode, row} pairs by the CC's BC department.
-   Used for tables where row content doesn't carry the dept marker (e.g. FTE rows). */
-function groupPairsByCcDept(pairs) {
-  const buckets={'R&D':[],'SMM':[],'G&A':[]};
-  const order=['R&D','SMM','G&A'];
-  pairs.forEach(p=>{
-    const d=(gca(p.ccCode||p.cc)?.bcDept)||'G&A';
-    (buckets[d]||buckets['G&A']).push(p);
-  });
-  const out=[];
-  order.forEach(d=>{if(buckets[d].length)out.push({dept:d,pairs:buckets[d]});});
-  return out;
-}
-function deptSectionLabel(deptKey,explicitLabel,collapseInfo){
-  const label=explicitLabel||(deptKey||'Cost Out');
-  const pill=deptKey==='R&D'?'<span class="dept-chip dept-chip-rnd" style="font-size:10px;">R&D</span>':
-             deptKey==='SMM'?'<span class="dept-chip dept-chip-smm" style="font-size:10px;">SMM</span>':
-             deptKey==='G&A'?'<span class="dept-chip dept-chip-ga" style="font-size:10px;">G&A</span>':'';
-  // If collapseInfo = {scope}, render an inline collapse button so the user can fold the section back up.
-  const collapseBtn = collapseInfo
-    ? `<button class="dept-expand-btn" onclick="toggleCiDeptGroup('${String(collapseInfo.scope).replace(/"/g,'&quot;')}','${String(deptKey||'GL').replace(/"/g,'&quot;')}')" style="font-size:10px;padding:1px 6px;border:0.5px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;margin-left:6px;">▼ Collapse</button>`
-    : '';
-  return `<div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;"><span style="font-size:11px;font-weight:500;color:#666;">${label}</span>${pill}${collapseBtn}</div>`;
-}
-
-/* ── Collapsible dept-group helper ──
-   When `collapsedByDefault` is true, each dept group is initially shown as a single
-   aggregate row (dept chip + row count + per-FY totals). The user can expand it to
-   see the full row-by-row table.
-   `scope` is a unique string per host element so multiple collapsible tables can
-   coexist without their expand-states clashing (e.g. each CC's review table on
-   Lead step 6 has its own scope). */
-function toggleCiDeptGroup(scope, dept) {
-  const k = `${scope}::${dept||'GL'}`;
-  if (ciDeptExp.has(k)) ciDeptExp.delete(k); else ciDeptExp.add(k);
-  // Re-render whichever screen owns this scope. We dispatch a custom event so
-  // each renderer can listen on its own. As a robust fallback, we also call the
-  // common renderers directly based on which screen is active.
-  document.dispatchEvent(new CustomEvent('ciDeptExpChanged',{detail:{scope,dept}}));
-  const activeId = document.querySelector('.screen.active')?.id || '';
-  if (activeId === 'screen-step6') { renderRvByCC(); }
-  if (activeId === 'screen-ci-step1') { renderCiByCc(); }
-  if (activeId === 'screen-ci-step2') { renderCiCoSummaryTable(); renderCiOthersTable('cost'); }
-  if (activeId === 'screen-ci-step3') { renderCiFteCoSummaryTable(); renderCiOthersTable('fte'); }
-}
-function isDeptExpanded(scope, dept) {
-  return ciDeptExp.has(`${scope}::${dept||'GL'}`);
-}
-
-/* Build the aggregate row HTML for a collapsed dept group.
-   `g` is a group from groupRowsByDept: {dept, viewDept, rows}.
-   `fmtFn` is the cell formatter (fmt for cost, fmtFte for FTE).
-   `scope` identifies this host (for the expand-button onclick).
-   `optionalLabel` overrides the section label text.
-   `fyState` is {fy25:bool, fy26:bool} controlling whether the monthly subcolumns
-   are present — pass `s6Exp` for Lead screens or `ciExp` for CI screens so the
-   aggregate row's column count matches the surrounding tables. */
-function deptGroupCollapsedRow(g, fmtFn, scope, optionalLabel, fyState) {
-  const fy = fyState || {fy25:false, fy26:false};
-  const sumRow = {fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-  g.rows.forEach(r=>{
-    (r.fy25||[]).forEach((v,mi)=>{sumRow.fy25[mi]+=Number(v)||0;});
-    (r.fy26||[]).forEach((v,mi)=>{sumRow.fy26[mi]+=Number(v)||0;});
-    sumRow.fy27 += Number(r.fy27)||0;
-    sumRow.fy28 += Number(r.fy28)||0;
-    sumRow.fy29 += Number(r.fy29)||0;
-  });
-  // FY column cells matched to the supplied fyState
-  function fyHdrCells() {
-    const cells=[];
-    cells.push(`<th class="rv-th-fy" colspan="${fy.fy25?13:1}">FY25 ${fy.fy25?'▼':'▶'}</th>`);
-    cells.push(`<th class="rv-th-fy" colspan="${fy.fy26?13:1}">FY26 ${fy.fy26?'▼':'▶'}</th>`);
-    cells.push(`<th class="rv-th-future">FY27</th>`);
-    cells.push(`<th class="rv-th-future">FY28</th>`);
-    cells.push(`<th class="rv-th-future">FY29</th>`);
-    return cells.join('');
-  }
-  function fySubCells() {
-    if(!fy.fy25 && !fy.fy26)return '';
-    const cells=[];
-    if(fy.fy25){cells.push('<th class="rv-th-mo-total">Total</th>');MO.forEach(m=>cells.push(`<th class="rv-th-mo">${m}</th>`));}
-    if(fy.fy26){cells.push('<th class="rv-th-mo-total">Total</th>');MO.forEach(m=>cells.push(`<th class="rv-th-mo">${m}</th>`));}
-    return cells.join('');
-  }
-  function fyDataCellsLocal(row) {
-    const cells=[];
-    const fy25Tot=rowTotal(row.fy25||[]);
-    if(fy.fy25){cells.push(`<td class="rv-td-total">${fmtFn(fy25Tot)}</td>`);MO.forEach((_,mi)=>cells.push(`<td>${fmtFn((row.fy25||[])[mi]||0)}</td>`));}
-    else cells.push(`<td class="rv-td-total">${fmtFn(fy25Tot)}</td>`);
-    const fy26Tot=rowTotal(row.fy26||[]);
-    if(fy.fy26){cells.push(`<td class="rv-td-total">${fmtFn(fy26Tot)}</td>`);MO.forEach((_,mi)=>cells.push(`<td>${fmtFn((row.fy26||[])[mi]||0)}</td>`));}
-    else cells.push(`<td class="rv-td-total">${fmtFn(fy26Tot)}</td>`);
-    cells.push(`<td class="rv-td-future">${fmtFn(row.fy27||0)}</td>`);
-    cells.push(`<td class="rv-td-future">${fmtFn(row.fy28||0)}</td>`);
-    cells.push(`<td class="rv-td-future">${fmtFn(row.fy29||0)}</td>`);
-    return cells.join('');
-  }
-  const secLabel = optionalLabel || (g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level');
-  const pill = g.dept==='R&D'?'<span class="dept-chip dept-chip-rnd" style="font-size:10px;">R&D</span>':
-               g.dept==='SMM'?'<span class="dept-chip dept-chip-smm" style="font-size:10px;">SMM</span>':
-               g.dept==='G&A'?'<span class="dept-chip dept-chip-ga" style="font-size:10px;">G&A</span>':'';
-  const safeScope = String(scope).replace(/"/g,'&quot;');
-  const safeDept = String(g.dept||'GL').replace(/"/g,'&quot;');
-  return `<div class="dept-group-collapsed" style="border:0.5px solid #e0ded8;border-radius:6px;margin:8px 0;background:#fafaf8;">
-    <table class="rv-table" style="margin:0;"><thead><tr>
-      <th class="rv-th-left" style="min-width:240px;background:#f5f4f0;"${fy.fy25||fy.fy26?' rowspan="2"':''}>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button class="dept-expand-btn" onclick="toggleCiDeptGroup('${safeScope}','${safeDept}')" style="font-size:10px;padding:1px 6px;border:0.5px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;">▶ Expand</button>
-          <span style="font-size:11px;font-weight:500;color:#666;">${secLabel}</span>
-          ${pill}
-          <span style="font-size:10px;color:#999;font-style:italic;margin-left:4px;">${g.rows.length} ${g.rows.length===1?'row':'rows'}</span>
-        </div>
-      </th>
-      ${fyHdrCells()}
-    </tr>${fy.fy25||fy.fy26?`<tr>${fySubCells()}</tr>`:''}
-    </thead><tbody>
-      <tr><td class="rv-td-left" style="color:#888;font-style:italic;font-size:11px;">Aggregate of ${g.rows.length} ${g.rows.length===1?'row':'rows'}</td>${fyDataCellsLocal(sumRow)}</tr>
-    </tbody></table>
-  </div>`;
-}
 function fyHeaderCells(){
   const cells=[];
   cells.push(`<th class="rv-th-fy" colspan="${s6Exp.fy25?13:1}" onclick="toggleS6Fy('fy25')" style="cursor:pointer;user-select:none;">FY25 ${s6Exp.fy25?'▼':'▶'}</th>`);
@@ -3944,10 +3765,6 @@ let ciFteData=[];    // fte in rows
 let ciSel=new Set();
 let ciFteSel=new Set();
 let ciExp={fy25:false,fy26:false};
-// Tracks which dept groups are expanded in the read-only CI summary tables.
-// Key format: "<scope>::<dept>" e.g. "ci-co-summary::R&D" or "rv-by-cc:7300RND-CC-041::SMM".
-// Default state for any key is "collapsed" (not in the set).
-const ciDeptExp=new Set();
 
 function openCiFlow(){
   // If BC is locked, show read-only review
