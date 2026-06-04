@@ -19,7 +19,8 @@ with sync_playwright() as p:
       coGlPicked=new Set(); coSelLastSel={};
       go('step3');
     """); pg.wait_for_timeout(150)
-    print(f'Clickable rows on Select: {pg.evaluate("document.querySelectorAll(\\"#co-select-blocks tr[data-co-row]\\").length")} (Partial only)')
+    clickable=pg.evaluate("document.querySelectorAll('#co-select-blocks tr[data-co-row]').length")
+    print(f'Clickable rows on Select: {clickable} (Partial only)')
 
     # Row-click toggles tick
     pg.evaluate("document.querySelector('#co-select-blocks tr[data-co-row]').click()"); pg.wait_for_timeout(80)
