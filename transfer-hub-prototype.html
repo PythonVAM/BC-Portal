@@ -1441,9 +1441,10 @@ function rvIdentityCells(viewDept,row,opts){
    Fixed columns matching the Cost Out screens: (CC · Dept ·) GL · Product · Project · UV.
    Columns a row's shape doesn't use render as a greyed "N/A". `showCc` adds the
    Cost centre + Dept columns (omit them where the CC is already in a block header). */
-function roUniIdHead(showCc){
-  return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:120px;">Cost centre</th><th class="rv-th-left" style="min-width:46px;">Dept</th>`:'')
-    +`<th class="rv-th-left" style="min-width:150px;">GL account</th><th class="rv-th-left" style="min-width:130px;">Product</th><th class="rv-th-left" style="min-width:140px;">Project</th><th class="rv-th-left" style="min-width:56px;">UV</th>`;
+function roUniIdHead(showCc,hasSub){
+  const rs=hasSub?' rowspan="2"':'';
+  return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:120px;"${rs}>Cost centre</th><th class="rv-th-left" style="min-width:46px;"${rs}>Dept</th>`:'')
+    +`<th class="rv-th-left" style="min-width:150px;"${rs}>GL account</th><th class="rv-th-left" style="min-width:130px;"${rs}>Product</th><th class="rv-th-left" style="min-width:140px;"${rs}>Project</th><th class="rv-th-left" style="min-width:56px;"${rs}>UV</th>`;
 }
 function roUniIdCells(row,showCc){
   const na='<td class="cod-na">N/A</td>';
@@ -3052,7 +3053,7 @@ function renderRvCostOut(){
       synth.fy28=Math.round(synth.fy28/rate);
       synth.fy29=Math.round(synth.fy29/rate);
     }
-    const fmtCost=(v)=>fmt(v);
+    const fmtCost=(v)=>fmtCostM(v);
     el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
       <tr>${fyHeaderCells()}</tr>
       ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
@@ -3060,7 +3061,7 @@ function renderRvCostOut(){
     return;
   }
 
-  // Expanded: Dept-grouped tables with identity columns appropriate to each Dept
+  // Expanded: one flat unified table across all CCs
   let allRows=[];
   ccs.forEach(cc=>{
     const cur=gca(cc.code).cur||'USD';
@@ -3071,15 +3072,13 @@ function renderRvCostOut(){
         fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)});
     });
   });
-  const fmtCost=(v)=>fmt(v);
-  const groups=groupRowsByDept(allRows);
-  if(!groups.length){el.innerHTML='<span class="rv-none">No cost data entered</span>';return;}
-  el.innerHTML=groups.map(g=>{
-    const secLabel=g.dept==='R&D'?'R&D — by Project & UV':g.dept==='SMM'?'SMM — by Product':'Other — GL level';
-    const tbody=g.rows.map(r=>`<tr>${rvIdentityCells(g.viewDept,r,{showCc:true})}${fyDataCells(r,fmtCost)}</tr>`).join('');
-    return `${deptSectionLabel(g.dept,secLabel)}
-      <div class="rv-table-wrap"><table class="rv-table"><thead><tr>${rvIdentityHead(g.viewDept,{showCc:true})}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-  }).join('');
+  const fmtCost=(v)=>fmtCostM(v);
+  if(!allRows.length){el.innerHTML='<span class="rv-none">No cost data entered</span>';return;}
+  // One flat unified table sorted Dept → CC (values in $m).
+  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
+  allRows.sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;if(da!==db)return da-db;return (a.cc||'').localeCompare(b.cc||'');});
+  const tbody=allRows.map(r=>`<tr>${roUniIdCells(r,true)}${fyDataCells(r,fmtCost)}</tr>`).join('');
+  el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
 }
 
 /* ── Section A: FTEs Out summary table ── */
@@ -3378,7 +3377,7 @@ function renderRvByCC(){
       const formatCost=(v)=>fmtCostM(toLocal(v||0,cur));
       // One flat unified table (CC & Dept are in the block header, so omit those columns).
       const tbody=coRows.map((row,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${dataCellsForRow(row,formatCost)}</tr>`).join('');
-      coTableHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
+      coTableHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
     }
 
     // FTE table
@@ -3811,14 +3810,14 @@ function renderDashboard(){
           <tr class="clickable" onclick="${submittedBC?.status==='submitted-to-group'?'openLeadView(\'step7\')':submittedBC?.status==='ci-submitted'?'openLeadView(\'step7\')':submittedBC?.status==='co-submitted'?'openLeadView(\'step6\')':submittedBC?.status==='awaiting-co'?'openLeadView(\'step6\')':'openLeadView(\'step5\')'}">
             <td>${bc.ref}</td>
             <td>${bc.bcName||'—'}</td>
-            <td>${bc.ccData?Object.values(bc.ccData).reduce((s,rows)=>s+rows.reduce((rs,r)=>rs+rowTotal(r.fy26),0),0).toLocaleString():'—'}</td>
+            <td>${bc.ccData?fmtM(Object.values(bc.ccData).reduce((s,rows)=>s+rows.reduce((rs,r)=>rs+rowTotal(r.fy26),0),0)):'—'}</td>
             <td>${bc.fteData?bc.fteData.reduce((s,r)=>s+rowTotal(r.fy26),0).toFixed(1):'—'}</td>
             <td><span class="badge badge-pending">${status}</span></td>
           </tr>
         </tbody></table></div>
         ${Object.keys(ciResponses).length?`<hr class="section-divider"/><div class="section-label">Responses received <span class="count-pill pill-green">${Object.keys(ciResponses).length}</span></div>
         <div class="table-wrap"><table><thead><tr><th>Cost centre</th><th>Responded by</th><th>FY26 ($m)</th><th>FTEs</th></tr></thead><tbody>
-          ${Object.entries(ciResponses).map(([key,resp])=>`<tr><td><span class="cc-badge-out">${resp.ccCode||'—'}</span></td><td>${resp.person.first} ${resp.person.last}</td><td>${(resp.ciData||[]).reduce((s,r)=>s+Math.abs(rowTotal(r.fy26)),0).toLocaleString()}</td><td>${resp.fteTotals||'—'}</td></tr>`).join('')}
+          ${Object.entries(ciResponses).map(([key,resp])=>`<tr><td><span class="cc-badge-out">${resp.ccCode||'—'}</span></td><td>${resp.person.first} ${resp.person.last}</td><td>${fmtM((resp.ciData||[]).reduce((s,r)=>s+Math.abs(rowTotal(r.fy26)),0))}</td><td>${resp.fteTotals||'—'}</td></tr>`).join('')}
         </tbody></table></div>`:''}`
         :`<div style="padding:20px 0;text-align:center;color:#888;font-size:13px;">No boundary changes created yet.${isLeadUser(u)?` <button class="btn btn-primary" style="margin-left:8px;" onclick="go('step1')">Create one</button>`:''}</div>`}
       </div>`;
@@ -3839,7 +3838,7 @@ function renderDashboard(){
             const locked=submittedBC?.status==='submitted-to-group';
             return`<tr class="clickable" onclick="openCiFlow()">
               <td>${bc.ref}</td><td>${bc.fromName}</td><td><span class="cc-badge-out">${bc.ccCode}</span></td>
-              <td>${bc.costTotal.toLocaleString()}</td>
+              <td>${fmtM(bc.costTotal)}</td>
               <td>${locked?'<span class="badge badge-approved">Locked — view only</span>':bc.responded?'<span class="badge badge-approved">Responded</span>':'<span class="badge badge-pending">Action required</span>'}</td>
             </tr>`;
           }).join('')}
@@ -4101,30 +4100,20 @@ function renderCiCoTable(){
       synth.fy28=Math.round(synth.fy28/rate);
       synth.fy29=Math.round(synth.fy29/rate);
     }
-    const fmtCost=(v)=>sym+fmt(v);
+    const fmtCost=(v)=>fmtCostM(v);
     el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
       <tr>${fyHeaderCells()}</tr>
       ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
     </thead><tbody><tr>${fyDataCells(synth,fmtCost)}</tr></tbody></table></div>`;
     return;
   }
-  const thead=`<tr>
-    <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-    <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:110px;"${hasSub?' rowspan="2"':''}>GL account</th>
-    <th class="rv-th-left rv-sticky rv-sticky-2" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Product</th>
-    ${fyHeaderCells()}
-  </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-  const tbody=allRows.map(({cc,row},gi)=>{
+  const thead=`<tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
+  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
+  allRows.sort((a,b)=>{const da=deptOrder[gca(a.cc.code)?.bcDept]??9,db=deptOrder[gca(b.cc.code)?.bcDept]??9;if(da!==db)return da-db;return a.cc.code.localeCompare(b.cc.code);});
+  const tbody=allRows.map(({cc,row})=>{
     const cur=gca(cc.code).cur||'USD';
-    const sym=ciRvCurrency==='local'?currSymbol(cur):'$';
     const conv={fy25:(row.fy25||[]).map(v=>toLocal(Number(v)||0,cur)),fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)};
-    const fmtCost=(v)=>sym+fmt(v);
-    return`<tr>
-      <td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${cc.code}</span></td>
-      <td class="rv-td-left rv-sticky rv-sticky-1"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-      <td class="rv-td-left rv-sticky rv-sticky-2">${row.prod||''}</td>
-      ${fyDataCells(conv,fmtCost)}
-    </tr>`;
+    return`<tr>${roUniIdCells({...row,cc:cc.code},true)}${fyDataCells(conv,fmtCostM)}</tr>`;
   }).join('');
   el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 }
@@ -4198,7 +4187,7 @@ function renderCiByCc(){
       fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),
       fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)}));
     const coTableHTML=coConv.length
-      ?`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`
+      ?`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`
       :'<span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
     const fteThead=`<tr>
       <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
@@ -4411,20 +4400,8 @@ function renderCiStep2Single(single,card){
   ciData=coRows.map(r=>({...mirrorRow(r),cc:inCc.code}));
 
   const hasSub=fyHasSubRow();
-  const fmtCostCi=(v)=>fmt(v);
-
-  const coThead=`<tr>
-    <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:110px;"${hasSub?' rowspan="2"':''}>GL account</th>
-    <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Product</th>
-    ${fyHeaderCells()}
-  </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-  const coTbody=ciData.map((row,gi)=>{
-    return`<tr${gi%2===1?' style="background:#fafaf8;"':''}>
-      <td class="rv-td-left rv-sticky rv-sticky-0"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-      <td class="rv-td-left rv-sticky rv-sticky-1">${row.prod||''}</td>
-      ${fyDataCells(row,fmtCostCi)}
-    </tr>`;
-  }).join('');
+  const coThead=`<tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
+  const coTbody=ciData.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
 
   card.innerHTML=`
     <div class="card-title">Cost In — Cost in values</div>
@@ -5270,36 +5247,9 @@ function renderCiReview(){
   const el=document.getElementById('ci-review-wrap');
   const coRows=submittedBC?submittedBC.ccData[ciActiveCcCode]||[]:[];
   const hasSub=fyHasSubRow();
-  const fmtCost=(v)=>fmt(v);
-const coTable=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-    <tr>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>GL account</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Product</th>
-      ${fyHeaderCells()}
-    </tr>
-    ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-  </thead><tbody>
-    ${coRows.map(row=>`<tr>
-      <td class="rv-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-      <td class="rv-td-left">${row.prod||''}</td>
-      ${fyDataCells(row,fmtCost)}
-    </tr>`).join('')}
-  </tbody></table></div>`;
+  const coTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coRows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
 
-  const ciTable=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-    <tr>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>GL account</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Product</th>
-      ${fyHeaderCells()}
-    </tr>
-    ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-  </thead><tbody>
-    ${ciData.map(row=>`<tr>
-      <td class="rv-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-      <td class="rv-td-left">${row.prod||''}</td>
-      ${fyDataCells(row,fmtCost)}
-    </tr>`).join('')}
-  </tbody></table></div>`;
+  const ciTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${ciData.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
 
   const fteTable=`<div class="rv-table-wrap"><table class="rv-table"><thead>
     <tr>
@@ -5435,8 +5385,8 @@ function buildStep7(){
   function aggCi(fk,mi){if(!hasCI)return null;let t=0;Object.values(ciResponses).forEach(resp=>{(resp.ciData||[]).forEach(r=>{const cur=gca(r.cc||resp.ccCode).cur||'USD';if(mi!==undefined)t+=convCost(r[fk]?.[mi]||0,cur);else t+=(fk==='fy27'||fk==='fy28'||fk==='fy29')?convCost(r[fk]||0,cur):rowTotal((r[fk]||[]).map(v=>convCost(v,cur)));});});return t;}
   function aggCiFte(fk,mi){if(!hasCI)return null;let t=0;Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{if(mi!==undefined)t+=r[fk]?.[mi]||0;else t+=(fk==='fy27'||fk==='fy28'||fk==='fy29')?(r[fk]||0):rowTotal(r[fk]||[]);});});return t;}
 
-  function fmtCell(v,isCost){if(v===null)return`<td class="s6-td-awaiting">Awaiting</td>`;const neg=v<0;const f=isCost?fmt:fmtFte;const disp=f(Math.abs(v));return`<td class="${v<0?'s6-td-neg':v>0?'s6-td-pos':'s6-td-zero'}">${neg?'('+disp+')':disp}</td>`;}
-  function netCell(co,ci,isCost){if(ci===null)return`<td class="s6-td-awaiting">Awaiting</td>`;const net=co-(ci||0);const neg=net<0;const f=isCost?fmt:fmtFte;const disp=f(Math.abs(net));return`<td class="s6-td-net ${neg?'s6-td-neg':net>0?'s6-td-pos':'s6-td-zero'}">${neg?'('+disp+')':disp}</td>`;}
+  function fmtCell(v,isCost){if(v===null)return`<td class="s6-td-awaiting">Awaiting</td>`;const neg=v<0;const f=isCost?fmtM:fmtFte;const disp=f(Math.abs(v));return`<td class="${v<0?'s6-td-neg':v>0?'s6-td-pos':'s6-td-zero'}">${neg?'('+disp+')':disp}</td>`;}
+  function netCell(co,ci,isCost){if(ci===null)return`<td class="s6-td-awaiting">Awaiting</td>`;const net=co-(ci||0);const neg=net<0;const f=isCost?fmtM:fmtFte;const disp=f(Math.abs(net));return`<td class="s6-td-net ${neg?'s6-td-neg':net>0?'s6-td-pos':'s6-td-zero'}">${neg?'('+disp+')':disp}</td>`;}
 
   function buildRow(aggFn,isCost,label,rowClass){
     const cells=[];
@@ -5516,8 +5466,6 @@ function buildStep7(){
 
   // Render helpers used by both passes
   const hasSub=fyHasSubRow();
-  const fmtCost=(v)=>fmt(v);
-  const fmtCostNeg=(v)=>{const neg=v<0;return neg?'<span style="color:#A32D2D;">('+fmt(Math.abs(v))+')</span>':fmt(v);};
 // Apply currency conversion to a row's numeric fields so cell formatters
   // see local-currency values when the toggle is on.
   function convertRow(row,cur){
@@ -5532,16 +5480,18 @@ function buildStep7(){
       fy29:convCost(row.fy29||0,c),
     };
   }
+  // Sort a flat list of rows (each carrying `.cc`) by Dept (R&D→SMM→G&A) then CC code.
+  function sortDeptCc(flat){
+    const deptOrder={'R&D':0,'SMM':1,'G&A':2};
+    flat.sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;if(da!==db)return da-db;return (a.cc||'').localeCompare(b.cc||'');});
+  }
 
   function coOutSection(area){
     if(!area.coRows.length)return '';
     const flat=area.coRows.map(({cc,row})=>{const cur=gca(cc.code).cur||'USD';return {...convertRow(row,cur),cc:cc.code};});
-    const groups=groupRowsByDept(flat);
-    const inner=groups.map(g=>{
-      const secLabel=g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level';
-      const tbody=g.rows.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${rvIdentityCells(g.viewDept,row,{showCc:true})}${fyDataCells(row,fmtCost)}</tr>`).join('');
-      return `${deptSectionLabel(g.dept,secLabel)}<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${rvIdentityHead(g.viewDept,{showCc:true})}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    }).join('');
+    sortDeptCc(flat);
+    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
+    const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
     return `
       <div style="font-size:11px;font-weight:500;color:#0C447C;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
         <span>Cost Out</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>
@@ -5578,13 +5528,9 @@ function buildStep7(){
   function ciInSection(area){
     if(!area.ciRows.length)return '';
     const flat=area.ciRows.map(({ccCode,row})=>{const cur=gca(ccCode).cur||'USD';return {...convertRow(row,cur),cc:ccCode};});
-    const groups=groupRowsByDept(flat);
-    const green='background:#EAF3DE;color:#27500A;';
-    const inner=groups.map(g=>{
-      const secLabel=g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level';
-      const tbody=g.rows.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${rvIdentityCells(g.viewDept,row,{showCc:true,ccBadgeStyle:green})}${fyDataCells(row,fmtCost)}</tr>`).join('');
-      return `${deptSectionLabel(g.dept,secLabel)}<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${rvIdentityHead(g.viewDept,{showCc:true})}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    }).join('');
+    sortDeptCc(flat);
+    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${roUniIdCells(row,true)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
+    const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
     return `
       <div style="font-size:11px;font-weight:500;color:#27500A;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
         <span>Cost In</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>
