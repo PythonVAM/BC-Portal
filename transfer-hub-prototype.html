@@ -4194,23 +4194,15 @@ function renderCiByCc(){
     const isFull=cc.type==='full';
     const coRows=bc.ccData[cc.code]||[];
     const fteRows=(bc.fteData||[]).filter(r=>r.cc===cc.code);
-    const fmtCost=(v)=>sym+fmt(v);
-// Dept-grouped CO source rows (read-only reference for the CI contributor)
+    const fmtCost=(v)=>fmtCostM(v);
+    // CO source rows (read-only reference) — one flat unified table; values pre-converted to local.
     const coConv=coRows.map(row=>({...row,
       fy25:(row.fy25||[]).map(v=>toLocal(Number(v)||0,cur)),
       fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),
       fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)}));
-    const coGroups=groupRowsByDept(coConv);
-    const coScope=`ci-step1-co:${cc.code}`;
-    const coTableHTML=coGroups.length?coGroups.map(g=>{
-      const expanded=isDeptExpanded(coScope, g.dept);
-      if(!expanded){
-        return deptGroupCollapsedRow(g, fmtCost, coScope, null, s6Exp);
-      }
-      const secLabel=g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level';
-      const tbody=g.rows.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${rvIdentityCells(g.viewDept,row,{showCc:false})}${fyDataCells(row,fmtCost)}</tr>`).join('');
-      return `${deptSectionLabel(g.dept,secLabel,{scope:coScope})}<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${rvIdentityHead(g.viewDept,{showCc:false})}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    }).join(''):'<span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
+    const coTableHTML=coConv.length
+      ?`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`
+      :'<span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
     const fteThead=`<tr>
       <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
       <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
