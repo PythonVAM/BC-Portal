@@ -1665,119 +1665,76 @@ function renderCoSelect(){
   const ccs=getAllCostOut();
   if(!ccs.length){host.innerHTML='<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">No cost centres selected.</div>';updateCoSelectSummary();return;}
 
-  // Auto-tick all GLs for Full CCs (they're locked, so the user can't act on them).
-  // Auto-untick any Full-CC GL that's been added would be re-added here — that's
-  // intentional: Full means everything, always.
-  ccs.forEach(cc=>{
-    if(isCcFull(cc.code)){
-      glRollup(cc.code).forEach(g=>coGlPicked.add(g.glKey));
-    }
-  });
+  // Auto-tick all GLs for Full CCs (locked — Full always means everything).
+  ccs.forEach(cc=>{ if(isCcFull(cc.code)) glRollup(cc.code).forEach(g=>coGlPicked.add(g.glKey)); });
 
-  host.innerHTML=(function(){
-    // Group CCs by (bcDept, shape) so that CCs with the same Dept and same
-    // identity granularity share one table. Each group renders a single block
-    // with a Cost centre column. Dept chip + shape tag live on the block header.
-    const groups=new Map(); // key "Dept|shape" → {dept, shape, ccs:[]}
-    ccs.forEach(cc=>{
-      const dept=gca(cc.code).bcDept||'—';
-      const shape=coShape(cc.code);
-      const key=`${dept}|${shape}`;
-      if(!groups.has(key))groups.set(key,{dept,shape,ccs:[]});
-      groups.get(key).ccs.push(cc);
-    });
-    // Stable group order: R&D, SMM, G&A; within Dept by shape "gl+project+uv","gl+product","gl"
-    const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-    const shapeOrder={'gl+project+uv':0,'gl+product':1,'gl':2};
-    const ordered=[...groups.values()].sort((a,b)=>{
-      const da=deptOrder[a.dept]??99,db=deptOrder[b.dept]??99;
-      if(da!==db)return da-db;
-      return (shapeOrder[a.shape]??99)-(shapeOrder[b.shape]??99);
-    });
+  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
+  const byDeptCc=(a,b)=>{const da=deptOrder[gca(a.code).bcDept]??99,db=deptOrder[gca(b.code).bcDept]??99;if(da!==db)return da-db;return a.code.localeCompare(b.code);};
+  const na='<td class="cod-na">N/A</td>';
+  // Shared identity header — same six columns as the Detail screen.
+  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:46px;">Dept</th><th style="min-width:170px;">GL account</th><th style="min-width:140px;">Product</th><th style="min-width:150px;">Project</th><th style="min-width:58px;">UV</th>`;
+  const fyHead=`<th class="cod-num th-fy-sel">FY25</th><th class="cod-num th-fy-sel">FY26</th><th class="cod-num th-fut-sel">FY27</th><th class="cod-num th-fut-sel">FY28</th><th class="cod-num th-fut-sel">FY29</th>`;
 
-    return ordered.map(grp=>{
-      const shape=grp.shape;
-      const shapeTag=coShapeLabel(shape);
-      // Group-level tally across all CCs in this group
-      let groupFy26=0,groupPicked=0,groupTotal=0;
-      grp.ccs.forEach(cc=>{
-        const cur=gca(cc.code).cur||'USD';
-        glRollup(cc.code).forEach(g=>{
-          groupTotal++;
-          if(coGlPicked.has(g.glKey)){groupPicked++;groupFy26+=toLocal(g.fy26,cur);}
-        });
-      });
-      // For mixed-currency group tally, fall back to '$' (USD aggregate) since
-      // mixing local currencies isn't meaningful. In single-currency Local mode
-      // for this group, use the local symbol.
-      const curs=new Set(grp.ccs.map(cc=>gca(cc.code).cur||'USD'));
-      const tallySym=(rvCurrency==='local'&&curs.size===1)?currSymbol([...curs][0]):'$';
-
-      // Body rows: one row per GL across all CCs in this group. Flat layout —
-      // no sub-headers; the Cost centre cell on every row carries the CC code +
-      // name + Full/Partial badge so each row is self-describing.
-      let bodyRows='';
-      grp.ccs.forEach(cc=>{
-        const rolls=glRollup(cc.code);
-        const readOnly=isCcFull(cc.code);
-        const cur=gca(cc.code).cur||'USD';
-        const typeBadge=readOnly?'<span class="full-badge" style="font-size:9px;margin-left:4px;">Full</span>':'<span class="partial-badge" style="font-size:9px;margin-left:4px;">Partial</span>';
-        const grpKeyAttr=`${grp.dept}|${grp.shape}`.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-        rolls.forEach((g,i)=>{
-          const ticked=coGlPicked.has(g.glKey);
-          const splitMeta=shape==='gl'?'':`<span style="color:#999;font-weight:400;margin-left:6px;">${g.count} ${shape==='gl+product'?'product':'project × UV'} ${g.count===1?'row':'rows'} underneath</span>`;
-          // Click handlers only on Partial rows; Full rows are non-interactive
-          const rowAttrs=readOnly
-            ? ''
-            : ` data-co-row="${g.glKey}" data-co-group="${grpKeyAttr}" onclick="onCoSelRowClick(event,this.dataset.coRow,this.dataset.coGroup)" style="cursor:pointer;"`;
-          const cbHandler=readOnly?'':` onclick="onCoSelCheckboxClick(event,'${g.glKey}',this.closest('tr').dataset.coGroup)"`;
-          bodyRows+=`<tr class="${i%2===1?'co-alt':''}${ticked?'':' co-row-unticked'}"${rowAttrs}>
-            <td class="cosel-chk"><input type="checkbox" ${ticked?'checked':''} ${readOnly?'disabled':''}${cbHandler}/></td>
-            <td class="cosel-cc-cell"><div><span class="cc-badge-out" style="font-size:10px;">${cc.code}</span>${typeBadge}</div><div style="font-size:10px;color:#888;margin-top:2px;">${cc.name}</div></td>
-            <td><span class="gl-badge">${g.gl}</span> ${g.gln}${splitMeta}</td>
-            <td class="cosel-num">${fmt(toLocal(g.fy25,cur))}</td>
-            <td class="cosel-num">${fmt(toLocal(g.fy26,cur))}</td>
-            <td class="cosel-num">${fmt(toLocal(g.fy27,cur))}</td>
-            <td class="cosel-num">${fmt(toLocal(g.fy28,cur))}</td>
-            <td class="cosel-num">${fmt(toLocal(g.fy29,cur))}</td>
-          </tr>`;
-        });
-      });
-
-      // Determine group "all ticked" state (only counts Partial CCs; Full CCs are always pre-ticked)
-      const partialCcCodes=grp.ccs.filter(cc=>!isCcFull(cc.code)).map(cc=>cc.code);
-      let groupPartialPicked=0,groupPartialTotal=0;
-      partialCcCodes.forEach(code=>{
-        glRollup(code).forEach(g=>{
-          groupPartialTotal++;
-          if(coGlPicked.has(g.glKey))groupPartialPicked++;
-        });
-      });
-      const groupAllTicked=groupPartialTotal>0&&groupPartialPicked===groupPartialTotal;
-      const groupNoneToTick=partialCcCodes.length===0;
-
-      return `<div class="cc-block">
-        <div class="cc-block-hdr">
-          ${deptChipFor(grp.ccs[0].code)}
-          <span class="shape-tag">${shapeTag}</span>
-          <span style="font-size:11px;color:#888;">${grp.ccs.length} cost ${grp.ccs.length===1?'centre':'centres'}</span>
-          <span style="margin-left:auto;font-size:11px;color:#666;"><b style="color:#1a1a1a;">${groupPicked}</b> of ${groupTotal} GLs · <b style="color:#1a1a1a;">${tallySym}${fmt(groupFy26)}</b> FY26</span>
-        </div>
-        <div style="padding:12px 13px;">
-          <div class="cosel-tbl-wrap"><table class="cosel-tbl">
-            <thead><tr>
-              <th class="cosel-chk"><input type="checkbox" ${groupAllTicked?'checked':''} ${groupNoneToTick?'disabled':''} onchange="toggleCoGlGroup('${partialCcCodes.join(',')}',this.checked)"/></th>
-              <th style="min-width:160px;">Cost centre</th>
-              <th style="min-width:240px;">GL account</th>
-              <th class="cosel-num th-fy-sel">FY25</th><th class="cosel-num th-fy-sel">FY26</th>
-              <th class="cosel-num th-fut-sel">FY27</th><th class="cosel-num th-fut-sel">FY28</th><th class="cosel-num th-fut-sel">FY29</th>
-            </tr></thead>
-            <tbody>${bodyRows}</tbody>
-          </table></div>
-        </div>
-      </div>`;
+  // One row per GL rollup for a CC. Product/Project/UV are N/A here — they're set
+  // on the next (Detail) screen. Full CC rows are read-only (locked, pre-ticked).
+  const glRows=(cc,readOnly)=>{
+    const cur=gca(cc.code).cur||'USD';
+    const shape=coShape(cc.code);
+    return glRollup(cc.code).map((g,i)=>{
+      const ticked=coGlPicked.has(g.glKey);
+      const under=shape==='gl'?'':`<span style="color:#999;margin-left:6px;">${g.count} ${shape==='gl+product'?'product':'project × UV'} ${g.count===1?'row':'rows'} on next screen</span>`;
+      const rowAttrs=readOnly?'':` data-co-row="${g.glKey}" data-co-group="partials" onclick="onCoSelRowClick(event,this.dataset.coRow,this.dataset.coGroup)" style="cursor:pointer;"`;
+      const cbHandler=readOnly?'':` onclick="onCoSelCheckboxClick(event,'${g.glKey}',this.closest('tr').dataset.coGroup)"`;
+      return `<tr class="${i%2===1?'co-alt':''}${ticked?'':' co-row-unticked'}${readOnly?' cod-full-row':''}"${rowAttrs}>
+        <td class="cosel-chk"><input type="checkbox" ${ticked?'checked':''} ${readOnly?'disabled':''}${cbHandler}/></td>
+        <td class="cosel-cc-cell">${cc.code}${cc.name?' — '+cc.name:''}</td>
+        <td>${deptChipFor(cc.code)}</td>
+        <td>${g.gln||g.gl}${under}</td>
+        ${na}${na}${na}
+        <td class="cod-num">${fmtM(toLocal(g.fy25,cur))}</td>
+        <td class="cod-num">${fmtM(toLocal(g.fy26,cur))}</td>
+        <td class="cod-num">${fmtM(toLocal(g.fy27,cur))}</td>
+        <td class="cod-num">${fmtM(toLocal(g.fy28,cur))}</td>
+        <td class="cod-num">${fmtM(toLocal(g.fy29,cur))}</td>
+      </tr>`;
     }).join('');
-  })();
+  };
+
+  let html='';
+  // ── Partial CCs: one selectable table grouped Dept → CC ──
+  const partials=ccs.filter(cc=>!isCcFull(cc.code)).slice().sort(byDeptCc);
+  const partialCcCodes=partials.map(cc=>cc.code);
+  let pPicked=0,pTotal=0;
+  partials.forEach(cc=>glRollup(cc.code).forEach(g=>{pTotal++;if(coGlPicked.has(g.glKey))pPicked++;}));
+  if(partials.length){
+    const allTicked=pTotal>0&&pPicked===pTotal;
+    html+=`<div class="cod-cc-hdr" data-co-group="partials">
+        <span class="shape-tag">Select cost to transfer</span>
+        <span style="font-size:11px;color:#888;">${partials.length} partial cost ${partials.length===1?'centre':'centres'} · <b style="color:#1a1a1a;">${pPicked}</b> of ${pTotal} GLs</span>
+        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Values in USD millions ($m) · Product / Project / UV are set on the next screen.</span>
+      </div>
+      <div class="cosel-tbl-wrap"><table class="cosel-tbl cod-tbl">
+        <thead><tr>
+          <th class="cosel-chk"><input type="checkbox" ${allTicked?'checked':''} onchange="toggleCoGlGroup('${partialCcCodes.join(',')}',this.checked)"/></th>
+          ${idHead}${fyHead}
+        </tr></thead>
+        <tbody>${partials.map(cc=>glRows(cc,false)).join('')}</tbody>
+      </table></div>`;
+  }
+  // ── Full CCs: separate read-only block ──
+  const fulls=ccs.filter(cc=>isCcFull(cc.code)).slice().sort(byDeptCc);
+  if(fulls.length){
+    html+=`<div class="cod-cc-hdr cod-full-hdr">
+        <span class="full-badge" style="font-size:10px;">Full</span>
+        <span class="shape-tag">Full cost centres — transferred in full</span>
+        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">All GLs included automatically · read-only.</span>
+      </div>
+      <div class="cosel-tbl-wrap"><table class="cosel-tbl cod-tbl cod-full-tbl">
+        <thead><tr><th class="cosel-chk"></th>${idHead}${fyHead}</tr></thead>
+        <tbody>${fulls.map(cc=>glRows(cc,true)).join('')}</tbody>
+      </table></div>`;
+  }
+  host.innerHTML=html||'<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">No cost centres selected.</div>';
 
   updateCoSelectSummary();
   // Sync toggle button active state
@@ -1796,7 +1753,7 @@ function updateCoSelectSummary(){
     glRollup(cc.code).forEach(g=>{if(coGlPicked.has(g.glKey)){count++;fy26+=g.fy26;}});
   });
   const c=document.getElementById('cosel-gl-count');if(c)c.textContent=count;
-  const f=document.getElementById('cosel-fy26');if(f)f.textContent=fmt$(fy26);
+  const f=document.getElementById('cosel-fy26');if(f)f.textContent='$'+fmtM(fy26)+'m';
   // Gate: every Partial CC must have ≥1 GL ticked. Full CCs are pre-satisfied.
   const partials=ccs.filter(cc=>!isCcFull(cc.code));
   const unsatisfied=partials.filter(cc=>{
