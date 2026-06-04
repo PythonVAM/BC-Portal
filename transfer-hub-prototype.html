@@ -301,6 +301,10 @@ table.cod-tbl input.cod-input { width: 78px; text-align: right; border: 0.5px so
 table.cod-tbl input.cod-input:focus { outline: none; border-color: #93BCDC; background: #fcfeff; }
 /* Identity comboboxes (Product / Project / UV / CC / GL) — left-aligned text, auto width */
 table.cod-tbl input.cod-id-input { width: auto; text-align: left; }
+/* Floating searchable-dropdown menu (rendered on <body> to escape table overflow) */
+.cod-combo-menu { position: fixed; z-index: 200; background: #fff; border: 0.5px solid #c9c6bf; border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-height: 210px; overflow-y: auto; font-size: 11.5px; padding: 3px 0; }
+.cod-combo-item { padding: 5px 11px; cursor: pointer; white-space: nowrap; }
+.cod-combo-item:hover { background: #EAF1F8; }
 /* $m values are short — narrow the FY inputs so all years fit without horizontal scroll */
 table.cod-tbl td.cod-num input.cod-input { width: 50px; }
 table.cod-tbl { font-size: 11px; }
@@ -1919,8 +1923,10 @@ function coDetailIdCells(ds,shape,mode,ccs){
   const stop=`onclick="event.stopPropagation();"`;
   const cc=ds.cc||'';
   const esc=s=>String(s||'').replace(/"/g,'&quot;');
-  // Editable searchable combobox (native input + datalist typeahead), scoped to a CC's valid options.
-  const combo=(field,val,listId,width,ph)=>`<td><input class="cod-input cod-id-input" style="width:${width}px;" list="${listId}" value="${esc(val)}" placeholder="${ph}" onchange="editCoDetailIdentity('${ds.key}','${field}',this.value)" ${stop}/></td>`;
+  // Editable searchable dropdown (custom combo). Shows the CC's valid options on
+  // click and filters as you type. The menu floats on <body> to escape the table's
+  // overflow clipping. `field` selects the option source (productName/projectName/uv).
+  const combo=(field,val,width,ph)=>`<td><input class="cod-input cod-id-input cod-combo" style="width:${width}px;" value="${esc(val)}" placeholder="${ph}" autocomplete="off" data-combo-field="${field}" data-combo-cc="${esc(cc)}" data-combo-key="${ds.key}" onfocus="openCodCombo(this)" oninput="filterCodCombo(this)" onkeydown="codComboKey(event,this)" onblur="closeCodComboSoon()" onchange="editCoDetailIdentity('${ds.key}','${field}',this.value)" onclick="event.stopPropagation();openCodCombo(this)"/></td>`;
   // Cost centre — single joined "code — description" string (no type pill)
   let ccCell;
   if(mode==='adhoc'){
@@ -1938,15 +1944,15 @@ function coDetailIdCells(ds,shape,mode,ccs){
   else glCell=`<td>${ds.gln||ds.gl||'—'}</td>`;
   // Product — only used by gl+product shape
   let prodCell;
-  if(shape==='gl+product')prodCell=(mode==='full')?`<td>${ds.productName||'—'}</td>`:combo('productName',ds.productName,`cod-prod-${cc}`,134,'Product');
+  if(shape==='gl+product')prodCell=(mode==='full')?`<td>${ds.productName||'—'}</td>`:combo('productName',ds.productName,134,'Product');
   else prodCell=na;
   // Project — only used by gl+project+uv shape
   let projCell;
-  if(shape==='gl+project+uv')projCell=(mode==='full')?`<td>${ds.projectName||'—'}</td>`:combo('projectName',ds.projectName,`cod-proj-${cc}`,138,'Project');
+  if(shape==='gl+project+uv')projCell=(mode==='full')?`<td>${ds.projectName||'—'}</td>`:combo('projectName',ds.projectName,138,'Project');
   else projCell=na;
   // UV — only used by gl+project+uv shape
   let uvCell;
-  if(shape==='gl+project+uv')uvCell=(mode==='full')?`<td>${ds.uv||'—'}</td>`:combo('uv',ds.uv,'cod-uv',62,'UV');
+  if(shape==='gl+project+uv')uvCell=(mode==='full')?`<td>${ds.uv||'—'}</td>`:combo('uv',ds.uv,62,'UV');
   else uvCell=na;
   return ccCell+deptCell+glCell+prodCell+projCell+uvCell;
 }
@@ -2000,15 +2006,6 @@ function renderCoDetail(){
 
   // ── Partial CCs: one unified, editable table grouped by Dept then CC ──
   const partialRows=Object.values(coDetail).slice().sort(byDeptCc);
-  // Emit per-CC datalists backing the Product / Project searchable dropdowns,
-  // plus a shared UV list. Options are scoped to each CC's SET-Area × Dept shape.
-  const optEsc=s=>String(s||'').replace(/"/g,'&quot;');
-  let datalists=`<datalist id="cod-uv">${UV_LIST.map(u=>`<option value="${u}">`).join('')}</datalist>`;
-  [...new Set(partialRows.map(r=>r.cc).filter(Boolean))].forEach(code=>{
-    const shape=(gca(code).bcDept)?coShape(code):'gl';
-    if(shape==='gl+product')datalists+=`<datalist id="cod-prod-${code}">${productsForCc(code).map(p=>`<option value="${optEsc(p.name)}">`).join('')}</datalist>`;
-    else if(shape==='gl+project+uv')datalists+=`<datalist id="cod-proj-${code}">${projectsForCc(code).map(p=>`<option value="${optEsc(p.name)}">`).join('')}</datalist>`;
-  });
   const onScreenPartials=ccs.filter(cc=>!isCcFull(cc.code) && glRollup(cc.code).some(g=>coGlPicked.has(g.glKey)));
   if(partialRows.length||onScreenPartials.length){
     let body='';
@@ -2079,7 +2076,7 @@ function renderCoDetail(){
   }
 
   let emptyMsg='No GL accounts selected. Go back and tick the cost you want to transfer.';
-  host.innerHTML=html?datalists+html:`<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">${emptyMsg}</div>`;
+  host.innerHTML=html||`<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">${emptyMsg}</div>`;
   // Apply indeterminate state to group-header checkboxes (HTML attribute alone doesn't trigger this)
   host.querySelectorAll('thead .cosel-chk input[data-indeterminate]').forEach(cb=>{cb.indeterminate=true;});
   updateCoDetailSummary();
@@ -2227,6 +2224,47 @@ function editCoDetailIdentity(rowKey,field,raw){
   }
   renderCoDetail();
 }
+
+/* ── Custom searchable dropdown for the Product / Project / UV identity fields ──
+   The menu floats on <body> (position:fixed) so it isn't clipped by the table's
+   overflow. On open it shows every valid option for the CC; typing filters them. */
+let _codComboInput=null,_codComboTimer=null;
+function _codComboOptions(input){
+  const field=input.dataset.comboField,cc=input.dataset.comboCc||'';
+  if(field==='uv')return UV_LIST.slice();
+  if(field==='productName')return (cc&&gca(cc).bcDept?productsForCc(cc):PRODUCTS).map(p=>p.name);
+  if(field==='projectName')return (cc&&gca(cc).bcDept?projectsForCc(cc):PROJECTS).map(p=>p.name);
+  return [];
+}
+function openCodCombo(input){
+  _codComboInput=input;clearTimeout(_codComboTimer);
+  input.select();           // select-all so typing replaces the current value
+  renderCodComboMenu(input,'');  // show ALL valid options on open
+}
+function filterCodCombo(input){_codComboInput=input;renderCodComboMenu(input,input.value);}
+function renderCodComboMenu(input,filter){
+  let menu=document.getElementById('cod-combo-menu');
+  if(!menu){menu=document.createElement('div');menu.id='cod-combo-menu';menu.className='cod-combo-menu';document.body.appendChild(menu);}
+  const f=String(filter||'').toLowerCase().trim();
+  const shown=_codComboOptions(input).filter(o=>!f||o.toLowerCase().includes(f));
+  if(!shown.length){menu.style.display='none';return;}
+  menu.innerHTML=shown.map(o=>`<div class="cod-combo-item" onmousedown="pickCodCombo(event)">${o.replace(/</g,'&lt;')}</div>`).join('');
+  const r=input.getBoundingClientRect();
+  menu.style.left=r.left+'px';menu.style.top=(r.bottom+2)+'px';menu.style.minWidth=r.width+'px';
+  menu.style.display='block';
+}
+function pickCodCombo(ev){
+  ev.preventDefault();           // fire before the input's blur so the pick lands
+  const input=_codComboInput;if(!input)return;
+  const val=ev.currentTarget.textContent;
+  input.value=val;hideCodCombo();
+  editCoDetailIdentity(input.dataset.comboKey,input.dataset.comboField,val); // re-renders
+}
+function closeCodComboSoon(){_codComboTimer=setTimeout(hideCodCombo,150);}
+function hideCodCombo(){const m=document.getElementById('cod-combo-menu');if(m)m.style.display='none';_codComboInput=null;}
+function codComboKey(ev){if(ev.key==='Escape'||ev.key==='Enter')hideCodCombo();}
+// Close the floating menu when the page scrolls (its anchored position would drift).
+window.addEventListener('scroll',()=>{if(_codComboInput)hideCodCombo();},true);
 function toggleCoDetailFy(fk){fyExp[fk]=!fyExp[fk];renderCoDetail();}
 
 // Toolbar: Add row — opens a modal to let the user pick which CC the new
