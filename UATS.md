@@ -337,11 +337,13 @@ errors: []
 done
 ```
 
-### 6. `uat_dept_collapse.py` — Dept-grouped collapsible tables
+### 6. `uat_unified_cost_tables.py` — Flat unified cost tables
 
-Asserts that on Lead step 6, every CC's Cost Out section starts collapsed (one row per dept) and that the expand button reveals the full table.
+Asserts that on Lead step 6, every CC's Cost Out table is **flat** (no dept sub-grouping or collapse), uses the **unified columns** (`GL account · Product · Project · UV` + FY), renders **N/A** for columns a row's shape doesn't use, and shows values in **$m**. (Replaces the old `uat_dept_collapse.py`, which exercised the removed dept-collapse feature.)
 
 ```python
+from pathlib import Path
+PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch()
@@ -350,13 +352,13 @@ with sync_playwright() as p:
     errs=[]
     pg.on('pageerror',lambda e: errs.append('PE: '+str(e)))
     pg.on('console',lambda m: errs.append('CON: '+m.text) if m.type=='error' else None)
-    pg.goto('file:///mnt/user-data/outputs/transfer-hub-prototype.html')
+    pg.goto(f'file://{PROTO}')
     pg.wait_for_load_state('networkidle')
     pg.evaluate("""
       switchUser('jd');
       contribs=[PEOPLE.find(p=>p.id==='om')];
       go('step1');
-      document.getElementById('inp-bcname').value='Dept collapse test';
+      document.getElementById('inp-bcname').value='Unified cost tables test';
       saveAndNotifyCoPersons();
       switchUser('om');
       cc2Sel=[
@@ -373,24 +375,22 @@ with sync_playwright() as p:
       switchUser('jd'); go('step6');
     """); pg.wait_for_timeout(400)
 
-    initial=pg.evaluate("""
-      (() => ({
-        collapsedBlocks: document.querySelectorAll('.dept-group-collapsed').length,
-        expandBtns: document.querySelectorAll('.dept-expand-btn').length,
-        expState: ciDeptExp.size,
-      }))()
+    state=pg.evaluate("""
+      (() => {
+        const wrap=document.getElementById('rv-by-cc-wrap');
+        const tbl=wrap.querySelector('.rv-cc-block .rv-table');
+        const heads=Array.from(tbl.querySelectorAll('thead tr:first-child th'))
+          .map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean);
+        return {
+          expandBtns: wrap.querySelectorAll('.dept-expand-btn').length,
+          collapsedBlocks: wrap.querySelectorAll('.dept-group-collapsed').length,
+          headers: heads,
+          naCells: wrap.querySelectorAll('.rv-cc-block .rv-table td.cod-na').length,
+          dollarM: /\\d\\.\\d{2}/.test(tbl.innerText),
+        };
+      })()
     """)
-    print('Initial Lead step 6 state:', initial)
-
-    # Click expand on the first
-    pg.evaluate("document.querySelector('.dept-group-collapsed .dept-expand-btn')?.click()"); pg.wait_for_timeout(120)
-    after=pg.evaluate("""
-      (() => ({
-        collapsedBlocks: document.querySelectorAll('.dept-group-collapsed').length,
-        expState: ciDeptExp.size,
-      }))()
-    """)
-    print('After expanding first dept group:', after)
+    print('Lead step 6 Cost Out:', state)
     print('errors:',errs[:5])
     b.close()
 print("done")
@@ -398,8 +398,7 @@ print("done")
 
 **Expected output:**
 ```
-Initial Lead step 6 state: {'collapsedBlocks': 3, 'expandBtns': 3, 'expState': 0}
-After expanding first dept group: {'collapsedBlocks': 2, 'expState': 1}
+Lead step 6 Cost Out: {'expandBtns': 0, 'collapsedBlocks': 0, 'headers': ['GL account', 'Product', 'Project', 'UV', 'FY25', 'FY26', 'FY27', 'FY28', 'FY29'], 'naCells': 25, 'dollarM': True}
 errors: []
 done
 ```

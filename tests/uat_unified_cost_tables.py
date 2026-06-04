@@ -14,7 +14,7 @@ with sync_playwright() as p:
       switchUser('jd');
       contribs=[PEOPLE.find(p=>p.id==='om')];
       go('step1');
-      document.getElementById('inp-bcname').value='Dept collapse test';
+      document.getElementById('inp-bcname').value='Unified cost tables test';
       saveAndNotifyCoPersons();
       switchUser('om');
       cc2Sel=[
@@ -31,24 +31,28 @@ with sync_playwright() as p:
       switchUser('jd'); go('step6');
     """); pg.wait_for_timeout(400)
 
-    initial=pg.evaluate("""
-      (() => ({
-        collapsedBlocks: document.querySelectorAll('.dept-group-collapsed').length,
-        expandBtns: document.querySelectorAll('.dept-expand-btn').length,
-        expState: ciDeptExp.size,
-      }))()
+    # Lead step 6 Cost Out tables should be FLAT (no collapse), unified columns, $m.
+    state=pg.evaluate("""
+      (() => {
+        const wrap=document.getElementById('rv-by-cc-wrap');
+        const tbl=wrap.querySelector('.rv-cc-block .rv-table');
+        const heads=Array.from(tbl.querySelectorAll('thead tr:first-child th'))
+          .map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean);
+        return {
+          expandBtns: wrap.querySelectorAll('.dept-expand-btn').length,   // expect 0
+          collapsedBlocks: wrap.querySelectorAll('.dept-group-collapsed').length, // expect 0
+          headers: heads,                                                 // GL/Product/Project/UV + FY
+          naCells: wrap.querySelectorAll('.rv-cc-block .rv-table td.cod-na').length, // > 0
+          dollarM: /\\d\\.\\d{2}/.test(tbl.innerText),                    // $m formatting present
+        };
+      })()
     """)
-    print('Initial Lead step 6 state:', initial)
+    print('Lead step 6 Cost Out:', state)
 
-    # Click expand on the first
-    pg.evaluate("document.querySelector('.dept-group-collapsed .dept-expand-btn')?.click()"); pg.wait_for_timeout(120)
-    after=pg.evaluate("""
-      (() => ({
-        collapsedBlocks: document.querySelectorAll('.dept-group-collapsed').length,
-        expState: ciDeptExp.size,
-      }))()
-    """)
-    print('After expanding first dept group:', after)
+    ok = (state['expandBtns']==0 and state['collapsedBlocks']==0
+          and state['headers'][:4]==['GL account','Product','Project','UV']
+          and state['naCells']>0 and state['dollarM'])
+    print('PASS' if ok and not errs else 'FAIL')
     print('errors:',errs[:5])
     b.close()
 print("done")

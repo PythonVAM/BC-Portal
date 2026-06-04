@@ -136,27 +136,23 @@ Every screen has a two-tier sticky stack that pins essential context as the user
 
 The **hints banner** and the **profile-panel** intentionally scroll away with content (they're reference info, not action affordances).
 
-### 2.11 Dept-grouped collapsible read-only tables
+### 2.11 Flat unified read-only cost tables
 
-In every **read-only** Cost Out / FTE table shown to a Lead or Cost In contributor for context, the table is **grouped by department** (R&D / SMM / G&A) and **collapsed by default**. Each dept group renders as a single aggregate row (dept chip + row count + per-FY totals); a **▶ Expand** button reveals the full row table beneath it, with a **▼ Collapse** to fold back.
+Every **cost** table — entry screens and read-only context tables alike — uses **one flat table with a fixed column set**, matching the Cost Out Detail screen. There is **no dept sub-grouping and no collapse**; rows are sorted **Dept (R&D → SMM → G&A) → Cost Centre** and every row is shown.
 
-State: `ciDeptExp` (Set keyed by `<scope>::<dept>`). Default for any key is collapsed (not in the set). `toggleCiDeptGroup(scope, dept)` flips the state and re-renders the active screen.
+**Unified columns:** `(Cost centre · Dept ·) GL account · Product · Project · UV` + the FY columns. The Cost centre + Dept columns are included on multi-CC tables (`roUniIdHead(true,hasSub)`) and omitted where the CC is already in a block/section header (`roUniIdHead(false,hasSub)`). Columns a row's shape doesn't use render as a greyed **N/A** (`.cod-na`):
+- R&D-shape rows (`gl+project+uv`) fill Project + UV; Product = N/A.
+- SMM-shape rows (`gl+product`) fill Product; Project + UV = N/A.
+- GL-only rows: Product + Project + UV all = N/A.
 
-**Where this is applied:**
-- Lead step 6 (`renderRvByCC`) — per-CC Cost Out tables.
-- CI step 1 (`renderCiByCc`) — per-CC Cost Out reference tables.
-- CI step 2 (`renderCiCoSummaryTable`) — Cost Out summary at top.
-- CI steps 2 & 3 (`renderCiOthersTable`) — per-person blocks and Net Available block.
-- CI step 3 (`renderCiFteCoSummaryTable`) — FTE Out summary at top.
+**Helpers** (defined together near the top of the `<script>`):
+- `roUniIdHead(showCc, hasSub)` — the fixed identity `<th>`s (adds `rowspan="2"` when a FY is month-expanded).
+- `roUniIdCells(row, showCc)` — the fixed identity `<td>`s with N/A fill.
+- `fmtCostM(v)` — cost value in **$m** (2dp), negatives in red parentheses.
 
-**Where this is NOT applied** (intentionally):
-- CI step 2's Cost In **values entry** table (`renderCiTable`) — must stay flat for editing.
-- CI step 3's FTE In **values entry** table (`renderCiFteTable`) — must stay flat for editing.
-- Lead step 6 FTE-out tables under each CC card — they're already organised by CC and aren't long.
+**Where applied:** Lead step 6 (`renderRvByCC`, `renderRvCostOut`), CI step 1 (`renderCiByCc`), CI step 2 (`renderCiCoSummaryTable`, `renderCiTable`, `renderCiCoTable`, single-CC auto-populated view), CI steps 2 & 3 (`renderCiOthersTable`), CI step 3 FTE summary (`renderCiFteCoSummaryTable` — flat, FTEs not $m), CI per-CC review (`renderCiReview`), and step 7 (`coOutSection` / `ciInSection`, plus the aggregate Cost/FTE/Net matrix).
 
-**Grouping helpers:**
-- `groupRowsByDept(rows)` — groups by row content (`project`/`uv` → R&D; `product` → SMM; else GL).
-- `groupPairsByCcDept(pairs)` — groups `{ccCode, row}` pairs by CC's BC dept. Used for FTE tables since FTE rows don't carry project/product markers.
+**Currency:** all cost values display in **USD millions ($m)** via `fmtM` / `fmtCostM`. The editable entry tables (`renderCiTable`, Cost Out Detail) display and accept input in $m and scale back to whole dollars (`×1e6`) for storage and balance math. FTE tables are unaffected (`fmtFte`, 1dp headcount).
 
 ---
 
