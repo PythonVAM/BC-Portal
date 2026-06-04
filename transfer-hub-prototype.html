@@ -1437,6 +1437,28 @@ function rvIdentityCells(viewDept,row,opts){
   }
   return cells.join('');
 }
+/* ── Unified read-only identity columns ──
+   Fixed columns matching the Cost Out screens: (CC · Dept ·) GL · Product · Project · UV.
+   Columns a row's shape doesn't use render as a greyed "N/A". `showCc` adds the
+   Cost centre + Dept columns (omit them where the CC is already in a block header). */
+function roUniIdHead(showCc){
+  return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:120px;">Cost centre</th><th class="rv-th-left" style="min-width:46px;">Dept</th>`:'')
+    +`<th class="rv-th-left" style="min-width:150px;">GL account</th><th class="rv-th-left" style="min-width:130px;">Product</th><th class="rv-th-left" style="min-width:140px;">Project</th><th class="rv-th-left" style="min-width:56px;">UV</th>`;
+}
+function roUniIdCells(row,showCc){
+  const na='<td class="cod-na">N/A</td>';
+  const cc=row.cc||row.ccCode||row._cc||'';
+  const isRnd=!!(row.project||row.projectName||row.uv);
+  const isSmm=!isRnd&&!!(row.product||row.productName);
+  const ccCells=showCc?`<td class="rv-td-left rv-sticky rv-sticky-0">${cc}</td><td class="rv-td-left">${deptChipFor(cc)}</td>`:'';
+  const gl=`<td class="rv-td-left">${row.gln||row.gl||'—'}</td>`;
+  const prod=isSmm?`<td class="rv-td-left">${row.productName||row.prod||'—'}</td>`:na;
+  const proj=isRnd?`<td class="rv-td-left">${row.projectName||row.prod||'—'}</td>`:na;
+  const uv=isRnd?`<td class="rv-td-left">${row.uv||'—'}</td>`:na;
+  return ccCells+gl+prod+proj+uv;
+}
+// Cost formatter in $m with negative-as-red-parens (read-only tables).
+function fmtCostM(v){const n=Number(v)||0;if(n<0)return '<span style="color:#A32D2D;">('+fmtM(Math.abs(n))+')</span>';return fmtM(n);}
 function groupRowsByDept(rows){
   // Bucket by the row's effective shape: project→R&D view, product→SMM view, else GL-only.
   const buckets={'R&D':[],'SMM':[],'GL':[]};
@@ -3356,22 +3378,10 @@ function renderRvByCC(){
     let coTableHTML='<span class="rv-none" style="font-size:12px;">No cost data entered.</span>';
     if(coRows.length){
       const hasSub=exp25||exp26;
-      const formatCost=(v)=>{
-        const local=toLocal(v||0,cur);
-        if(local<0)return '<span style="color:#A32D2D;">('+fmt(Math.abs(local))+')</span>';
-        return fmt(local);
-      };
-      const groups=groupRowsByDept(coRows);
-      const scope=`step6-co:${cc.code}`;
-      coTableHTML=groups.map(g=>{
-        const expanded=isDeptExpanded(scope, g.dept);
-        if(!expanded){
-          return deptGroupCollapsedRow(g, formatCost, scope, null, s6Exp);
-        }
-        const secLabel=g.dept==='R&D'?'By Project & UV':g.dept==='SMM'?'By Product':'GL level';
-        const tbody=g.rows.map((row,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${rvIdentityCells(g.viewDept,row,{showCc:false})}${dataCellsForRow(row,formatCost)}</tr>`).join('');
-        return `${deptSectionLabel(g.dept,secLabel,{scope})}<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${rvIdentityHead(g.viewDept,{showCc:false})}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-      }).join('');
+      const formatCost=(v)=>fmtCostM(toLocal(v||0,cur));
+      // One flat unified table (CC & Dept are in the block header, so omit those columns).
+      const tbody=coRows.map((row,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${dataCellsForRow(row,formatCost)}</tr>`).join('');
+      coTableHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
     }
 
     // FTE table
