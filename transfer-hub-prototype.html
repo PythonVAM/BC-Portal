@@ -301,6 +301,10 @@ table.cod-tbl input.cod-input { width: 78px; text-align: right; border: 0.5px so
 table.cod-tbl input.cod-input:focus { outline: none; border-color: #93BCDC; background: #fcfeff; }
 /* Identity comboboxes (Product / Project / UV / CC / GL) — left-aligned text, auto width */
 table.cod-tbl input.cod-id-input { width: auto; text-align: left; }
+/* $m values are short — narrow the FY inputs so all years fit without horizontal scroll */
+table.cod-tbl td.cod-num input.cod-input { width: 50px; }
+table.cod-tbl { font-size: 11px; }
+table.cod-tbl td, table.cod-tbl th { padding-left: 6px; padding-right: 6px; }
 .cod-cc-hdr { display: flex; align-items: center; gap: 9px; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 0.5px solid #ebe9e3; }
 /* Greyed "N/A" cell — a column not used by this row's shape (Product/Project/UV) */
 td.cod-na { color: #b8b6b0; background: #f6f5f2; font-style: italic; font-size: 11px; text-align: center; }
@@ -1235,12 +1239,13 @@ const PRODUCTS=[
   {code:'PR-SAP',name:'Immusafe',ta:'Imm'},
   {code:'PR-FAS',name:'Immufera',ta:'Imm'},
 ];
+// Project identifier = 6 random alphanumerics + a short description.
 const PROJECTS=[
-  {code:'PJ-ONC-001',name:'Project Aurora',product:'Oncova',ta:'Onc'},
-  {code:'PJ-ONC-002',name:'Project Borealis',product:'Oncova',ta:'Onc'},
-  {code:'PJ-ONC-003',name:'Project Cinder',product:'Oncoba',ta:'Onc'},
-  {code:'PJ-ONC-004',name:'Project Dawnfall',product:'Oncenta',ta:'Onc'},
-  {code:'PJ-IMM-001',name:'Project Everglade',product:'Immusafe',ta:'Imm'},
+  {code:'K7P2QM',name:'K7P2QM Skylark',product:'Oncova',ta:'Onc'},
+  {code:'R4XB9T',name:'R4XB9T Meridian',product:'Oncova',ta:'Onc'},
+  {code:'M2QL5C',name:'M2QL5C Lattice',product:'Oncoba',ta:'Onc'},
+  {code:'H9VK3D',name:'H9VK3D Quasar',product:'Oncenta',ta:'Onc'},
+  {code:'T8NQ4W',name:'T8NQ4W Foxglove',product:'Immusafe',ta:'Imm'},
 ];
 const UV_LIST=['Discovery','Early','Late'];
 
@@ -1367,6 +1372,9 @@ const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 /* ── CC data store ── */
 let ccData={};
 function fmt(n){if(n===null||n===undefined||n===''||isNaN(Number(n)))return'—';return Number(n).toLocaleString('en-US',{maximumFractionDigits:0});}
+// Cost in USD millions to 2dp (e.g. 500000 → "0.50"). Data is stored in dollars;
+// this is display-only. Used on the Cost Out Detail screen to keep columns narrow.
+function fmtM(n){if(n===null||n===undefined||n===''||isNaN(Number(n)))return'—';return (Number(n)/1e6).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 // FTE formatter — always 1 decimal place. Strings (e.g. '—') pass through unchanged.
 function fmtFte(n){if(typeof n==='string')return n;if(n===null||n===undefined||n===''||isNaN(Number(n)))return'—';return Number(n).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});}
 function rowTotal(arr){return arr.reduce((s,v)=>s+(isNaN(Number(v))?0:Number(v)),0);}
@@ -1930,15 +1938,15 @@ function coDetailIdCells(ds,shape,mode,ccs){
   else glCell=`<td>${ds.gln||ds.gl||'—'}</td>`;
   // Product — only used by gl+product shape
   let prodCell;
-  if(shape==='gl+product')prodCell=(mode==='full')?`<td>${ds.productName||'—'}</td>`:combo('productName',ds.productName,`cod-prod-${cc}`,150,'Product');
+  if(shape==='gl+product')prodCell=(mode==='full')?`<td>${ds.productName||'—'}</td>`:combo('productName',ds.productName,`cod-prod-${cc}`,134,'Product');
   else prodCell=na;
   // Project — only used by gl+project+uv shape
   let projCell;
-  if(shape==='gl+project+uv')projCell=(mode==='full')?`<td>${ds.projectName||'—'}</td>`:combo('projectName',ds.projectName,`cod-proj-${cc}`,160,'Project');
+  if(shape==='gl+project+uv')projCell=(mode==='full')?`<td>${ds.projectName||'—'}</td>`:combo('projectName',ds.projectName,`cod-proj-${cc}`,138,'Project');
   else projCell=na;
   // UV — only used by gl+project+uv shape
   let uvCell;
-  if(shape==='gl+project+uv')uvCell=(mode==='full')?`<td>${ds.uv||'—'}</td>`:combo('uv',ds.uv,'cod-uv',90,'UV');
+  if(shape==='gl+project+uv')uvCell=(mode==='full')?`<td>${ds.uv||'—'}</td>`:combo('uv',ds.uv,'cod-uv',62,'UV');
   else uvCell=na;
   return ccCell+deptCell+glCell+prodCell+projCell+uvCell;
 }
@@ -1947,15 +1955,16 @@ function coDetailFyCells(ds,cur,readonly,exp25,exp26,localMode){
   const conv=v=>toLocal(Number(v)||0,cur);
   const t25=conv(rowTotal(ds.fy25||[])),t26=conv(rowTotal(ds.fy26||[]));
   const roVal=localMode?' disabled':'';
+  // Values display in USD millions (2dp). Inputs are edited in $m too — editCoDetail scales back to dollars.
   const moCell=(fk,mi)=>readonly
-    ? `<td class="cod-num">${ds[fk]&&ds[fk][mi]?fmt(conv(ds[fk][mi])):''}</td>`
-    : `<td><input class="cod-input" value="${ds[fk]&&ds[fk][mi]?fmt(conv(ds[fk][mi])):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','${fk}',${mi},this.value)" onclick="event.stopPropagation();"/></td>`;
+    ? `<td class="cod-num">${ds[fk]&&ds[fk][mi]?fmtM(conv(ds[fk][mi])):''}</td>`
+    : `<td><input class="cod-input" value="${ds[fk]&&ds[fk][mi]?fmtM(conv(ds[fk][mi])):''}" placeholder="0.00"${roVal} onchange="editCoDetail('${ds.key}','${fk}',${mi},this.value)" onclick="event.stopPropagation();"/></td>`;
   const futCell=fk=>readonly
-    ? `<td class="cod-num">${ds[fk]?fmt(conv(ds[fk])):''}</td>`
-    : `<td class="cod-num"><input class="cod-input" value="${ds[fk]?fmt(conv(ds[fk])):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','${fk}',null,this.value)" onclick="event.stopPropagation();"/></td>`;
+    ? `<td class="cod-num">${ds[fk]?fmtM(conv(ds[fk])):''}</td>`
+    : `<td class="cod-num"><input class="cod-input" value="${ds[fk]?fmtM(conv(ds[fk])):''}" placeholder="0.00"${roVal} onchange="editCoDetail('${ds.key}','${fk}',null,this.value)" onclick="event.stopPropagation();"/></td>`;
   const mo25=exp25?MO.map((_,mi)=>moCell('fy25',mi)).join(''):'';
   const mo26=exp26?MO.map((_,mi)=>moCell('fy26',mi)).join(''):'';
-  return `<td class="cod-num cod-tot">${fmt(t25)}</td>${mo25}<td class="cod-num cod-tot">${fmt(t26)}</td>${mo26}${futCell('fy27')}${futCell('fy28')}${futCell('fy29')}`;
+  return `<td class="cod-num cod-tot">${fmtM(t25)}</td>${mo25}<td class="cod-num cod-tot">${fmtM(t26)}</td>${mo26}${futCell('fy27')}${futCell('fy28')}${futCell('fy29')}`;
 }
 function renderCoDetail(){
   const host=document.getElementById('co-detail-blocks');
@@ -1974,7 +1983,7 @@ function renderCoDetail(){
 
   // ── Shared column scaffolding ── fixed 6 identity columns + FY columns.
   const moTh=MO.map(m=>`<th class="cod-mo">${m}</th>`).join('');
-  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:60px;">Dept</th><th style="min-width:140px;">GL account</th><th style="min-width:150px;">Product</th><th style="min-width:160px;">Project</th><th style="min-width:90px;">UV</th>`;
+  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:46px;">Dept</th><th style="min-width:118px;">GL account</th><th style="min-width:140px;">Product</th><th style="min-width:150px;">Project</th><th style="min-width:58px;">UV</th>`;
   const idHeadSpanned=idHead.replace(/<th /g,hasSub?'<th rowspan="2" ':'<th ');
   const fyHead=`
     <th class="cod-num th-fy-sel" colspan="${exp25?13:1}" onclick="toggleCoDetailFy('fy25')">FY25 ${exp25?'▼':'▶'}</th>
@@ -2023,7 +2032,7 @@ function renderCoDetail(){
     html+=`<div class="cod-cc-hdr" data-cod-group="partials">
         <span class="shape-tag">Editable transfer rows</span>
         <span style="font-size:11px;color:#888;">${partialRows.length} ${partialRows.length===1?'row':'rows'} · Partial cost centres</span>
-        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Grey N/A = column not used for that cost centre's shape.</span>
+        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Values in USD millions ($m) · grey N/A = column not used for this cost centre.</span>
       </div>
       <div class="cosel-tbl-wrap"><table class="cosel-tbl cod-tbl">
         <thead><tr>${headerChk}${idHeadSpanned}${fyHead}</tr>${subHead}</thead>
@@ -2088,7 +2097,7 @@ function updateCoDetailSummary(){
   let count=0,fy26=0;
   Object.values(coDetail).forEach(ds=>{count++;fy26+=rowTotal(ds.fy26||[]);});
   const c=document.getElementById('codet-row-count');if(c)c.textContent=count;
-  const f=document.getElementById('codet-fy26');if(f)f.textContent=fmt$(fy26);
+  const f=document.getElementById('codet-fy26');if(f)f.textContent='$'+fmtM(fy26)+'m';
   // Gate: every Partial CC that was given any GL on the Select screen must
   // have at least one row on this screen. (User-removed-everything is blocked.)
   const ccs=getAllCostOut().filter(cc=>!isCcFull(cc.code));
@@ -2191,7 +2200,8 @@ function toggleCoDetailGroupSel(groupKey,checked){
 }
 function editCoDetail(rowKey,fk,mi,raw){
   if(!coDetail[rowKey])return;
-  const v=Number(String(raw).replace(/,/g,''))||0;
+  // Inputs are in USD millions; scale back to dollars for storage (round to whole $).
+  const v=Math.round((Number(String(raw).replace(/,/g,''))||0)*1e6);
   if(mi===null)coDetail[rowKey][fk]=v;
   else { if(!Array.isArray(coDetail[rowKey][fk]))coDetail[rowKey][fk]=Array(12).fill(0); coDetail[rowKey][fk][mi]=v; }
   updateCoDetailSummary();
