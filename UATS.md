@@ -464,6 +464,29 @@ errors: []
 done
 ```
 
+### 8. `uat_org_consistency.py` — Persona ↔ org-hierarchy consistency
+
+Guards the data model: every top-level SET area in `ccTree` is classified in both `SET_AREA_TYPE` and `SET_AREAS`; every leaf CC resolves to a real SET area; and no persona division is orphaned (has personas but no selectable cost centres) — except `Corporate Centre`, the umbrella over Finance/HR. Also checks the Retail/Risk/Commercial divisions added to close the original gap.
+
+```bash
+python tests/uat_org_consistency.py
+```
+
+**Expected output:**
+```
+topLevels: ['1000', '2000', '5000', '7000', '6200', '8000', '9000']
+missingType: []
+missingArea: []
+orphanDivs: []
+unresolved: []
+retailLeaves: ['8110', '8120', '8130']
+riskLeaves: ['9110', '9120', '9130']
+commercialHasLead: True
+PASS
+errors: []
+done
+```
+
 ---
 
 ## Notes on writing more UATs

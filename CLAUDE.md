@@ -44,7 +44,7 @@ These are settled. If a change would conflict with one of these, ask first.
 ### 2.1 Roles and orchestration
 
 - **SET BC Lead is orchestrator only.** A Lead cannot also be a Cost Out or Cost In Contributor. This was enforced through a substantial refactor.
-- **30 personas across 9 divisions**, with Lead and Contributor roles separated per person.
+- **33 personas across 10 divisions**, with Lead and Contributor roles separated per person. Every persona division has a matching branch + cost centres in the org hierarchy (`ccTree`), so a user can always find their own division's CCs.
 - **Multi-contributor submissions allowed.** In the prototype any CO Contributor may pick any CC; in production, contributors would be gated by SET area.
 - **Last-writer-wins** if two CO Contributors pick the same CC.
 
@@ -181,7 +181,7 @@ For any non-trivial change, **state your understanding back to the user and conf
 
 ### 3.4 What's deliberately ad-hoc (won't break if changed, but worth flagging)
 
-- The `SET_AREA_TYPE` map (line ~1178) lists the 5 SET area types. Adding a new one means updating `coShape()` too.
+- The `SET_AREA_TYPE` map (line ~1195) lists the 7 SET area types (`corporate`, `operations`, `it`, `commercial`, `rnd`, `retail`, `risk`). Adding a new one only needs a `coShape()` change if it splits cost by an extra dimension — `retail`/`risk` are plain `gl` and fall through `coShape`'s default. Top-level SET areas must be kept in sync across `ccTree`, `SET_AREA_TYPE`, and `SET_AREAS` (step-7 aggregation).
 - The `SIM` map (line ~1154) is hand-coded sample data per CC. It's not exhaustive; `getSimRows()` returns a default if a CC isn't listed.
 - Persona definitions live in `PEOPLE` (search for `const PEOPLE`). Adding a new persona requires picking a `dept` and `role` consistent with the existing taxonomy.
 

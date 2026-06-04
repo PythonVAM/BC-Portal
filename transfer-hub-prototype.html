@@ -1033,6 +1033,11 @@ const PEOPLE=[
   {id:'eh', first:'Emma',    last:'Hartley',   dept:'Immunology R&D',   initials:'EH'},
   {id:'mk', first:'Mateo',   last:'Kovac',     dept:'Immunology R&D',   initials:'MK'},
 
+  // ── Commercial ──
+  {id:'cm', first:'Clara',   last:'Mendez',    dept:'Commercial',       initials:'CM'},
+  {id:'rf', first:'Raj',     last:'Foster',    dept:'Commercial',       initials:'RF'},
+  {id:'iw', first:'Ingrid',  last:'Wagner',    dept:'Commercial',       initials:'IW'},
+
   // ── Digital & Tech ──
   {id:'so', first:'Sarah',   last:'Okafor',    dept:'Digital & Tech',   initials:'SO'},
   {id:'rh', first:'Ravi',    last:'Hegde',     dept:'Digital & Tech',   initials:'RH'},
@@ -1146,6 +1151,14 @@ const ccAttr={
   '6200COM-CC-115':{dept:'Commercial',cur:'GBP',bcDept:'SMM'},
   '6200COM-CC-116':{dept:'Commercial',cur:'USD',bcDept:'SMM'},
   '6200COM-CC-122':{dept:'Commercial',cur:'GBP',bcDept:'G&A'},
+  // Retail Division (SET area 8000)
+  '8110':{dept:'Retail Division',cur:'GBP',bcDept:'R&D'},
+  '8120':{dept:'Retail Division',cur:'USD',bcDept:'SMM'},
+  '8130':{dept:'Retail Division',cur:'GBP',bcDept:'G&A'},
+  // Risk & Compliance (SET area 9000)
+  '9110':{dept:'Risk & Compliance',cur:'GBP',bcDept:'R&D'},
+  '9120':{dept:'Risk & Compliance',cur:'EUR',bcDept:'SMM'},
+  '9130':{dept:'Risk & Compliance',cur:'GBP',bcDept:'G&A'},
 };
 function gca(c){return ccAttr[c]||{dept:'—',cur:'GBP',bcDept:'—'};}
 
@@ -1164,7 +1177,7 @@ function uvChipFor(uv){
 }
 const locMeta={'GB-LON-001':{city:'London',country:'UK'},'GB-LON-002':{city:'London',country:'UK'},'GB-LON-003':{city:'London',country:'UK'},'GB-CAM-001':{city:'Cambridge',country:'UK'},'GB-CAM-002':{city:'Cambridge',country:'UK'},'GB-MAN-001':{city:'Manchester',country:'UK'},'GB-MAN-002':{city:'Manchester',country:'UK'},'US-NYC-001':{city:'New York',country:'US'},'US-NYC-002':{city:'New York',country:'US'},'US-BOS-001':{city:'Boston',country:'US'},'US-BOS-002':{city:'Boston',country:'US'},'US-SFO-001':{city:'San Francisco',country:'US'},'DE-MUC-001':{city:'Munich',country:'DE'},'DE-BER-001':{city:'Berlin',country:'DE'},'CH-BSL-001':{city:'Basel',country:'CH'},'JP-TYO-001':{city:'Tokyo',country:'JP'}};
 function glm(c){return locMeta[c]||{city:'—',country:'—'};}
-const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre',children:[{code:'1100',name:'Finance',children:[{code:'1110',name:'FP&A',leaf:true},{code:'1120',name:'Financial Reporting',leaf:true},{code:'1130',name:'Treasury',leaf:true}]},{code:'1200',name:'HR & People',children:[{code:'1210',name:'Talent Acquisition',leaf:true},{code:'1220',name:'Learning & Development',leaf:true},{code:'1230',name:'HR Operations',leaf:true}]}]},{code:'2000',name:'Operations',children:[{code:'2100',name:'Supply Chain',children:[{code:'2110',name:'Procurement',leaf:true},{code:'2120',name:'Logistics',leaf:true},{code:'2130',name:'Demand Planning',leaf:true}]}]},{code:'5000',name:'Digital & Tech',children:[{code:'5100',name:'Engineering',children:[{code:'5110',name:'Platform Engineering',leaf:true},{code:'5120',name:'Data & Analytics',leaf:true},{code:'5130',name:'Infrastructure',leaf:true}]}]},{code:'7000',name:'R&D Division',children:[{code:'7300',name:'Oncology R&D',children:[{code:'7300RND-CC-041',name:'Clinical Trials',leaf:true},{code:'7300RND-CC-042',name:'Drug Discovery',leaf:true},{code:'7300RND-CC-043',name:'Regulatory Affairs',leaf:true}]},{code:'7400',name:'Immunology R&D',children:[{code:'7400RND-CC-051',name:'Pre-clinical Research',leaf:true},{code:'7400RND-CC-052',name:'Biomarkers',leaf:true},{code:'7400RND-CC-053',name:'Translational Medicine',leaf:true}]}]},{code:'6200',name:'Commercial',children:[{code:'6210',name:'Brand Marketing',children:[{code:'6200COM-CC-115',name:'Brand Marketing — Oncology',leaf:true},{code:'6200COM-CC-116',name:'Brand Marketing — Immunology',leaf:true}]},{code:'6220',name:'Commercial Operations',children:[{code:'6200COM-CC-122',name:'Sales Operations',leaf:true}]}]}]};
+const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre',children:[{code:'1100',name:'Finance',children:[{code:'1110',name:'FP&A',leaf:true},{code:'1120',name:'Financial Reporting',leaf:true},{code:'1130',name:'Treasury',leaf:true}]},{code:'1200',name:'HR & People',children:[{code:'1210',name:'Talent Acquisition',leaf:true},{code:'1220',name:'Learning & Development',leaf:true},{code:'1230',name:'HR Operations',leaf:true}]}]},{code:'2000',name:'Operations',children:[{code:'2100',name:'Supply Chain',children:[{code:'2110',name:'Procurement',leaf:true},{code:'2120',name:'Logistics',leaf:true},{code:'2130',name:'Demand Planning',leaf:true}]}]},{code:'5000',name:'Digital & Tech',children:[{code:'5100',name:'Engineering',children:[{code:'5110',name:'Platform Engineering',leaf:true},{code:'5120',name:'Data & Analytics',leaf:true},{code:'5130',name:'Infrastructure',leaf:true}]}]},{code:'7000',name:'R&D Division',children:[{code:'7300',name:'Oncology R&D',children:[{code:'7300RND-CC-041',name:'Clinical Trials',leaf:true},{code:'7300RND-CC-042',name:'Drug Discovery',leaf:true},{code:'7300RND-CC-043',name:'Regulatory Affairs',leaf:true}]},{code:'7400',name:'Immunology R&D',children:[{code:'7400RND-CC-051',name:'Pre-clinical Research',leaf:true},{code:'7400RND-CC-052',name:'Biomarkers',leaf:true},{code:'7400RND-CC-053',name:'Translational Medicine',leaf:true}]}]},{code:'6200',name:'Commercial',children:[{code:'6210',name:'Brand Marketing',children:[{code:'6200COM-CC-115',name:'Brand Marketing — Oncology',leaf:true},{code:'6200COM-CC-116',name:'Brand Marketing — Immunology',leaf:true}]},{code:'6220',name:'Commercial Operations',children:[{code:'6200COM-CC-122',name:'Sales Operations',leaf:true}]}]},{code:'8000',name:'Retail Division',children:[{code:'8100',name:'Retail Operations',children:[{code:'8110',name:'Store Operations',leaf:true},{code:'8120',name:'Merchandising',leaf:true},{code:'8130',name:'Retail Finance & Admin',leaf:true}]}]},{code:'9000',name:'Risk & Compliance',children:[{code:'9100',name:'Risk & Compliance',children:[{code:'9110',name:'Enterprise Risk',leaf:true},{code:'9120',name:'Regulatory Compliance',leaf:true},{code:'9130',name:'Internal Audit',leaf:true}]}]}]};
 const locTree={name:'All locations',children:[{name:'United Kingdom',code:'GB',children:[{name:'London',code:'GB-LON',children:[{code:'GB-LON-001',name:'Canary Wharf HQ',leaf:true},{code:'GB-LON-002',name:'Paddington Research Centre',leaf:true},{code:'GB-LON-003',name:'Southwark Operations Hub',leaf:true}]},{name:'Cambridge',code:'GB-CAM',children:[{code:'GB-CAM-001',name:'Cambridge Science Park',leaf:true},{code:'GB-CAM-002',name:"Addenbrooke's Site",leaf:true}]},{name:'Manchester',code:'GB-MAN',children:[{code:'GB-MAN-001',name:'Spinningfields Office',leaf:true},{code:'GB-MAN-002',name:'MediaCity Hub',leaf:true}]}]},{name:'United States',code:'US',children:[{name:'New York',code:'US-NYC',children:[{code:'US-NYC-001',name:'Midtown Manhattan Office',leaf:true},{code:'US-NYC-002',name:'Brooklyn R&D Lab',leaf:true}]},{name:'Boston',code:'US-BOS',children:[{code:'US-BOS-001',name:'Kendall Square Campus',leaf:true},{code:'US-BOS-002',name:'Longwood Medical Site',leaf:true}]},{name:'San Francisco',code:'US-SFO',children:[{code:'US-SFO-001',name:'Mission Bay Office',leaf:true}]}]},{name:'Germany',code:'DE',children:[{name:'Munich',code:'DE-MUC',children:[{code:'DE-MUC-001',name:'Schwabing Research Park',leaf:true}]},{name:'Berlin',code:'DE-BER',children:[{code:'DE-BER-001',name:'Mitte Innovation Hub',leaf:true}]}]},{name:'Switzerland',code:'CH',children:[{name:'Basel',code:'CH-BSL',children:[{code:'CH-BSL-001',name:'Basel Life Sciences Campus',leaf:true}]}]},{name:'Japan',code:'JP',children:[{name:'Tokyo',code:'JP-TYO',children:[{code:'JP-TYO-001',name:'Shinjuku Office',leaf:true}]}]}]};
 
 /* ── Simulated GL × Product data ── */
@@ -1198,6 +1211,8 @@ const SET_AREA_TYPE={
   '5000':'it',          // Digital & Tech
   '6200':'commercial',  // Commercial
   '7000':'rnd',         // R&D Division
+  '8000':'retail',      // Retail Division — gl-shaped (coShape default)
+  '9000':'risk',        // Risk & Compliance — gl-shaped (coShape default)
 };
 // Map a CC code → its top-level SET area node {code,name}, by walking ccTree.
 const _ccSetAreaCache={};
@@ -3387,6 +3402,11 @@ const USER_PROFILES={
   eh:{...PEOPLE.find(p=>p.id==='eh'), deptCode:'7400IMM', deptName:'Immunology R&D',   role:'Finance Analyst',          personaRole:'BC Contributor'},
   mk:{...PEOPLE.find(p=>p.id==='mk'), deptCode:'7400IMM', deptName:'Immunology R&D',   role:'Finance Analyst',          personaRole:'BC Contributor'},
 
+  // ── Commercial ──
+  cm:{...PEOPLE.find(p=>p.id==='cm'), deptCode:'6200COM', deptName:'Commercial',       role:'Finance Business Partner', personaRole:'SET BC Lead'},
+  rf:{...PEOPLE.find(p=>p.id==='rf'), deptCode:'6200COM', deptName:'Commercial',       role:'Finance Analyst',          personaRole:'BC Contributor'},
+  iw:{...PEOPLE.find(p=>p.id==='iw'), deptCode:'6200COM', deptName:'Commercial',       role:'Finance Analyst',          personaRole:'BC Contributor'},
+
   // ── Digital & Tech ──
   so:{...PEOPLE.find(p=>p.id==='so'), deptCode:'5000DIG', deptName:'Digital & Tech',   role:'Finance Business Partner', personaRole:'SET BC Lead'},
   rh:{...PEOPLE.find(p=>p.id==='rh'), deptCode:'5000DIG', deptName:'Digital & Tech',   role:'Finance Business Partner', personaRole:'SET BC Lead'},
@@ -3457,7 +3477,7 @@ function renderUserMenu(){
     byDivision[k].push([id,u]);
   });
   // Order divisions in a stable, readable sequence
-  const divisionOrder=['Oncology R&D','Immunology R&D','Digital & Tech','Finance','HR & People','Operations','Corporate Centre','Risk & Compliance','Retail Division'];
+  const divisionOrder=['Oncology R&D','Immunology R&D','Commercial','Digital & Tech','Finance','HR & People','Operations','Corporate Centre','Risk & Compliance','Retail Division'];
   const divisions=divisionOrder.filter(d=>byDivision[d]);
   let html='';
   divisions.forEach((div)=>{
@@ -5509,7 +5529,10 @@ const SET_AREAS={
   '1000':{name:'Corporate Centre',codes:['1']},
   '2000':{name:'Operations',codes:['2']},
   '5000':{name:'Digital & Tech',codes:['5']},
+  '6200':{name:'Commercial',codes:['6']},
   '7000':{name:'R&D Division',codes:['7']},
+  '8000':{name:'Retail Division',codes:['8']},
+  '9000':{name:'Risk & Compliance',codes:['9']},
 };
 function getSetArea(ccCode){
   const first=String(ccCode).charAt(0);
