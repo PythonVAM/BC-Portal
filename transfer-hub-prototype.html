@@ -1401,12 +1401,16 @@ function roUniIdHead(showCc,hasSub){
   return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:120px;"${rs}>Cost centre</th><th class="rv-th-left" style="min-width:46px;"${rs}>Dept</th>`:'')
     +`<th class="rv-th-left" style="min-width:150px;"${rs}>GL account</th><th class="rv-th-left" style="min-width:130px;"${rs}>Product</th><th class="rv-th-left" style="min-width:140px;"${rs}>Project</th><th class="rv-th-left" style="min-width:56px;"${rs}>UV</th>`;
 }
-function roUniIdCells(row,showCc){
+function roUniIdCells(row,showCc,ccBadge){
   const na='<td class="cod-na">N/A</td>';
   const cc=row.cc||row.ccCode||row._cc||'';
   const isRnd=!!(row.project||row.projectName||row.uv);
   const isSmm=!isRnd&&!!(row.product||row.productName);
-  const ccCells=showCc?`<td class="rv-td-left rv-sticky rv-sticky-0">${cc}</td><td class="rv-td-left">${deptChipFor(cc)}</td>`:'';
+  // ccBadge: 'out' = orange Cost Out badge, 'in' = green Cost In badge, else plain text.
+  const ccInner=ccBadge==='out'?`<span class="cc-badge-out">${cc}</span>`
+    :ccBadge==='in'?`<span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${cc}</span>`
+    :cc;
+  const ccCells=showCc?`<td class="rv-td-left rv-sticky rv-sticky-0">${ccInner}</td><td class="rv-td-left">${deptChipFor(cc)}</td>`:'';
   const gl=`<td class="rv-td-left">${row.gln||row.gl||'—'}</td>`;
   const prod=isSmm?`<td class="rv-td-left">${row.productName||row.prod||'—'}</td>`:na;
   const proj=isRnd?`<td class="rv-td-left">${row.projectName||row.prod||'—'}</td>`:na;
@@ -5307,7 +5311,7 @@ function buildStep7(){
     if(!area.coRows.length)return '';
     const flat=area.coRows.map(({cc,row})=>{const cur=gca(cc.code).cur||'USD';return {...convertRow(row,cur),cc:cc.code};});
     sortDeptCc(flat);
-    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
+    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true,'out')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
     return `
       <div style="font-size:11px;font-weight:500;color:#0C447C;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
@@ -5346,7 +5350,7 @@ function buildStep7(){
     if(!area.ciRows.length)return '';
     const flat=area.ciRows.map(({ccCode,row})=>{const cur=gca(ccCode).cur||'USD';return {...convertRow(row,cur),cc:ccCode};});
     sortDeptCc(flat);
-    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${roUniIdCells(row,true)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
+    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${roUniIdCells(row,true,'in')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
     return `
       <div style="font-size:11px;font-weight:500;color:#27500A;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
