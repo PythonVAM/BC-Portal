@@ -16,8 +16,20 @@ The prototype is fully self-contained, with simulated personas, fake hierarchica
 
 ### Files
 
-- **`transfer-hub-prototype.html`** — the prototype itself. ~6,074 lines of HTML/CSS/JS in one file. Edit this in place.
-- **`transfer-hub-paths.html`** — standalone documentation file that maps the Cost Out paths across SET Area × BC Dept × Full/Partial combinations, with in-browser editing and persistent change history. Linked from the prototype's topbar ("📖 Paths").
+- **`transfer-hub-prototype.html`** (repo root) — the **canonical working file** and the prototype itself. ~6,074 lines of HTML/CSS/JS in one file. This is the single source of truth and the **only** prototype file Claude Code should ever edit. Edit it in place at the repo root.
+- **`transfer-hub-paths.html`** (repo root) — standalone documentation file that maps the Cost Out paths across SET Area × BC Dept × Full/Partial combinations, with in-browser editing and persistent change history. Linked from the prototype's topbar ("📖 Paths").
+- **`vN/index.html`** (e.g. `v2/`, `v3/`, `v4/`, `v5/`, …) — **frozen, read-only snapshots** of the prototype at past milestones. They exist so colleagues can open a stable link to a specific version (e.g. via GitHub Pages at `…/BC-Portal/v5/`). **Never edit, rename, or delete these.** They are an archive, not working code. All new work happens in the root `transfer-hub-prototype.html`, never in a `vN/` folder.
+
+### Versioning & sharing (snapshot ritual)
+
+The root `transfer-hub-prototype.html` is the live file that evolves PR by PR. The `vN/` folders are coarse, shareable checkpoints. The two don't conflict — commits give fine-grained history; the folders give stable links.
+
+When a milestone is reached that's worth sharing with colleagues:
+1. Copy the current root `transfer-hub-prototype.html` into a **new** `vN+1/index.html` (next number in sequence).
+2. Leave that snapshot untouched from then on.
+3. Carry on editing the root file as normal.
+
+Do **not** promote/rename the root file into a `vN/` folder (that would remove the working file); always **copy**.
 
 ### Build / run
 
@@ -202,6 +214,7 @@ These have been tried and abandoned, or explicitly rejected:
 - **Don't auto-convert Local-currency edits back to USD** — the rule is USD-only editing. The Local view is read-only. Round-tripping introduces rounding mismatch.
 - **Don't restyle the existing code** while making a behaviour change. Keep diffs small and focused.
 - **Don't introduce a new global formatter** for FTEs or costs without checking whether `fmtFte()` or `fmt()` already covers the case.
+- **Don't edit, rename, or delete any `vN/index.html` snapshot** (`v2/`, `v3/`, …). They are frozen archives that colleagues may be linking to. All work goes in the root `transfer-hub-prototype.html`; new versions are made by *copying* the root file into a new `vN/` folder, never by editing an existing one.
 
 ---
 
