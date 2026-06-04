@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Transfer Hub — Path Documentation</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; line-height: 1.55; color: #1a1a1a; background: #f3f1ec; margin: 0; padding: 16px; }
+.wrap { max-width: 1100px; margin: 0 auto; }
+.topbar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 0.5px solid #e0ded8; border-radius: 10px; padding: 10px 16px; margin-bottom: 12px; }
+.topbar-brand { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.topbar-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #185FA5; display: inline-block; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.btn { font-size: 12px; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-family: inherit; border: 0.5px solid #ccc; background: #fff; color: #1a1a1a; }
+.btn-primary { background: #185FA5; color: #fff; border-color: #185FA5; }
+.btn-primary:hover { background: #134d85; }
+.btn-secondary:hover { background: #f5f5f0; }
+.btn.btn-danger { background: #A32D2D; color: #fff; border-color: #A32D2D; }
+.btn.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.card { background: #fff; border: 0.5px solid #e0ded8; border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; }
+h1 { font-size: 20px; font-weight: 500; margin: 0 0 6px; }
+h2 { font-size: 16px; font-weight: 500; margin: 24px 0 8px; padding-bottom: 8px; border-bottom: 0.5px solid #e0ded8; }
+h2:first-child { margin-top: 0; }
+h3 { font-size: 14px; font-weight: 500; margin: 18px 0 6px; color: #333; }
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 20px; }
+li { margin-bottom: 4px; }
+code { background: #f5f4f0; padding: 1px 5px; border-radius: 4px; font-family: 'SF Mono', Monaco, monospace; font-size: 11.5px; }
+.subtle { color: #666; font-size: 12px; }
+.meta { color: #888; font-size: 11px; }
+.divider { border: none; border-top: 0.5px solid #e0ded8; margin: 16px 0; }
+
+/* Dimension chips — same vibe as the prototype's badges */
+.chip { display: inline-block; font-size: 10.5px; padding: 1px 7px; border-radius: 6px; border: 0.5px solid; font-weight: 500; }
+.chip-set-rnd { background: #f1eaf6; color: #5a2d8f; border-color: #d3c0e3; }
+.chip-set-commercial { background: #faeede; color: #7d4a14; border-color: #e8c590; }
+.chip-set-it { background: #e6f1fb; color: #0C447C; border-color: #b5d4f4; }
+.chip-set-corporate { background: #eaeae0; color: #555; border-color: #d0cfc6; }
+.chip-set-operations { background: #eaeae0; color: #555; border-color: #d0cfc6; }
+.chip-dept-rnd { background: #e3edff; color: #1a4b9c; border-color: #b9cfee; }
+.chip-dept-smm { background: #fce4f1; color: #8c2870; border-color: #ebbed8; }
+.chip-dept-ga { background: #e8f0d8; color: #4a6612; border-color: #c4d49e; }
+.chip-full { background: #EAF3DE; color: #27500A; border-color: #A3CC72; }
+.chip-partial { background: #FAEEDA; color: #7d4a14; border-color: #E0A060; }
+.chip-shape { background: #f5f4f0; color: #555; font-style: italic; border-color: #d0cfc6; }
+
+/* Matrix table */
+.matrix { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0 16px; }
+.matrix th, .matrix td { border: 0.5px solid #e0ded8; padding: 8px 10px; text-align: left; vertical-align: top; }
+.matrix th { background: #f5f4f0; font-weight: 500; font-size: 11px; color: #555; }
+.matrix th.matrix-dim-hdr { background: #eaeae0; }
+.matrix td.matrix-cell-rnd { background: #fafaff; }
+.matrix td.matrix-cell-smm { background: #fff8fb; }
+.matrix .matrix-shape { font-family: 'SF Mono', Monaco, monospace; font-size: 11px; color: #185FA5; }
+
+/* Path narrative cards */
+.path-card { border: 0.5px solid #e0ded8; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+.path-card-hdr { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f5f4f0; cursor: pointer; user-select: none; }
+.path-card-hdr:hover { background: #eeede7; }
+.path-card-hdr-title { font-weight: 500; font-size: 13px; flex: 1; }
+.path-card-chev { font-size: 10px; color: #666; transition: transform 0.15s; }
+.path-card.collapsed .path-card-chev { transform: rotate(-90deg); }
+.path-card-body { padding: 14px 16px; }
+.path-card.collapsed .path-card-body { display: none; }
+
+/* Edit-mode visuals */
+.editable { outline: 1px dashed transparent; transition: outline-color 0.15s, background 0.15s; padding: 2px; border-radius: 4px; }
+body.edit-mode .editable { outline-color: #b5d4f4; background: #fafcff; cursor: text; }
+body.edit-mode .editable:hover { outline-color: #185FA5; background: #f0f7ff; }
+body.edit-mode .editable:focus { outline: 2px solid #185FA5; background: #fff; }
+.edit-only { display: none; }
+body.edit-mode .edit-only { display: inline-flex; }
+.view-only { display: inline-flex; }
+body.edit-mode .view-only { display: none; }
+
+/* Changelog */
+.changelog-entry { border-left: 2px solid #b5d4f4; padding: 8px 12px; margin-bottom: 8px; background: #fafcff; border-radius: 0 4px 4px 0; }
+.changelog-entry-meta { font-size: 11px; color: #666; margin-bottom: 4px; }
+.changelog-entry-note { font-size: 12.5px; color: #1a1a1a; }
+.changelog-entry-actions { margin-top: 4px; }
+.changelog-empty { color: #888; font-style: italic; font-size: 12px; }
+
+/* Modal — for change description + restore confirmation */
+.modal-overlay { position: fixed; inset: 0; background: rgba(20,20,20,0.35); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.show { display: flex; }
+.modal-card { background: #fff; border-radius: 12px; padding: 22px 26px; max-width: 460px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.18); border: 0.5px solid #e0ded8; }
+.modal-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+.modal-body { font-size: 13px; color: #444; line-height: 1.5; margin-bottom: 14px; }
+.modal-body textarea { width: 100%; min-height: 70px; font-family: inherit; font-size: 13px; padding: 8px 10px; border: 0.5px solid #ccc; border-radius: 6px; box-sizing: border-box; resize: vertical; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Save/discard banner */
+.unsaved-banner { display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #fff8db; border: 0.5px solid #e6c46b; padding: 10px 16px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.1); font-size: 12.5px; z-index: 50; align-items: center; gap: 12px; }
+.unsaved-banner.show { display: flex; }
+
+/* Inline icons */
+.icon-pencil::before { content: "✎ "; }
+.icon-save::before { content: "✓ "; }
+.icon-back::before { content: "← "; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="topbar">
+  <div class="topbar-brand"><span class="dot"></span> Transfer Hub — Path Documentation</div>
+  <div class="topbar-actions">
+    <button class="btn btn-secondary view-only" onclick="window.location.href='transfer-hub-prototype.html'"><span class="icon-back"></span>Back to prototype</button>
+    <button class="btn btn-secondary view-only" id="btn-show-changelog" onclick="toggleChangelog()">Change history</button>
+    <button class="btn btn-primary view-only" id="btn-edit" onclick="enterEditMode()"><span class="icon-pencil"></span>Edit</button>
+    <button class="btn btn-primary edit-only" id="btn-save" onclick="openSaveModal()"><span class="icon-save"></span>Save changes</button>
+    <button class="btn btn-secondary edit-only" id="btn-cancel" onclick="cancelEdit()">Cancel</button>
+  </div>
+</div>
+
+<!-- Header / intro -->
+<div class="card">
+  <h1>Transfer Hub — Cost Out paths</h1>
+  <p class="subtle">This document maps how the Cost Out flow behaves across the dimensions that drive its shape: <strong>SET Area</strong>, <strong>Department</strong>, and <strong>CC selection mode (Full vs Partial)</strong>. It is a living reference — edits are stored in your browser and a change history is kept below.</p>
+  <p class="meta" id="last-updated-meta">Loading…</p>
+</div>
+
+<!-- Dimensions overview -->
+<div class="card">
+  <h2>The four dimensions</h2>
+  <div class="editable" data-section="dimensions">
+    <h3>1. SET Area</h3>
+    <p>A top-level branch of the cost-centre tree. There are five SET area <em>types</em>:</p>
+    <ul>
+      <li><span class="chip chip-set-rnd">R&amp;D Division (7000)</span> &mdash; clinical research and drug development cost centres.</li>
+      <li><span class="chip chip-set-commercial">Commercial (6200)</span> &mdash; sales and marketing cost centres.</li>
+      <li><span class="chip chip-set-it">Digital &amp; Tech (5000)</span> &mdash; IT cost centres.</li>
+      <li><span class="chip chip-set-corporate">Corporate (1000)</span> &mdash; finance, HR, central functions.</li>
+      <li><span class="chip chip-set-operations">Operations (2000)</span> &mdash; supply chain, logistics, etc.</li>
+    </ul>
+    <p>SET Area is inferred from the cost centre's position in the hierarchy &mdash; it is the code of the top-level node under which the CC sits.</p>
+
+    <h3>2. BC Department</h3>
+    <p>An attribute on each CC indicating which boundary-change discipline it belongs to. Possible values:</p>
+    <ul>
+      <li><span class="chip chip-dept-rnd">R&amp;D</span></li>
+      <li><span class="chip chip-dept-smm">SMM</span> (Sales, Marketing &amp; Medical)</li>
+      <li><span class="chip chip-dept-ga">G&amp;A</span> (General &amp; Administrative)</li>
+    </ul>
+    <p>Note: BC Department is <strong>independent of SET Area</strong>. For example, a CC could sit under the R&amp;D SET area (<code>7000</code>) yet have a BC Department of <code>SMM</code> &mdash; the SET area governs <em>what the cost can be split by</em>, while the BC dept governs how it is classified in the boundary change submission.</p>
+
+    <h3>3. CC selection mode</h3>
+    <p>Each CC in a Cost Out submission is added as either:</p>
+    <ul>
+      <li><span class="chip chip-full">Full CC</span> &mdash; the entire cost centre transfers. Every GL account, every detail row at default values. The user does not enter values for this CC.</li>
+      <li><span class="chip chip-partial">Partial CC</span> &mdash; only selected GL accounts (and within those, only selected detail rows) transfer. The user enters / edits values to specify the partial amount.</li>
+    </ul>
+
+    <h3>4. GL category (within R&amp;D paths)</h3>
+    <p>For R&amp;D cost centres specifically, the GL account drives a further breakdown when entering detail. <code>5110-STAFF</code> and similar STAFF-flavoured GLs split by <strong>Project &times; Utilisation View (UV)</strong>. Non-staff GLs (e.g. <code>6110-TRAV</code>, <code>7110-CLIN</code>) still split by Project &times; UV in this prototype, but in the production system they may stay at GL level only. This is a design decision worth re-confirming with the finance team.</p>
+  </div>
+</div>
+
+<!-- Path matrix -->
+<div class="card">
+  <h2>Path matrix &mdash; SET Area &times; BC Dept</h2>
+  <p>The cell shows the resulting <em>Cost Out shape</em> &mdash; the dimensions the cost is split by when the user enters detail.</p>
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th class="matrix-dim-hdr">SET Area &darr; / BC Dept &rarr;</th>
+        <th><span class="chip chip-dept-rnd">R&amp;D</span></th>
+        <th><span class="chip chip-dept-smm">SMM</span></th>
+        <th><span class="chip chip-dept-ga">G&amp;A</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th><span class="chip chip-set-rnd">R&amp;D Division</span></th>
+        <td class="matrix-cell-rnd"><span class="matrix-shape">gl+project+uv</span><br/><span class="subtle">Splits by Project &times; UV.</span></td>
+        <td class="matrix-cell-rnd"><span class="matrix-shape">gl+project+uv</span><br/><span class="subtle">Splits by Project &times; UV.</span></td>
+        <td class="matrix-cell-rnd"><span class="matrix-shape">gl+project+uv</span><br/><span class="subtle">Splits by Project &times; UV.</span></td>
+      </tr>
+      <tr>
+        <th><span class="chip chip-set-commercial">Commercial</span></th>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td class="matrix-cell-smm"><span class="matrix-shape">gl+product</span><br/><span class="subtle">Splits by Product.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+      </tr>
+      <tr>
+        <th><span class="chip chip-set-it">Digital &amp; Tech</span></th>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+      </tr>
+      <tr>
+        <th><span class="chip chip-set-corporate">Corporate</span></th>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+      </tr>
+      <tr>
+        <th><span class="chip chip-set-operations">Operations</span></th>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+        <td><span class="matrix-shape">gl</span><br/><span class="subtle">GL only.</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="subtle"><strong>Reading the matrix:</strong> R&amp;D SET area always gives Project &times; UV regardless of BC dept. Commercial SET only gives the Product split when the BC dept is SMM. All other combinations stay at GL level only.</p>
+</div>
+
+<!-- Per-path narratives -->
+<div class="card">
+  <h2>Per-path narratives</h2>
+  <p class="subtle">Each path below describes the full Cost Out flow for a meaningful combination of dimensions.</p>
+
+  <div class="path-card" id="path-rnd-partial">
+    <div class="path-card-hdr" onclick="togglePath('path-rnd-partial')">
+      <span class="chip chip-set-rnd">R&amp;D Division</span>
+      <span class="chip chip-dept-rnd">R&amp;D</span>
+      <span class="chip chip-partial">Partial</span>
+      <span class="path-card-hdr-title">e.g. 7300RND-CC-041 Clinical Trials &mdash; Partial transfer</span>
+      <span class="path-card-chev">▼</span>
+    </div>
+    <div class="path-card-body editable" data-section="path-rnd-partial">
+      <h3>Screens shown</h3>
+      <ol>
+        <li><strong>Cost centres</strong> &mdash; user adds the CC and marks it Partial.</li>
+        <li><strong>Cost out &mdash; Select</strong> &mdash; CC appears in the R&amp;D block; user ticks the GL accounts to transfer.</li>
+        <li><strong>Cost out &mdash; Detail</strong> &mdash; every ticked GL explodes into rows by <strong>Project &times; UV</strong>. User can edit values, add ad-hoc rows, remove rows, copy rows.</li>
+        <li><strong>FTEs out</strong> &mdash; user enters FTE counts by location &times; worker type for this CC.</li>
+        <li><strong>Review &amp; submit</strong> &mdash; includes the <strong>UV FTEs out</strong> block (since this is R&amp;D), allocating total FTEs across Project &times; UV by 5110-STAFF cost weights.</li>
+      </ol>
+      <h3>Data shape</h3>
+      <p>Detail rows carry: <code>cc, gl, gln, bcDept, project, projectName, uv, fy25[12], fy26[12], fy27, fy28, fy29</code>. The <code>taCode/taName</code> attribute follows the Project's Therapy Area.</p>
+      <h3>Key rules</h3>
+      <ul>
+        <li>Every row visible on the Detail screen is part of the submission &mdash; tick-state is for toolbar action selection only.</li>
+        <li>The submission cannot proceed if any picked CC has zero rows remaining.</li>
+        <li>UV FTE allocation uses <code>5110-STAFF</code> cost weights specifically. Non-staff GL costs do not enter the FTE allocation formula.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="path-card collapsed" id="path-rnd-full">
+    <div class="path-card-hdr" onclick="togglePath('path-rnd-full')">
+      <span class="chip chip-set-rnd">R&amp;D Division</span>
+      <span class="chip chip-dept-rnd">R&amp;D</span>
+      <span class="chip chip-full">Full</span>
+      <span class="path-card-hdr-title">R&amp;D CC, Full transfer</span>
+      <span class="path-card-chev">▼</span>
+    </div>
+    <div class="path-card-body editable" data-section="path-rnd-full">
+      <h3>Screens shown</h3>
+      <ol>
+        <li><strong>Cost centres</strong> &mdash; user adds the CC and marks it Full.</li>
+        <li><strong>Cost out &mdash; Select</strong> &mdash; the CC appears with all GLs pre-ticked and locked. User cannot untick.</li>
+        <li><strong>Cost out &mdash; Detail</strong> &mdash; <em>skipped</em>. Full CCs flow through with all backend rows at default values.</li>
+        <li><strong>FTEs out</strong> &mdash; FTE rows are auto-populated; the user cannot edit individual rows (read-only for Full CCs).</li>
+        <li><strong>Review &amp; submit</strong> &mdash; includes UV FTEs out block with the same allocation logic.</li>
+      </ol>
+      <h3>Key rules</h3>
+      <ul>
+        <li>Full CCs cannot have their detail edited &mdash; the user is committing to transfer everything.</li>
+        <li>If a contributor's only CC is Full, they skip the Detail screen entirely.</li>
+        <li>A mixed submission (some Full + some Partial) still shows the Detail screen, but Full CCs do not appear there.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="path-card collapsed" id="path-smm-partial">
+    <div class="path-card-hdr" onclick="togglePath('path-smm-partial')">
+      <span class="chip chip-set-commercial">Commercial</span>
+      <span class="chip chip-dept-smm">SMM</span>
+      <span class="chip chip-partial">Partial</span>
+      <span class="path-card-hdr-title">e.g. 6200COM-CC-115 Brand Marketing &mdash; Partial transfer</span>
+      <span class="path-card-chev">▼</span>
+    </div>
+    <div class="path-card-body editable" data-section="path-smm-partial">
+      <h3>Screens shown</h3>
+      <ol>
+        <li><strong>Cost centres</strong> &mdash; user adds the CC and marks it Partial.</li>
+        <li><strong>Cost out &mdash; Select</strong> &mdash; CC appears in the SMM block; user ticks the GL accounts.</li>
+        <li><strong>Cost out &mdash; Detail</strong> &mdash; every ticked GL explodes by <strong>Product</strong>. User can edit values, add/copy/remove rows.</li>
+        <li><strong>FTEs out</strong> &mdash; FTE rows by location &times; worker type.</li>
+        <li><strong>Review &amp; submit</strong> &mdash; <em>no</em> UV FTEs block (SMM CCs do not need UV allocation).</li>
+      </ol>
+      <h3>Data shape</h3>
+      <p>Detail rows carry: <code>cc, gl, gln, bcDept, product, productName, isNonBrand, taCode, taName, fy25[12], fy26[12], fy27, fy28, fy29</code>. There is no <code>project</code> or <code>uv</code> field for SMM rows.</p>
+      <h3>Key rules</h3>
+      <ul>
+        <li>Non-brand products are flagged with a "Non Brand" pill in identity columns.</li>
+        <li>Same gating as R&amp;D: every visible row is part of the submission; every CC must have at least one row.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="path-card collapsed" id="path-it-partial">
+    <div class="path-card-hdr" onclick="togglePath('path-it-partial')">
+      <span class="chip chip-set-it">Digital &amp; Tech</span>
+      <span class="chip chip-dept-rnd">R&amp;D</span>
+      <span class="chip chip-partial">Partial</span>
+      <span class="path-card-hdr-title">e.g. 5110 Platform Engineering &mdash; Partial transfer</span>
+      <span class="path-card-chev">▼</span>
+    </div>
+    <div class="path-card-body editable" data-section="path-it-partial">
+      <h3>Screens shown</h3>
+      <ol>
+        <li><strong>Cost centres</strong> &mdash; user adds the CC and marks it Partial.</li>
+        <li><strong>Cost out &mdash; Select</strong> &mdash; CC appears in its own block (GL only); user ticks GL accounts.</li>
+        <li><strong>Cost out &mdash; Detail</strong> &mdash; <strong>flat list of GL rows</strong>, no further split. User edits values directly.</li>
+        <li><strong>FTEs out</strong> &mdash; FTE rows by location &times; worker type.</li>
+        <li><strong>Review &amp; submit</strong> &mdash; no UV FTEs block (not R&amp;D SET area).</li>
+      </ol>
+      <h3>Data shape</h3>
+      <p>Detail rows carry: <code>cc, gl, gln, bcDept, fy25[12], fy26[12], fy27, fy28, fy29</code>. No product, project, UV or TA fields.</p>
+      <h3>Notes</h3>
+      <p>All non-R&amp;D, non-SMM-Commercial paths (Corporate, Operations, IT, and Commercial-non-SMM) follow this same <code>gl</code>-only shape. The differences are cosmetic (which block-header colour, which department chip), not structural.</p>
+    </div>
+  </div>
+
+  <div class="path-card collapsed" id="path-cross-cutting">
+    <div class="path-card-hdr" onclick="togglePath('path-cross-cutting')">
+      <span class="path-card-hdr-title" style="font-weight:500;">Cross-cutting rules (apply to all paths)</span>
+      <span class="path-card-chev">▼</span>
+    </div>
+    <div class="path-card-body editable" data-section="path-cross-cutting">
+      <h3>Currency</h3>
+      <ul>
+        <li>Values are <strong>stored in USD</strong>. The Local toggle on each screen converts the displayed values using the per-CC currency from <code>ccAttr[code].cur</code>. Editing is only available in USD; Local mode disables inputs to prevent accidental conversion-edits.</li>
+      </ul>
+      <h3>Multi-contributor submissions</h3>
+      <ul>
+        <li>Multiple Cost Out Contributors may be assigned to a single BC. In the prototype, any contributor may pick any CC. In production, each contributor would be gated by their SET area.</li>
+        <li>If two contributors pick the same CC, last-writer-wins.</li>
+      </ul>
+      <h3>Navigation</h3>
+      <ul>
+        <li>Forward navigation always takes priority &mdash; "Back" preserves edits, but if the user unticks a GL on Select and then re-ticks it, the corresponding Detail rows are wiped.</li>
+      </ul>
+      <h3>Submission gates</h3>
+      <ul>
+        <li>Select screen: at least one GL must be ticked across the submission.</li>
+        <li>Detail screen: every Partial CC with picked GLs must have at least one detail row remaining.</li>
+        <li>FTEs out: no minimum &mdash; a CC may transfer 0 FTEs (cost-only transfer).</li>
+      </ul>
+      <h3>UV FTEs out (R&amp;D only)</h3>
+      <ul>
+        <li>Visible on Review only if the submission contains at least one R&amp;D SET area CC.</li>
+        <li>Allocation formula per CC, per FY: <code>UV_FTE = total_CC_FTE &times; (uv_staff_cost / total_staff_cost)</code>, where staff cost is filtered to <code>5110-STAFF</code> only.</li>
+        <li>Rows allocated to 1 decimal place, with round-and-balance so each column sums exactly to the CC's total FTE for that FY.</li>
+        <li>If a period has FTEs &gt; 0 but no STAFF cost rows, the allocation is shown as <code>&mdash;</code> (cannot allocate).</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Open questions / design notes -->
+<div class="card">
+  <h2>Open questions &amp; design notes</h2>
+  <div class="editable" data-section="open-questions">
+    <ul>
+      <li><strong>Non-staff R&amp;D GLs</strong> &mdash; should non-staff costs (travel, contractor fees, etc.) really split by Project &times; UV in the production system, or only by Project? The prototype currently splits all R&amp;D GLs by Project &times; UV.</li>
+      <li><strong>UV FTE allocation basis</strong> &mdash; we use <code>5110-STAFF</code> only. If a project has Bonus &amp; Incentives (5210) or Contractor fees (5310) but no Salaries, that cost should arguably enter the headcount weighting too. Discuss with finance team.</li>
+      <li><strong>Currency edit-back</strong> &mdash; should we allow editing in Local currency with auto-conversion back to USD? Trade-off: more flexibility vs. risk of rounding mismatch on round-trip.</li>
+      <li><strong>SET area enforcement</strong> &mdash; in production, should contributors be hard-gated to their own SET area, or just defaulted?</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Change history (initially hidden) -->
+<div class="card" id="changelog-card" style="display:none;">
+  <h2>Change history</h2>
+  <p class="subtle">Each entry below records an edit made to this documentation, with timestamp and the note you provided. Click <em>Restore</em> on any entry to revert the document to that state.</p>
+  <div id="changelog-list"></div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- Modal: describe-this-change -->
+<div class="modal-overlay" id="save-modal">
+  <div class="modal-card">
+    <div class="modal-title">Save changes</div>
+    <div class="modal-body">
+      <p>Briefly describe what changed (this becomes the changelog entry):</p>
+      <textarea id="save-note" placeholder="e.g. Clarified UV allocation formula; added SET area enforcement question."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSave()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: restore confirmation -->
+<div class="modal-overlay" id="restore-modal">
+  <div class="modal-card">
+    <div class="modal-title">Restore this version?</div>
+    <div class="modal-body" id="restore-modal-body">This will replace the current document with the state from this changelog entry. The current document will be saved as a new changelog entry first, so this is non-destructive.</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeRestoreModal()">Cancel</button>
+      <button class="btn btn-primary" id="confirm-restore-btn">Restore</button>
+    </div>
+  </div>
+</div>
+
+<!-- Unsaved-banner -->
+<div class="unsaved-banner" id="unsaved-banner">
+  <span><strong>Editing</strong> — your changes aren't saved yet</span>
+  <button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="openSaveModal()">Save changes</button>
+  <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="cancelEdit()">Cancel</button>
+</div>
+
+<script>
+/* ── Persistent storage helpers ──
+   We store:
+     paths-doc:sections     → {sectionId: htmlContent}    current state
+     paths-doc:changelog    → [{ts, note, sections, snapshot}]
+     paths-doc:meta         → {lastUpdated, lastEditor}
+   The "sections" object stores HTML for each editable region keyed by data-section.
+   On load, if storage has a section's content, that overrides the default markup;
+   otherwise we capture the default markup and use it. */
+
+const STORAGE_AVAILABLE = typeof window.storage !== 'undefined';
+
+async function storageGet(key) {
+  if (!STORAGE_AVAILABLE) return null;
+  try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null; }
+  catch (e) { return null; }
+}
+async function storageSet(key, value) {
+  if (!STORAGE_AVAILABLE) return false;
+  try { await window.storage.set(key, JSON.stringify(value)); return true; }
+  catch (e) { console.error('storage.set failed', e); return false; }
+}
+
+/* ── Section management ── */
+function getDefaultSections() {
+  // Snapshot the initial markup of every editable section, keyed by data-section attribute
+  const out = {};
+  document.querySelectorAll('.editable[data-section]').forEach(el => {
+    out[el.dataset.section] = el.innerHTML;
+  });
+  return out;
+}
+function applySections(sections) {
+  if (!sections) return;
+  Object.entries(sections).forEach(([id, html]) => {
+    const el = document.querySelector(`.editable[data-section="${id}"]`);
+    if (el) el.innerHTML = html;
+  });
+}
+
+let defaultSections = null;     // captured on first load
+let currentSections = null;     // what's in storage (or defaults if none)
+let editSnapshot = null;        // captured at enter-edit-mode, for cancel/diff
+let changelog = [];
+
+async function loadDoc() {
+  defaultSections = getDefaultSections();
+  currentSections = await storageGet('paths-doc:sections');
+  if (currentSections) {
+    applySections(currentSections);
+  } else {
+    currentSections = { ...defaultSections };
+  }
+  changelog = (await storageGet('paths-doc:changelog')) || [];
+  renderChangelog();
+  renderLastUpdated();
+}
+
+function renderLastUpdated() {
+  const meta = document.getElementById('last-updated-meta');
+  if (!meta) return;
+  if (changelog.length === 0) {
+    meta.textContent = 'No edits yet. Click Edit above to start.';
+  } else {
+    const last = changelog[changelog.length - 1];
+    meta.textContent = `Last edit ${formatTimestamp(last.ts)} — "${last.note}"`;
+  }
+}
+
+function formatTimestamp(ms) {
+  const d = new Date(ms);
+  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ── Edit mode ── */
+function enterEditMode() {
+  editSnapshot = capturePresentSections();
+  document.body.classList.add('edit-mode');
+  document.querySelectorAll('.editable').forEach(el => { el.contentEditable = 'true'; });
+  document.getElementById('unsaved-banner').classList.add('show');
+}
+function cancelEdit() {
+  if (editSnapshot) applySections(editSnapshot);
+  document.body.classList.remove('edit-mode');
+  document.querySelectorAll('.editable').forEach(el => { el.contentEditable = 'false'; });
+  document.getElementById('unsaved-banner').classList.remove('show');
+  editSnapshot = null;
+}
+function capturePresentSections() {
+  const out = {};
+  document.querySelectorAll('.editable[data-section]').forEach(el => {
+    out[el.dataset.section] = el.innerHTML;
+  });
+  return out;
+}
+
+/* ── Save modal ── */
+function openSaveModal() {
+  const ta = document.getElementById('save-note');
+  ta.value = '';
+  document.getElementById('save-modal').classList.add('show');
+  setTimeout(() => ta.focus(), 50);
+}
+function closeSaveModal() {
+  document.getElementById('save-modal').classList.remove('show');
+}
+async function confirmSave() {
+  const note = (document.getElementById('save-note').value || '').trim() || '(no description)';
+  const present = capturePresentSections();
+  // Determine which sections changed vs editSnapshot
+  const changedIds = [];
+  if (editSnapshot) {
+    Object.keys(present).forEach(id => {
+      if ((editSnapshot[id] || '').trim() !== (present[id] || '').trim()) changedIds.push(id);
+    });
+  }
+  const entry = {
+    ts: Date.now(),
+    note,
+    sectionsChanged: changedIds,
+    snapshot: editSnapshot, // the pre-edit state — i.e. what to restore "to before this edit"
+  };
+  changelog.push(entry);
+  currentSections = present;
+  const ok1 = await storageSet('paths-doc:sections', currentSections);
+  const ok2 = await storageSet('paths-doc:changelog', changelog);
+  if (!ok1 || !ok2) {
+    if (!STORAGE_AVAILABLE) {
+      alert('This page has no persistent storage available — changes are visible for this session only.');
+    } else {
+      alert('Failed to save. Changes are visible for this session only.');
+    }
+  }
+  closeSaveModal();
+  document.body.classList.remove('edit-mode');
+  document.querySelectorAll('.editable').forEach(el => { el.contentEditable = 'false'; });
+  document.getElementById('unsaved-banner').classList.remove('show');
+  editSnapshot = null;
+  renderChangelog();
+  renderLastUpdated();
+}
+
+/* ── Changelog ── */
+function toggleChangelog() {
+  const card = document.getElementById('changelog-card');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+  if (card.style.display === 'block') card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function renderChangelog() {
+  const host = document.getElementById('changelog-list');
+  if (!host) return;
+  if (!changelog.length) {
+    host.innerHTML = '<div class="changelog-empty">No edits recorded yet.</div>';
+    return;
+  }
+  // Newest first
+  const entries = [...changelog].reverse();
+  host.innerHTML = entries.map((e, idx) => {
+    const realIdx = changelog.length - 1 - idx;
+    const sects = (e.sectionsChanged && e.sectionsChanged.length)
+      ? `<span class="meta"> · sections: ${e.sectionsChanged.join(', ')}</span>`
+      : '';
+    return `<div class="changelog-entry">
+      <div class="changelog-entry-meta">${formatTimestamp(e.ts)}${sects}</div>
+      <div class="changelog-entry-note">${escapeHtml(e.note)}</div>
+      <div class="changelog-entry-actions">
+        <button class="btn btn-secondary" style="font-size:11px;padding:3px 9px;" onclick="openRestoreModal(${realIdx})">Restore to before this edit</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* ── Restore ── */
+let pendingRestoreIdx = -1;
+function openRestoreModal(idx) {
+  pendingRestoreIdx = idx;
+  const entry = changelog[idx];
+  const body = document.getElementById('restore-modal-body');
+  body.innerHTML = `Restore the document to the state <strong>before</strong> the edit on ${formatTimestamp(entry.ts)} ("${escapeHtml(entry.note)}")? This is non-destructive: the current state is saved as a new changelog entry first.`;
+  document.getElementById('confirm-restore-btn').onclick = doRestore;
+  document.getElementById('restore-modal').classList.add('show');
+}
+function closeRestoreModal() {
+  document.getElementById('restore-modal').classList.remove('show');
+  pendingRestoreIdx = -1;
+}
+async function doRestore() {
+  if (pendingRestoreIdx < 0) return;
+  const entry = changelog[pendingRestoreIdx];
+  if (!entry.snapshot) {
+    alert('No snapshot available for this entry.');
+    closeRestoreModal();
+    return;
+  }
+  // Save current state as a new changelog entry first
+  const present = capturePresentSections();
+  changelog.push({
+    ts: Date.now(),
+    note: `Restored to state before "${entry.note}" (${formatTimestamp(entry.ts)})`,
+    sectionsChanged: [],
+    snapshot: present,
+  });
+  // Apply the snapshot
+  applySections(entry.snapshot);
+  currentSections = entry.snapshot;
+  await storageSet('paths-doc:sections', currentSections);
+  await storageSet('paths-doc:changelog', changelog);
+  closeRestoreModal();
+  renderChangelog();
+  renderLastUpdated();
+}
+
+/* ── Path-card collapse / expand ── */
+function togglePath(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('collapsed');
+}
+
+/* ── Init ── */
+loadDoc();
+</script>
+</body>
+</html>
