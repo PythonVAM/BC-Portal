@@ -300,6 +300,12 @@ table.cod-tbl tr.cod-adhoc.cod-sel td { background: #E8D9BC !important; }
 table.cod-tbl input.cod-input { width: 78px; text-align: right; border: 0.5px solid #e0ded8; background: #fff; padding: 4px 6px; border-radius: 4px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
 table.cod-tbl input.cod-input:focus { outline: none; border-color: #93BCDC; background: #fcfeff; }
 .cod-cc-hdr { display: flex; align-items: center; gap: 9px; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 0.5px solid #ebe9e3; }
+/* Greyed "N/A" cell — a column not used by this row's shape (Product/Project/UV) */
+td.cod-na { color: #b8b6b0; background: #f6f5f2; font-style: italic; font-size: 11px; text-align: center; }
+/* Full CC read-only block on the Detail screen — separate from the editable Partial table */
+.cod-full-hdr { margin-top: 26px; }
+table.cod-full-tbl tbody tr.cod-full-row td { background: #fbfaf7; color: #4a4a4a; }
+table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
 
 /* Hints & tips banner — used on Cost Out / Cost In entry screens */
 .hints-banner { background: #FBF6E9; border: 0.5px solid #E8D9A8; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
@@ -1894,6 +1900,64 @@ function enterCoDetail(){
   });
   renderCoDetail();
 }
+/* ── Build the six fixed identity cells (Cost centre · Dept · GL · Product · Project · UV)
+   for one row. `mode` is 'edit' (Partial backend row), 'adhoc' (editable identity),
+   or 'full' (read-only Full CC row). Columns a row's shape doesn't use render as a
+   greyed "N/A" cell. */
+function coDetailIdCells(ds,shape,mode,ccs){
+  const na=`<td class="cod-na">N/A</td>`;
+  const stop=`onclick="event.stopPropagation();"`;
+  // Cost centre
+  let ccCell;
+  if(mode==='adhoc'){
+    ccCell=`<td><input class="cod-input" style="width:120px;" value="${ds.cc||''}" placeholder="CC code" onchange="editCoDetailIdentity('${ds.key}','cc',this.value)" ${stop}/></td>`;
+  } else {
+    const cc=ccs.find(c=>c.code===(ds.cc||''));
+    const ccName=cc?cc.name:'';
+    const badge=mode==='full'?'<span class="full-badge" style="font-size:9px;margin-left:4px;">Full</span>':'<span class="partial-badge" style="font-size:9px;margin-left:4px;">Partial</span>';
+    ccCell=`<td class="cosel-cc-cell"><div><span class="cc-badge-out" style="font-size:10px;">${ds.cc||''}</span>${badge}</div><div style="font-size:10px;color:#888;margin-top:2px;">${ccName}</div></td>`;
+  }
+  // Dept (chip derived from the CC)
+  const deptCell=`<td>${deptChipFor(ds.cc||'')}</td>`;
+  // GL account
+  let glCell;
+  if(mode==='adhoc')glCell=`<td><input class="cod-input" style="width:150px;" value="${ds.gl||''}" placeholder="GL code & name" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" ${stop}/></td>`;
+  else glCell=`<td><span class="gl-badge">${ds.gl||'—'}</span>${ds.gln?' '+ds.gln:''}</td>`;
+  // Product — only used by gl+product shape
+  let prodCell;
+  if(shape==='gl+product'){
+    if(mode==='adhoc')prodCell=`<td><input class="cod-input" style="width:150px;" value="${ds.productName||''}" placeholder="Product name" onchange="editCoDetailIdentity('${ds.key}','productName',this.value)" ${stop}/></td>`;
+    else { const nb=ds.isNonBrand?' <span class="non-brand-pill">Non Brand</span>':''; prodCell=`<td><div style="font-size:10px;color:#999;">${ds.taName||'—'}</div><div>${ds.productName||'—'}${nb}</div></td>`; }
+  } else prodCell=na;
+  // Project — only used by gl+project+uv shape
+  let projCell;
+  if(shape==='gl+project+uv'){
+    if(mode==='adhoc')projCell=`<td><input class="cod-input" style="width:160px;" value="${ds.projectName||''}" placeholder="Project name" onchange="editCoDetailIdentity('${ds.key}','projectName',this.value)" ${stop}/></td>`;
+    else projCell=`<td><div style="font-size:10px;color:#999;">${ds.taName?ds.taName+(ds.productName?' · '+ds.productName:''):'—'}</div><div>${ds.projectName||'—'}</div></td>`;
+  } else projCell=na;
+  // UV — only used by gl+project+uv shape
+  let uvCell;
+  if(shape==='gl+project+uv'){
+    if(mode==='adhoc')uvCell=`<td><input class="cod-input" style="width:70px;" value="${ds.uv||''}" placeholder="UV" onchange="editCoDetailIdentity('${ds.key}','uv',this.value)" ${stop}/></td>`;
+    else uvCell=`<td>${uvChipFor(ds.uv)}</td>`;
+  } else uvCell=na;
+  return ccCell+deptCell+glCell+prodCell+projCell+uvCell;
+}
+/* FY value cells for one row. `readonly` (Full CC rows) renders plain text instead of inputs. */
+function coDetailFyCells(ds,cur,readonly,exp25,exp26,localMode){
+  const conv=v=>toLocal(Number(v)||0,cur);
+  const t25=conv(rowTotal(ds.fy25||[])),t26=conv(rowTotal(ds.fy26||[]));
+  const roVal=localMode?' disabled':'';
+  const moCell=(fk,mi)=>readonly
+    ? `<td class="cod-num">${ds[fk]&&ds[fk][mi]?fmt(conv(ds[fk][mi])):''}</td>`
+    : `<td><input class="cod-input" value="${ds[fk]&&ds[fk][mi]?fmt(conv(ds[fk][mi])):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','${fk}',${mi},this.value)" onclick="event.stopPropagation();"/></td>`;
+  const futCell=fk=>readonly
+    ? `<td class="cod-num">${ds[fk]?fmt(conv(ds[fk])):''}</td>`
+    : `<td class="cod-num"><input class="cod-input" value="${ds[fk]?fmt(conv(ds[fk])):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','${fk}',null,this.value)" onclick="event.stopPropagation();"/></td>`;
+  const mo25=exp25?MO.map((_,mi)=>moCell('fy25',mi)).join(''):'';
+  const mo26=exp26?MO.map((_,mi)=>moCell('fy26',mi)).join(''):'';
+  return `<td class="cod-num cod-tot">${fmt(t25)}</td>${mo25}<td class="cod-num cod-tot">${fmt(t26)}</td>${mo26}${futCell('fy27')}${futCell('fy28')}${futCell('fy29')}`;
+}
 function renderCoDetail(){
   const host=document.getElementById('co-detail-blocks');
   if(!host)return;
@@ -1901,151 +1965,103 @@ function renderCoDetail(){
   const exp25=fyExp.fy25,exp26=fyExp.fy26;
   const hasSub=exp25||exp26;
   const localMode=rvCurrency==='local';
-
-  // Group all coDetail rows by (bcDept, shape). Determine each row's grouping
-  // from its `cc` (looked up via gca/coShape). Ad-hoc rows with empty/unknown CC
-  // fall into a separate "unassigned" group at the bottom.
-  const groupsByKey=new Map();
-  // Seed groups from visible CCs (in cc2Sel order) so empty groups still appear
-  // until the user removes them — important for the "block stays visible if its
-  // CCs are picked" UX.
-  const visibleCcs=ccs.filter(cc=>!isCcFull(cc.code) && glRollup(cc.code).some(g=>coGlPicked.has(g.glKey)));
-  visibleCcs.forEach(cc=>{
-    const dept=gca(cc.code).bcDept||'—';
-    const shape=coShape(cc.code);
-    const key=`${dept}|${shape}`;
-    if(!groupsByKey.has(key))groupsByKey.set(key,{dept,shape,ccs:[],rows:[]});
-    if(!groupsByKey.get(key).ccs.find(c=>c.code===cc.code))groupsByKey.get(key).ccs.push(cc);
-  });
-  // Assign every coDetail row to its group
-  Object.values(coDetail).forEach(ds=>{
-    const ccCode=ds.cc||'';
-    let dept,shape;
-    if(ccCode&&gca(ccCode).bcDept){
-      dept=gca(ccCode).bcDept;
-      shape=coShape(ccCode);
-    } else {
-      // Ad-hoc row with no recognised CC — place by user-typed dept (fallback)
-      // or in an "unassigned" group.
-      dept=ds.bcDept||'—';
-      shape='gl';
-    }
-    const key=`${dept}|${shape}`;
-    if(!groupsByKey.has(key))groupsByKey.set(key,{dept,shape,ccs:[],rows:[]});
-    groupsByKey.get(key).rows.push(ds);
-  });
-
   const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-  const shapeOrder={'gl+project+uv':0,'gl+product':1,'gl':2};
-  const orderedGroups=[...groupsByKey.values()].sort((a,b)=>{
-    const da=deptOrder[a.dept]??99,db=deptOrder[b.dept]??99;
+  // Sort key: Dept (R&D→SMM→G&A) then Cost Centre code.
+  const byDeptCc=(a,b)=>{
+    const da=deptOrder[gca(a.cc||'').bcDept]??99,db=deptOrder[gca(b.cc||'').bcDept]??99;
     if(da!==db)return da-db;
-    return (shapeOrder[a.shape]??99)-(shapeOrder[b.shape]??99);
-  });
+    return (a.cc||'').localeCompare(b.cc||'');
+  };
+
+  // ── Shared column scaffolding ── fixed 6 identity columns + FY columns.
+  const moTh=MO.map(m=>`<th class="cod-mo">${m}</th>`).join('');
+  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:60px;">Dept</th><th style="min-width:140px;">GL account</th><th style="min-width:150px;">Product</th><th style="min-width:160px;">Project</th><th style="min-width:90px;">UV</th>`;
+  const idHeadSpanned=idHead.replace(/<th /g,hasSub?'<th rowspan="2" ':'<th ');
+  const fyHead=`
+    <th class="cod-num th-fy-sel" colspan="${exp25?13:1}" onclick="toggleCoDetailFy('fy25')">FY25 ${exp25?'▼':'▶'}</th>
+    <th class="cod-num th-fy-sel" colspan="${exp26?13:1}" onclick="toggleCoDetailFy('fy26')">FY26 ${exp26?'▼':'▶'}</th>
+    <th class="cod-num th-fut-sel"${hasSub?' rowspan="2"':''}>FY27</th>
+    <th class="cod-num th-fut-sel"${hasSub?' rowspan="2"':''}>FY28</th>
+    <th class="cod-num th-fut-sel"${hasSub?' rowspan="2"':''}>FY29</th>`;
+  const subHead=hasSub?`<tr>
+    ${exp25?`<th class="cod-mo cod-mo-tot">Total</th>${moTh}`:''}
+    ${exp26?`<th class="cod-mo cod-mo-tot">Total</th>${moTh}`:''}
+  </tr>`:'';
 
   let html='';
-  orderedGroups.forEach(grp=>{
-    const shape=grp.shape;
-    const splitLbl={'gl':'No further split — edit values directly.','gl+product':'Split by Product.','gl+project+uv':'Split by Project and Utilisation View.'}[shape];
 
-    // Identity columns
-    let identityTh;
-    if(shape==='gl+product')identityTh=`<th style="min-width:150px;">Cost centre</th><th style="min-width:170px;">Product</th><th style="min-width:120px;">GL account</th>`;
-    else if(shape==='gl+project+uv')identityTh=`<th style="min-width:150px;">Cost centre</th><th style="min-width:180px;">Project</th><th style="min-width:80px;">UV</th><th style="min-width:120px;">GL account</th>`;
-    else identityTh=`<th style="min-width:150px;">Cost centre</th><th style="min-width:200px;">GL account</th>`;
-
-    const moTh=MO.map(m=>`<th class="cod-mo">${m}</th>`).join('');
-    const fyHead=`
-      <th class="cod-num th-fy-sel" colspan="${exp25?13:1}" onclick="toggleCoDetailFy('fy25')">FY25 ${exp25?'▼':'▶'}</th>
-      <th class="cod-num th-fy-sel" colspan="${exp26?13:1}" onclick="toggleCoDetailFy('fy26')">FY26 ${exp26?'▼':'▶'}</th>
-      <th class="cod-num th-fut-sel"${hasSub?' rowspan="2"':''}>FY27</th>
-      <th class="cod-num th-fut-sel"${hasSub?' rowspan="2"':''}>FY28</th>
-      <th class="cod-num th-fut-sel"${hasSub?' rowspan="2"':''}>FY29</th>`;
-    const subHead=hasSub?`<tr>
-      ${exp25?`<th class="cod-mo cod-mo-tot">Total</th>${moTh}`:''}
-      ${exp26?`<th class="cod-mo cod-mo-tot">Total</th>${moTh}`:''}
-    </tr>`:'';
-
-    // Body: flat rows from coDetail. User-added rows have isAdhoc:true and use editable identity inputs.
+  // ── Partial CCs: one unified, editable table grouped by Dept then CC ──
+  const partialRows=Object.values(coDetail).slice().sort(byDeptCc);
+  const onScreenPartials=ccs.filter(cc=>!isCcFull(cc.code) && glRollup(cc.code).some(g=>coGlPicked.has(g.glKey)));
+  if(partialRows.length||onScreenPartials.length){
     let body='';
-    grp.rows.forEach((ds,i)=>{
+    partialRows.forEach((ds,i)=>{
       const ccCode=ds.cc||'';
       const cur=ccCode?(gca(ccCode).cur||'USD'):'USD';
-      const conv=v=>toLocal(Number(v)||0,cur);
-      const t25=conv(rowTotal(ds.fy25||[])),t26=conv(rowTotal(ds.fy26||[]));
+      const shape=(ccCode&&gca(ccCode).bcDept)?coShape(ccCode):'gl';
       const isSel=coDetailSel.has(ds.key);
-      const adhoc=ds.isAdhoc;
-      // Cost centre cell — editable text for ad-hoc, badge for backend rows
-      let ccCell;
-      if(adhoc){
-        ccCell=`<td><input class="cod-input" style="width:130px;" value="${ds.cc||''}" placeholder="CC code" onchange="editCoDetailIdentity('${ds.key}','cc',this.value)" onclick="event.stopPropagation();"/></td>`;
-      } else {
-        const cc=ccs.find(c=>c.code===ccCode);
-        const ccName=cc?cc.name:'';
-        ccCell=`<td class="cosel-cc-cell"><div><span class="cc-badge-out" style="font-size:10px;">${ccCode}</span><span class="partial-badge" style="font-size:9px;margin-left:4px;">Partial</span></div><div style="font-size:10px;color:#888;margin-top:2px;">${ccName}</div></td>`;
-      }
-      // Identity cells per shape
-      let identityTd;
-      if(shape==='gl+product'){
-        if(adhoc){
-          identityTd=`${ccCell}<td><input class="cod-input" style="width:160px;" value="${ds.productName||''}" placeholder="Product name" onchange="editCoDetailIdentity('${ds.key}','productName',this.value)" onclick="event.stopPropagation();"/></td><td><input class="cod-input" style="width:110px;" value="${ds.gl||''}" placeholder="GL code" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" onclick="event.stopPropagation();"/></td>`;
-        } else {
-          const nb=ds.isNonBrand?' <span class="non-brand-pill">Non Brand</span>':'';
-          identityTd=`${ccCell}<td><div style="font-size:10px;color:#999;">${ds.taName||'—'}</div><div>${ds.productName||'—'}${nb}</div></td><td><span class="gl-badge">${ds.gl}</span></td>`;
-        }
-      } else if(shape==='gl+project+uv'){
-        if(adhoc){
-          identityTd=`${ccCell}<td><input class="cod-input" style="width:170px;" value="${ds.projectName||''}" placeholder="Project name" onchange="editCoDetailIdentity('${ds.key}','projectName',this.value)" onclick="event.stopPropagation();"/></td><td><input class="cod-input" style="width:70px;" value="${ds.uv||''}" placeholder="UV" onchange="editCoDetailIdentity('${ds.key}','uv',this.value)" onclick="event.stopPropagation();"/></td><td><input class="cod-input" style="width:110px;" value="${ds.gl||''}" placeholder="GL code" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" onclick="event.stopPropagation();"/></td>`;
-        } else {
-          identityTd=`${ccCell}<td><div style="font-size:10px;color:#999;">${ds.taName?ds.taName+(ds.productName?' · '+ds.productName:''):'—'}</div><div>${ds.projectName||'—'}</div></td><td>${uvChipFor(ds.uv)}</td><td><span class="gl-badge">${ds.gl}</span></td>`;
-        }
-      } else {
-        if(adhoc){
-          identityTd=`${ccCell}<td><input class="cod-input" style="width:180px;" value="${ds.gl||''}" placeholder="GL code & name" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" onclick="event.stopPropagation();"/></td>`;
-        } else {
-          identityTd=`${ccCell}<td><span class="gl-badge">${ds.gl}</span> ${ds.gln||''}</td>`;
-        }
-      }
-      const roVal=localMode?' disabled':'';
-      const mo25=exp25?MO.map((_,mi)=>`<td><input class="cod-input" value="${ds.fy25&&ds.fy25[mi]?fmt(conv(ds.fy25[mi])):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','fy25',${mi},this.value)" onclick="event.stopPropagation();"/></td>`).join(''):'';
-      const mo26=exp26?MO.map((_,mi)=>`<td><input class="cod-input" value="${ds.fy26&&ds.fy26[mi]?fmt(conv(ds.fy26[mi])):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','fy26',${mi},this.value)" onclick="event.stopPropagation();"/></td>`).join(''):'';
-      const grpKeyAttr=`${grp.dept}|${grp.shape}`.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-      body+=`<tr class="${i%2===1?'co-alt':''}${isSel?' cod-sel':''}${adhoc?' cod-adhoc':''}" data-cod-row="${ds.key}" data-cod-group="${grpKeyAttr}" onclick="onCoDetailRowClick(event,this.dataset.codRow,this.dataset.codGroup)">
+      const mode=ds.isAdhoc?'adhoc':'edit';
+      body+=`<tr class="${i%2===1?'co-alt':''}${isSel?' cod-sel':''}${ds.isAdhoc?' cod-adhoc':''}" data-cod-row="${ds.key}" data-cod-group="partials" onclick="onCoDetailRowClick(event,this.dataset.codRow,this.dataset.codGroup)">
         <td class="cosel-chk"><input type="checkbox" ${isSel?'checked':''} onclick="onCoDetailCheckboxClick(event,this.closest('tr').dataset.codRow,this.closest('tr').dataset.codGroup)"/></td>
-        ${identityTd}
-        <td class="cod-num cod-tot">${fmt(t25)}</td>${mo25}
-        <td class="cod-num cod-tot">${fmt(t26)}</td>${mo26}
-        <td class="cod-num"><input class="cod-input" value="${ds.fy27?fmt(conv(ds.fy27)):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','fy27',null,this.value)" onclick="event.stopPropagation();"/></td>
-        <td class="cod-num"><input class="cod-input" value="${ds.fy28?fmt(conv(ds.fy28)):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','fy28',null,this.value)" onclick="event.stopPropagation();"/></td>
-        <td class="cod-num"><input class="cod-input" value="${ds.fy29?fmt(conv(ds.fy29)):''}" placeholder="0"${roVal} onchange="editCoDetail('${ds.key}','fy29',null,this.value)" onclick="event.stopPropagation();"/></td>
+        ${coDetailIdCells(ds,shape,mode,ccs)}
+        ${coDetailFyCells(ds,cur,false,exp25,exp26,localMode)}
       </tr>`;
     });
-
-    // Group header
-    const ccCount=grp.ccs.length;
-    // Header checkbox state: count rows in this group that are selected
-    const grpKeys=grp.rows.map(r=>r.key);
-    const grpSelCount=grpKeys.filter(k=>coDetailSel.has(k)).length;
-    const grpAllSel=grpKeys.length>0&&grpSelCount===grpKeys.length;
-    const grpSomeSel=grpSelCount>0&&!grpAllSel;
-    const grpKey=`${grp.dept}|${grp.shape}`;
-    const headerChk=`<th class="cosel-chk"${hasSub?' rowspan="2"':''}><input type="checkbox" ${grpAllSel?'checked':''} ${grpSomeSel?'data-indeterminate="1"':''} data-cod-grp-key="${grpKey.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" onclick="toggleCoDetailGroupSel(this.dataset.codGrpKey,this.checked);event.stopPropagation();"/></th>`;
-    html+=`<div class="cod-cc-hdr" data-cod-group="${grp.dept}|${grp.shape}">
-        ${deptChipFor(grp.ccs[0]?grp.ccs[0].code:'')}
-        <span class="shape-tag">${coShapeLabel(shape)}</span>
-        <span style="font-size:11px;color:#888;">${ccCount} cost ${ccCount===1?'centre':'centres'} · ${grp.rows.length} ${grp.rows.length===1?'row':'rows'}</span>
-        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">${splitLbl}</span>
+    const pKeys=partialRows.map(r=>r.key);
+    const pSel=pKeys.filter(k=>coDetailSel.has(k)).length;
+    const pAll=pKeys.length>0&&pSel===pKeys.length;
+    const pSome=pSel>0&&!pAll;
+    const headerChk=`<th class="cosel-chk"${hasSub?' rowspan="2"':''}><input type="checkbox" ${pAll?'checked':''} ${pSome?'data-indeterminate="1"':''} data-cod-grp-key="partials" onclick="toggleCoDetailGroupSel(this.dataset.codGrpKey,this.checked);event.stopPropagation();"/></th>`;
+    html+=`<div class="cod-cc-hdr" data-cod-group="partials">
+        <span class="shape-tag">Editable transfer rows</span>
+        <span style="font-size:11px;color:#888;">${partialRows.length} ${partialRows.length===1?'row':'rows'} · Partial cost centres</span>
+        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Grey N/A = column not used for that cost centre's shape.</span>
       </div>
       <div class="cosel-tbl-wrap"><table class="cosel-tbl cod-tbl">
-        <thead><tr>${headerChk}${identityTh.replace(/<th /g,hasSub?'<th rowspan="2" ':'<th ')}${fyHead}</tr>${subHead}</thead>
-        <tbody>${body||`<tr><td colspan="20" style="text-align:center;color:#888;font-style:italic;padding:14px;">No rows. Use <strong>+ Add row</strong> to add one.</td></tr>`}</tbody>
+        <thead><tr>${headerChk}${idHeadSpanned}${fyHead}</tr>${subHead}</thead>
+        <tbody>${body||`<tr><td colspan="40" style="text-align:center;color:#888;font-style:italic;padding:14px;">No rows. Use <strong>+ Add row</strong> to add one.</td></tr>`}</tbody>
       </table></div>`;
-  });
-  let emptyMsg='No GL accounts selected. Go back and tick the cost you want to transfer.';
-  const ccsForState=getAllCostOut();
-  if(ccsForState.length&&ccsForState.every(cc=>isCcFull(cc.code))){
-    emptyMsg='All selected cost centres are Full CC transfers — no detail to enter. Continue to FTEs.';
   }
+
+  // ── Full CCs: separate read-only block, same columns, no toolbar / no CSV ──
+  const fullCcs=ccs.filter(cc=>isCcFull(cc.code)).slice().sort((a,b)=>{
+    const da=deptOrder[gca(a.code).bcDept]??99,db=deptOrder[gca(b.code).bcDept]??99;
+    if(da!==db)return da-db;
+    return a.code.localeCompare(b.code);
+  });
+  if(fullCcs.length){
+    let fullBody='',fi=0;
+    fullCcs.forEach(cc=>{
+      const cur=gca(cc.code).cur||'USD';
+      const shape=coShape(cc.code);
+      buildDetailRows(cc.code).forEach(r=>{
+        const ds={
+          key:r.key,cc:cc.code,gl:r.gl,gln:r.gln,bcDept:r.bcDept,
+          productName:r.product?r.product.name:'',isNonBrand:r.product?!!r.product.isNonBrand:false,
+          taName:r.product?taFull(r.product.ta):(r.project?taFull(r.project.ta):''),
+          projectName:r.project?r.project.name:'',uv:r.uv||'',
+          fy25:r.fy25,fy26:r.fy26,fy27:r.fy27,fy28:r.fy28,fy29:r.fy29,
+        };
+        fullBody+=`<tr class="${fi%2===1?'co-alt':''} cod-full-row">
+          <td class="cosel-chk"></td>
+          ${coDetailIdCells(ds,shape,'full',ccs)}
+          ${coDetailFyCells(ds,cur,true,exp25,exp26,localMode)}
+        </tr>`;
+        fi++;
+      });
+    });
+    html+=`<div class="cod-cc-hdr cod-full-hdr">
+        <span class="full-badge" style="font-size:10px;">Full</span>
+        <span class="shape-tag">Full cost centres — transferred in full</span>
+        <span style="margin-left:auto;font-size:11px;color:#999;font-style:italic;">Read-only · auto-populated · not part of download / upload.</span>
+      </div>
+      <div class="cosel-tbl-wrap"><table class="cosel-tbl cod-tbl cod-full-tbl">
+        <thead><tr><th class="cosel-chk"${hasSub?' rowspan="2"':''}></th>${idHeadSpanned}${fyHead}</tr>${subHead}</thead>
+        <tbody>${fullBody}</tbody>
+      </table></div>`;
+  }
+
+  let emptyMsg='No GL accounts selected. Go back and tick the cost you want to transfer.';
   host.innerHTML=html||`<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">${emptyMsg}</div>`;
   // Apply indeterminate state to group-header checkboxes (HTML attribute alone doesn't trigger this)
   host.querySelectorAll('thead .cosel-chk input[data-indeterminate]').forEach(cb=>{cb.indeterminate=true;});
