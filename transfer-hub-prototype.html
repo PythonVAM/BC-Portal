@@ -299,6 +299,8 @@ table.cod-tbl tr.cod-adhoc.cod-sel td { background: #E8D9BC !important; }
 .modal-select { width: 100%; padding: 8px 10px; border: 0.5px solid #ccc; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; margin-top: 8px; }
 table.cod-tbl input.cod-input { width: 78px; text-align: right; border: 0.5px solid #e0ded8; background: #fff; padding: 4px 6px; border-radius: 4px; font-size: 11.5px; font-variant-numeric: tabular-nums; }
 table.cod-tbl input.cod-input:focus { outline: none; border-color: #93BCDC; background: #fcfeff; }
+/* Identity comboboxes (Product / Project / UV / CC / GL) — left-aligned text, auto width */
+table.cod-tbl input.cod-id-input { width: auto; text-align: left; }
 .cod-cc-hdr { display: flex; align-items: center; gap: 9px; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 0.5px solid #ebe9e3; }
 /* Greyed "N/A" cell — a column not used by this row's shape (Product/Project/UV) */
 td.cod-na { color: #b8b6b0; background: #f6f5f2; font-style: italic; font-size: 11px; text-align: center; }
@@ -1225,20 +1227,20 @@ function coShapeLabel(shape){
 const TA_NAMES={'Onc':'Oncology','Imm':'Immunology','CVR':'CV & Renal'};
 const PRODUCTS=[
   {code:'PR-ONC-NB',name:'Oncology — Non Brand',ta:'Onc',isNonBrand:true},
-  {code:'PR-TAG',name:'Tagrisso',ta:'Onc'},
-  {code:'PR-IMF',name:'Imfinzi',ta:'Onc'},
-  {code:'PR-ENH',name:'Enhertu',ta:'Onc'},
-  {code:'PR-LYN',name:'Lynparza',ta:'Onc'},
+  {code:'PR-TAG',name:'Oncova',ta:'Onc'},
+  {code:'PR-IMF',name:'Oncoba',ta:'Onc'},
+  {code:'PR-ENH',name:'Oncenta',ta:'Onc'},
+  {code:'PR-LYN',name:'Oncolyn',ta:'Onc'},
   {code:'PR-IMM-NB',name:'Immunology — Non Brand',ta:'Imm',isNonBrand:true},
-  {code:'PR-SAP',name:'Saphnelo',ta:'Imm'},
-  {code:'PR-FAS',name:'Fasenra',ta:'Imm'},
+  {code:'PR-SAP',name:'Immusafe',ta:'Imm'},
+  {code:'PR-FAS',name:'Immufera',ta:'Imm'},
 ];
 const PROJECTS=[
-  {code:'PJ-TAG-001',name:'ADAURA Trial',product:'Tagrisso',ta:'Onc'},
-  {code:'PJ-TAG-002',name:'FLAURA Trial',product:'Tagrisso',ta:'Onc'},
-  {code:'PJ-IMF-001',name:'PACIFIC Trial',product:'Imfinzi',ta:'Onc'},
-  {code:'PJ-ENH-001',name:'DESTINY Trial',product:'Enhertu',ta:'Onc'},
-  {code:'PJ-SAP-001',name:'TULIP Trial',product:'Saphnelo',ta:'Imm'},
+  {code:'PJ-ONC-001',name:'Project Aurora',product:'Oncova',ta:'Onc'},
+  {code:'PJ-ONC-002',name:'Project Borealis',product:'Oncova',ta:'Onc'},
+  {code:'PJ-ONC-003',name:'Project Cinder',product:'Oncoba',ta:'Onc'},
+  {code:'PJ-ONC-004',name:'Project Dawnfall',product:'Oncenta',ta:'Onc'},
+  {code:'PJ-IMM-001',name:'Project Everglade',product:'Immusafe',ta:'Imm'},
 ];
 const UV_LIST=['Discovery','Early','Late'];
 
@@ -1907,40 +1909,37 @@ function enterCoDetail(){
 function coDetailIdCells(ds,shape,mode,ccs){
   const na=`<td class="cod-na">N/A</td>`;
   const stop=`onclick="event.stopPropagation();"`;
-  // Cost centre
+  const cc=ds.cc||'';
+  const esc=s=>String(s||'').replace(/"/g,'&quot;');
+  // Editable searchable combobox (native input + datalist typeahead), scoped to a CC's valid options.
+  const combo=(field,val,listId,width,ph)=>`<td><input class="cod-input cod-id-input" style="width:${width}px;" list="${listId}" value="${esc(val)}" placeholder="${ph}" onchange="editCoDetailIdentity('${ds.key}','${field}',this.value)" ${stop}/></td>`;
+  // Cost centre — single joined "code — description" string (no type pill)
   let ccCell;
   if(mode==='adhoc'){
-    ccCell=`<td><input class="cod-input" style="width:120px;" value="${ds.cc||''}" placeholder="CC code" onchange="editCoDetailIdentity('${ds.key}','cc',this.value)" ${stop}/></td>`;
+    ccCell=`<td><input class="cod-input cod-id-input" style="width:140px;" value="${esc(cc)}" placeholder="CC code" onchange="editCoDetailIdentity('${ds.key}','cc',this.value)" ${stop}/></td>`;
   } else {
-    const cc=ccs.find(c=>c.code===(ds.cc||''));
-    const ccName=cc?cc.name:'';
-    const badge=mode==='full'?'<span class="full-badge" style="font-size:9px;margin-left:4px;">Full</span>':'<span class="partial-badge" style="font-size:9px;margin-left:4px;">Partial</span>';
-    ccCell=`<td class="cosel-cc-cell"><div><span class="cc-badge-out" style="font-size:10px;">${ds.cc||''}</span>${badge}</div><div style="font-size:10px;color:#888;margin-top:2px;">${ccName}</div></td>`;
+    const ccObj=ccs.find(c=>c.code===cc);
+    const ccName=ccObj?ccObj.name:'';
+    ccCell=`<td class="cosel-cc-cell">${cc}${ccName?' — '+ccName:''}</td>`;
   }
   // Dept (chip derived from the CC)
-  const deptCell=`<td>${deptChipFor(ds.cc||'')}</td>`;
-  // GL account
+  const deptCell=`<td>${deptChipFor(cc)}</td>`;
+  // GL account — description only (editable code+name for ad-hoc rows)
   let glCell;
-  if(mode==='adhoc')glCell=`<td><input class="cod-input" style="width:150px;" value="${ds.gl||''}" placeholder="GL code & name" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" ${stop}/></td>`;
-  else glCell=`<td><span class="gl-badge">${ds.gl||'—'}</span>${ds.gln?' '+ds.gln:''}</td>`;
+  if(mode==='adhoc')glCell=`<td><input class="cod-input cod-id-input" style="width:170px;" value="${esc(ds.gl)}" placeholder="GL code & name" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" ${stop}/></td>`;
+  else glCell=`<td>${ds.gln||ds.gl||'—'}</td>`;
   // Product — only used by gl+product shape
   let prodCell;
-  if(shape==='gl+product'){
-    if(mode==='adhoc')prodCell=`<td><input class="cod-input" style="width:150px;" value="${ds.productName||''}" placeholder="Product name" onchange="editCoDetailIdentity('${ds.key}','productName',this.value)" ${stop}/></td>`;
-    else { const nb=ds.isNonBrand?' <span class="non-brand-pill">Non Brand</span>':''; prodCell=`<td><div style="font-size:10px;color:#999;">${ds.taName||'—'}</div><div>${ds.productName||'—'}${nb}</div></td>`; }
-  } else prodCell=na;
+  if(shape==='gl+product')prodCell=(mode==='full')?`<td>${ds.productName||'—'}</td>`:combo('productName',ds.productName,`cod-prod-${cc}`,150,'Product');
+  else prodCell=na;
   // Project — only used by gl+project+uv shape
   let projCell;
-  if(shape==='gl+project+uv'){
-    if(mode==='adhoc')projCell=`<td><input class="cod-input" style="width:160px;" value="${ds.projectName||''}" placeholder="Project name" onchange="editCoDetailIdentity('${ds.key}','projectName',this.value)" ${stop}/></td>`;
-    else projCell=`<td><div style="font-size:10px;color:#999;">${ds.taName?ds.taName+(ds.productName?' · '+ds.productName:''):'—'}</div><div>${ds.projectName||'—'}</div></td>`;
-  } else projCell=na;
+  if(shape==='gl+project+uv')projCell=(mode==='full')?`<td>${ds.projectName||'—'}</td>`:combo('projectName',ds.projectName,`cod-proj-${cc}`,160,'Project');
+  else projCell=na;
   // UV — only used by gl+project+uv shape
   let uvCell;
-  if(shape==='gl+project+uv'){
-    if(mode==='adhoc')uvCell=`<td><input class="cod-input" style="width:70px;" value="${ds.uv||''}" placeholder="UV" onchange="editCoDetailIdentity('${ds.key}','uv',this.value)" ${stop}/></td>`;
-    else uvCell=`<td>${uvChipFor(ds.uv)}</td>`;
-  } else uvCell=na;
+  if(shape==='gl+project+uv')uvCell=(mode==='full')?`<td>${ds.uv||'—'}</td>`:combo('uv',ds.uv,'cod-uv',90,'UV');
+  else uvCell=na;
   return ccCell+deptCell+glCell+prodCell+projCell+uvCell;
 }
 /* FY value cells for one row. `readonly` (Full CC rows) renders plain text instead of inputs. */
@@ -1992,6 +1991,15 @@ function renderCoDetail(){
 
   // ── Partial CCs: one unified, editable table grouped by Dept then CC ──
   const partialRows=Object.values(coDetail).slice().sort(byDeptCc);
+  // Emit per-CC datalists backing the Product / Project searchable dropdowns,
+  // plus a shared UV list. Options are scoped to each CC's SET-Area × Dept shape.
+  const optEsc=s=>String(s||'').replace(/"/g,'&quot;');
+  let datalists=`<datalist id="cod-uv">${UV_LIST.map(u=>`<option value="${u}">`).join('')}</datalist>`;
+  [...new Set(partialRows.map(r=>r.cc).filter(Boolean))].forEach(code=>{
+    const shape=(gca(code).bcDept)?coShape(code):'gl';
+    if(shape==='gl+product')datalists+=`<datalist id="cod-prod-${code}">${productsForCc(code).map(p=>`<option value="${optEsc(p.name)}">`).join('')}</datalist>`;
+    else if(shape==='gl+project+uv')datalists+=`<datalist id="cod-proj-${code}">${projectsForCc(code).map(p=>`<option value="${optEsc(p.name)}">`).join('')}</datalist>`;
+  });
   const onScreenPartials=ccs.filter(cc=>!isCcFull(cc.code) && glRollup(cc.code).some(g=>coGlPicked.has(g.glKey)));
   if(partialRows.length||onScreenPartials.length){
     let body='';
@@ -2062,7 +2070,7 @@ function renderCoDetail(){
   }
 
   let emptyMsg='No GL accounts selected. Go back and tick the cost you want to transfer.';
-  host.innerHTML=html||`<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">${emptyMsg}</div>`;
+  host.innerHTML=html?datalists+html:`<div style="font-size:13px;color:#888;font-style:italic;padding:18px;">${emptyMsg}</div>`;
   // Apply indeterminate state to group-header checkboxes (HTML attribute alone doesn't trigger this)
   host.querySelectorAll('thead .cosel-chk input[data-indeterminate]').forEach(cb=>{cb.indeterminate=true;});
   updateCoDetailSummary();
@@ -2190,12 +2198,22 @@ function editCoDetail(rowKey,fk,mi,raw){
 }
 function editCoDetailIdentity(rowKey,field,raw){
   if(!coDetail[rowKey])return;
+  const ds=coDetail[rowKey];
   const val=String(raw||'').trim();
-  // For 'cc', also try to back-fill bcDept from gca if the code is recognised
-  coDetail[rowKey][field]=val;
+  ds[field]=val;
+  // Back-fill bcDept from gca if the CC code is recognised
   if(field==='cc'&&val){
     const ent=gca(val);
-    if(ent&&ent.bcDept)coDetail[rowKey].bcDept=ent.bcDept;
+    if(ent&&ent.bcDept)ds.bcDept=ent.bcDept;
+  }
+  // Back-fill product/project code + TA when a known name is picked from the dropdown
+  if(field==='productName'){
+    const p=(ds.cc?productsForCc(ds.cc):PRODUCTS).find(x=>x.name===val);
+    if(p){ds.product=p.code;ds.isNonBrand=!!p.isNonBrand;ds.taCode=p.ta;ds.taName=taFull(p.ta);}
+  }
+  if(field==='projectName'){
+    const pj=(ds.cc?projectsForCc(ds.cc):PROJECTS).find(x=>x.name===val);
+    if(pj){ds.project=pj.code;ds.taCode=pj.ta;ds.taName=taFull(pj.ta);}
   }
   renderCoDetail();
 }
