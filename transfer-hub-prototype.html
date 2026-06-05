@@ -3213,13 +3213,16 @@ function renderRvByCC(){
 
     // Cost Out table — Dept-grouped sub-tables (CC is in the block header)
     const coRows=ccData[cc.code]||[];
-    let coTableHTML='<span class="rv-none" style="font-size:12px;">No cost data entered.</span>';
+    let coTableHTML=`<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:2px;">Cost out</div><span class="rv-none" style="font-size:12px;">No cost data entered.</span>`;
     if(coRows.length){
       const hasSub=exp25||exp26;
       const formatCost=(v)=>fmtCostM(toLocal(v||0,cur));
       // One flat unified table (CC & Dept are in the block header, so omit those columns).
       const tbody=coRows.map((row,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${dataCellsForRow(row,formatCost)}</tr>`).join('');
-      coTableHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
+      const fullTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
+      const rt=fyTotals(coRows);
+      const tot={fy25:toLocal(rt.fy25,cur),fy26:toLocal(rt.fy26,cur),fy27:toLocal(rt.fy27,cur),fy28:toLocal(rt.fy28,cur),fy29:toLocal(rt.fy29,cur)};
+      coTableHTML=coViewWrap(`s6co:${cc.code}`,'Cost out',tot,fullTable);
     }
 
     // FTE table
@@ -3280,7 +3283,6 @@ function renderRvByCC(){
         </div>
       </div>
       <div class="rv-cc-block-body">
-        <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:2px;">Cost out</div>
         ${coTableHTML}
         <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out</div>
         ${fteTableHTML}
@@ -3796,6 +3798,41 @@ let ciFteSel=new Set();
 let ciExp={fy25:false,fy26:false};
 // "Other Cost In contributors" section starts collapsed to keep the CI screen compact.
 let ciOthersCollapsed={cost:true,fte:true};
+// Read-only Cost Out context views (Lead step 6/7, CI step 1/2/4) start collapsed,
+// showing per-year totals; expanding reveals the full rows. `coViewExpanded` holds
+// the scopes that are currently expanded (default for any scope is collapsed).
+const coViewExpanded=new Set();
+function toggleCoView(scope){
+  if(coViewExpanded.has(scope))coViewExpanded.delete(scope);else coViewExpanded.add(scope);
+  const id=document.querySelector('.screen.active')?.id||'';
+  if(id==='screen-step6')renderRvByCC();
+  else if(id==='screen-step7')buildStep7();
+  else if(id==='screen-ci-step1')renderCiByCc();
+  else if(id==='screen-ci-step2')renderCiStep2();
+  else if(id==='screen-ci-step4')renderCiReview();
+}
+// Sum a list of rows into per-FY totals (rows carry fy25/fy26 arrays + fy27..fy29).
+function fyTotals(rows){
+  const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+  (rows||[]).forEach(r=>{t.fy25+=rowTotal(r.fy25||[]);t.fy26+=rowTotal(r.fy26||[]);t.fy27+=Number(r.fy27)||0;t.fy28+=Number(r.fy28)||0;t.fy29+=Number(r.fy29)||0;});
+  return t;
+}
+// Wrap a Cost Out table in a collapsible section. Collapsed shows a compact per-year
+// totals row; expanded shows `fullHTML`. `totals` is precomputed in display units.
+function coViewWrap(scope,label,totals,fullHTML,fmtv){
+  fmtv=fmtv||fmtCostM;
+  const expanded=coViewExpanded.has(scope);
+  const safe=String(scope).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const head=`<div onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;font-size:11px;font-weight:500;color:#666;margin:2px 0 6px;display:inline-flex;align-items:center;gap:6px;">${expanded?'▼':'▶'} ${label}</div>`;
+  if(expanded)return `<div>${head}${fullHTML}</div>`;
+  const thS='padding:3px 10px;font-size:10px;color:#888;font-weight:500;text-align:right;border-bottom:0.5px solid #eee;';
+  const tdS='padding:3px 10px;font-size:11px;text-align:right;';
+  const fys=['fy25','fy26','fy27','fy28','fy29'],lbls=['FY25','FY26','FY27','FY28','FY29'];
+  const hcells=lbls.map(l=>`<th style="${thS}">${l}</th>`).join('');
+  const cells=fys.map(fk=>`<td style="${tdS}font-weight:600;">${fmtv(totals[fk])}</td>`).join('');
+  const tbl=`<table style="border-collapse:collapse;margin:0 0 6px;"><thead><tr><th style="${thS}text-align:left;">Cost out total ($m)</th>${hcells}</tr></thead><tbody><tr><td style="${tdS}text-align:left;color:#888;">per year</td>${cells}</tr></tbody></table>`;
+  return `<div>${head}${tbl}</div>`;
+}
 
 function openCiFlow(){
   // If BC is locked, show read-only review
@@ -4035,8 +4072,8 @@ function renderCiByCc(){
       fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),
       fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)}));
     const coTableHTML=coConv.length
-      ?`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`
-      :'<span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
+      ?coViewWrap(`ci1co:${cc.code}`,'Cost out rows',fyTotals(coConv),`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`)
+      :'<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;">Cost out rows</div><span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
     const fteThead=`<tr>
       <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
       <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
@@ -4073,7 +4110,6 @@ function renderCiByCc(){
         </div>
       </div>
       <div class="rv-cc-block-body">
-        <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;">Cost out rows</div>
         ${coTableHTML}
         <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out rows</div>
         ${fteRows.length?`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No FTE rows.</span>'}
@@ -4334,7 +4370,6 @@ function renderCiStep2Multi(card){
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Review the Cost Out summary below, then enter your Cost In values. The master data (cost centre, GL account, product) is fixed — you can only edit the numeric values.</p>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:12px;font-weight:500;margin-bottom:6px;color:#0C447C;">Cost Out summary (read only)</div>
       <div id="ci-co-summary-table"></div>
     </div>
 
@@ -4604,7 +4639,7 @@ function renderCiCoSummaryTable(){
       <td class="td-future">${fmtM(row.fy29||0)}</td>
     </tr>`;
   }).join('');
-  el.innerHTML=allRows.length?`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No Cost Out data.</span>';
+  el.innerHTML=allRows.length?coViewWrap('ci2co:summary','Cost Out summary (read only)',fyTotals(allRows.map(p=>p.row)),`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`):'<span class="rv-none" style="font-size:12px;">No Cost Out data.</span>';
 }
 
 /* ── Other Cost In contributors section ──
@@ -5126,7 +5161,7 @@ function renderCiReview(){
   const el=document.getElementById('ci-review-wrap');
   const coRows=submittedBC?submittedBC.ccData[ciActiveCcCode]||[]:[];
   const hasSub=fyHasSubRow();
-  const coTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coRows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
+  const coTable=coViewWrap(`ci4co:${ciActiveCcCode}`,'Cost out rows',fyTotals(coRows),`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coRows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`);
 
   const ciTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${ciData.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
 
@@ -5371,10 +5406,8 @@ function buildStep7(){
     sortDeptCc(flat);
     const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true,'out')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    return `
-      <div style="font-size:11px;font-weight:500;color:#0C447C;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
-        <span>Cost Out</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>
-      </div>${inner}`;
+    const label=`Cost Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
+    return coViewWrap(`s7co:${area.code}`,label,fyTotals(flat),inner);
   }
   function fteOutSection(area){
     const fteTbody=area.fteRows.map(({cc,row},gi)=>{

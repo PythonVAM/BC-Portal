@@ -31,7 +31,12 @@ with sync_playwright() as p:
       switchUser('jd'); go('step6');
     """); pg.wait_for_timeout(400)
 
-    # Lead step 6 Cost Out tables should be FLAT (no collapse), unified columns, $m.
+    # The per-CC Cost Out views are collapsible (collapsed by default) — expand them
+    # so we can inspect the underlying flat unified table.
+    pg.evaluate("""document.querySelectorAll('#rv-by-cc-wrap [onclick^="toggleCoView"]').forEach(t=>t.click())""")
+    pg.wait_for_timeout(200)
+
+    # Lead step 6 Cost Out tables should be FLAT (no dept collapse), unified columns, $m.
     state=pg.evaluate("""
       (() => {
         const wrap=document.getElementById('rv-by-cc-wrap');

@@ -154,6 +154,8 @@ Every **cost** table — entry screens and read-only context tables alike — us
 
 **Currency:** all cost values display in **USD millions ($m)** via `fmtM` / `fmtCostM`. The editable entry tables (`renderCiTable`, Cost Out Detail) display and accept input in $m and scale back to whole dollars (`×1e6`) for storage and balance math. FTE tables are unaffected (`fmtFte`, 1dp headcount).
 
+**Collapsible read-only Cost Out context views.** On the screens used by the BC Lead and Cost In Contributor, each read-only **Cost Out** table is wrapped by `coViewWrap(scope,label,totals,fullHTML)` and is **collapsed by default**, showing a compact per-year (FY25–FY29, $m) totals row; clicking the `▶/▼` header expands the full flat table. State lives in the `coViewExpanded` Set (default = collapsed); `toggleCoView(scope)` flips it and re-renders the active screen. Applied to: Lead step 6 per-CC Cost Out (`renderRvByCC`, scope `s6co:<cc>`), step 7 per-SET-area Cost Out (`coOutSection`, `s7co:<area>`), CI step 1 per-CC reference (`renderCiByCc`, `ci1co:<cc>`), CI step 2 Cost Out summary (`renderCiCoSummaryTable`, `ci2co:summary`), and CI step 4 review (`renderCiReview`, `ci4co:<cc>`). The editable Cost In/FTE entry grids and the FTE-Out tables are not wrapped. (Separately, the "Other Cost In contributors" section uses its own `ciOthersCollapsed` toggle with the same per-year-totals idea.)
+
 ---
 
 ## 3. Working conventions
