@@ -504,6 +504,23 @@ errors: []
 done
 ```
 
+### 10. `uat_ci_others_scope.py` — "Other Cost In contributors" scope + collapse
+
+Asserts that the "Other Cost In contributors" section on the CI screen (a) lists only contributors who share one of the current user's assigned CCs — not every CI contributor in the BC — and (b) starts collapsed and expands on click. Scenario: CC-X → lt + ds, CC-Y → fa; viewed as lt (on CC-X only) the section shows ds and not fa.
+
+```bash
+python tests/uat_ci_others_scope.py
+```
+
+**Expected output:**
+```
+COLLAPSED (default): {'collapsedGlyph': True, 'expandedGlyph': False, 'tableCount': 0, 'hasDaniel': False, 'hasFarah': False, 'summaryOne': True}
+EXPANDED: {'collapsedGlyph': False, 'expandedGlyph': True, 'tableCount': 2, 'hasDaniel': True, 'hasFarah': False, 'summaryOne': True}
+PASS
+errors: []
+done
+```
+
 ---
 
 ## Notes on writing more UATs

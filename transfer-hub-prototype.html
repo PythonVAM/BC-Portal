@@ -3794,6 +3794,8 @@ let ciFteData=[];    // fte in rows
 let ciSel=new Set();
 let ciFteSel=new Set();
 let ciExp={fy25:false,fy26:false};
+// "Other Cost In contributors" section starts collapsed to keep the CI screen compact.
+let ciOthersCollapsed={cost:true,fte:true};
 
 function openCiFlow(){
   // If BC is locked, show read-only review
@@ -4613,8 +4615,19 @@ function renderCiOthersTable(mode){
   const el=document.getElementById(mode==='cost'?'ci-others-wrap-cost':'ci-others-wrap-fte');
   if(!el||!submittedBC)return;
   const u=currentUser();
+  // Only the CCs routed to the current contributor — other contributors are relevant
+  // only where they share one of THESE cost centres, not the whole boundary change.
+  const myCcs=getMyAssignedCcCodes();
   const allPersonsMap={};
-  Object.values(submittedBC.costInPersons||{}).flat().forEach(p=>{if(p.id!==u.id)allPersonsMap[p.id]=p;});
+  const personCcs={}; // person id → Set of shared CC codes (within my assigned CCs)
+  Object.entries(submittedBC.costInPersons||{}).forEach(([ccCode,persons])=>{
+    if(!myCcs.has(ccCode))return;
+    persons.forEach(p=>{
+      if(p.id===u.id)return;
+      allPersonsMap[p.id]=p;
+      (personCcs[p.id]=personCcs[p.id]||new Set()).add(ccCode);
+    });
+  });
   const otherPersons=Object.values(allPersonsMap);
   if(!otherPersons.length){el.innerHTML='';return;}
 
@@ -4761,60 +4774,54 @@ function renderCiOthersTable(mode){
   // Stash ccCode on source rows for net calc lookup
   sourceRows.forEach(sr=>{sr.row._ccCode=sr.ccCode;});
 
-  // One flat unified table — all source rows in a single group (no dept sub-grouping/collapse).
-  const dGroups=[{dept:null,pairs:sourceRows}];
-
-  // Render a person's block as dept-grouped collapsible sections
-  function renderPersonGroupedBody(p, responded, blockScope) {
-    return dGroups.map(g=>{
-      // Flat unified table with the full rows.
-      const tbody=g.pairs.map((sr,si)=>{
-        const pr=findPersonRow(p,sr.ccCode,sr.row);
-        return`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${valCells(pr,!responded||!pr)}</tr>`;
-      }).join('');
-      return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
+  // A person's block: only the rows for CCs they actually share with the current user.
+  function renderPersonBody(p, responded) {
+    const pccs=personCcs[p.id]||new Set();
+    const pairs=sourceRows.filter(sr=>pccs.has(sr.ccCode));
+    const tbody=pairs.map((sr,si)=>{
+      const pr=findPersonRow(p,sr.ccCode,sr.row);
+      return`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${valCells(pr,!responded||!pr)}</tr>`;
     }).join('');
+    return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
   }
 
-  // One block per other Cost In person
-  const personBlocks=otherPersons.map(p=>{
-    const responded=Object.values(ciResponses).some(resp=>resp.person.id===p.id);
-    const blockScope=`ci-others-${mode}:${p.id}`;
-    return`<div style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="font-size:12px;font-weight:500;color:#444;">${p.first} ${p.last}</span>
-        <span style="font-size:11px;color:#888;">${p.dept||''}</span>
-        ${responded
-          ?'<span class="badge badge-approved" style="font-size:10px;">Submitted</span>'
-          :'<span class="badge badge-pending" style="font-size:10px;">Pending</span>'}
-      </div>
-      ${renderPersonGroupedBody(p, responded, blockScope)}
-    </div>`;
-  }).join('');
-
-  // Final block: Net available per row — also dept-grouped & collapsible
-  const netLabel=mode==='cost'?'Net available cost':'Net available FTEs';
-  const netScope=`ci-others-${mode}:net`;
-  const netSections=dGroups.map(g=>{
-    // Flat unified Net Available table.
-    const tbody=g.pairs.map((sr,si)=>`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${netCells({...sr.row,_ccCode:sr.ccCode})}</tr>`).join('');
-    return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
-  }).join('');
-  const netBlock=`<div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-      <span style="font-size:12px;font-weight:600;color:#1a1a1a;">${netLabel}</span>
-      <span style="font-size:10px;color:#666;font-weight:400;">Cost Out − submitted responses from other contributors</span>
-    </div>
-    ${netSections}
-  </div>`;
-
   const sectionTitle=mode==='cost'?'Other Cost In contributors':'Other FTE In contributors';
-  el.innerHTML=`
-    <div class="ci-others-wrap">
-      <div class="ci-others-title">${sectionTitle} <span style="color:#888;font-weight:400;font-size:11px;">— values shown for context only</span></div>
-      ${personBlocks}
-      ${netBlock}
+  const collapsed=ciOthersCollapsed[mode];
+  const nP=otherPersons.length;
+  const summary=`${nP} other contributor${nP===1?'':'s'} on your cost centre${myCcs.size===1?'':'s'} · values shown for context only`;
+  const header=`<div class="ci-others-title" style="cursor:pointer;user-select:none;" onclick="ciOthersCollapsed['${mode}']=!ciOthersCollapsed['${mode}'];renderCiOthersTable('${mode}')">${collapsed?'▶':'▼'} ${sectionTitle} <span style="color:#888;font-weight:400;font-size:11px;">— ${summary}</span></div>`;
+
+  // Build the heavy tables only when the section is expanded (keeps the screen compact).
+  let body='';
+  if(!collapsed){
+    const personBlocks=otherPersons.map(p=>{
+      const responded=Object.values(ciResponses).some(resp=>resp.person.id===p.id);
+      return`<div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:500;color:#444;">${p.first} ${p.last}</span>
+          <span style="font-size:11px;color:#888;">${p.dept||''}</span>
+          ${responded
+            ?'<span class="badge badge-approved" style="font-size:10px;">Submitted</span>'
+            :'<span class="badge badge-pending" style="font-size:10px;">Pending</span>'}
+        </div>
+        ${renderPersonBody(p, responded)}
+      </div>`;
+    }).join('');
+
+    // Net available per row across the current user's source rows.
+    const netLabel=mode==='cost'?'Net available cost':'Net available FTEs';
+    const netTbody=sourceRows.map((sr,si)=>`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${netCells({...sr.row,_ccCode:sr.ccCode})}</tr>`).join('');
+    const netBlock=`<div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:12px;font-weight:600;color:#1a1a1a;">${netLabel}</span>
+        <span style="font-size:10px;color:#666;font-weight:400;">Cost Out − submitted responses from other contributors</span>
+      </div>
+      <div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${netTbody}</tbody></table></div>
     </div>`;
+    body=`${personBlocks}${netBlock}`;
+  }
+
+  el.innerHTML=`<div class="ci-others-wrap">${header}${body}</div>`;
 }
 
 function renderCiTable(){
