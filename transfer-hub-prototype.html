@@ -3207,7 +3207,9 @@ function renderRvByCC(){
     const attr=gca(cc.code);
     const cur=attr.cur||'USD';
     const sym=rvCurrency==='local'?currSymbol(cur):'$';
-    const isFull=isCcFull(cc.code);
+    // Derive Full/Partial from this submission's own entry, not the global cc2Sel
+    // (during the Lead's aggregated view cc2Sel may not carry every contributor's CC).
+    const isFull=cc.type?cc.type==='full':isCcFull(cc.code);
 
     // Cost Out table — Dept-grouped sub-tables (CC is in the block header)
     const coRows=ccData[cc.code]||[];
@@ -3328,14 +3330,17 @@ function renderRvByCC(){
 
   wrap.innerHTML=html;
 
-  // Wire person pickers for each CC (only on the assignable CCs — those that have submitted)
+  // Wire person pickers for each rendered CI search box. We query the DOM rather
+  // than iterate getAllCostOut() (global cc2Sel) because the rendered CC set is the
+  // union of all contributors' submissions, which can differ from cc2Sel — keying
+  // off cc2Sel left some boxes (e.g. a CC only one contributor submitted) un-wired.
   if(!isAwaitingCo){
-    ccs.forEach(cc=>{
-      const inp=document.getElementById(`rv-ci-search-${cc.code}`);
-      const dd=document.getElementById(`rv-ci-dd-${cc.code}`);
-      if(inp&&dd){
-        inp.addEventListener('focus',()=>renderCiDropdown(cc.code,inp.value));
-        inp.addEventListener('input',()=>renderCiDropdown(cc.code,inp.value));
+    wrap.querySelectorAll('input[id^="rv-ci-search-"]').forEach(inp=>{
+      const code=inp.id.slice('rv-ci-search-'.length);
+      const dd=document.getElementById(`rv-ci-dd-${code}`);
+      if(dd){
+        inp.addEventListener('focus',()=>renderCiDropdown(code,inp.value));
+        inp.addEventListener('input',()=>renderCiDropdown(code,inp.value));
         inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
       }
     });

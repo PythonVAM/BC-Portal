@@ -487,6 +487,23 @@ errors: []
 done
 ```
 
+### 9. `uat_ci_assign_wiring.py` — Cost-In assignment picker wiring
+
+Regression for the bug where, on Lead step 6, the Cost-In person-picker was dead for a CC that only one contributor had submitted (the wiring keyed off the global `cc2Sel` instead of the rendered boxes). Reproduces the reported scenario (C1 partial+full, C2 two partial, C3 one full), forces the `cc2Sel` divergence, and asserts every picker opens and an assignment completes end-to-end.
+
+```bash
+python tests/uat_ci_assign_wiring.py
+```
+
+**Expected output:**
+```
+CI search boxes: [{'code': '7300RND-CC-041', 'works': True}, {'code': '5110', 'works': True}, {'code': '6200COM-CC-115', 'works': True}, {'code': '6200COM-CC-116', 'works': True}, {'code': '2110', 'works': True}]
+Assigned to 2110: ['Carlos Beltran']
+PASS
+errors: []
+done
+```
+
 ---
 
 ## Notes on writing more UATs
