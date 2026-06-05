@@ -4819,6 +4819,32 @@ function renderCiOthersTable(mode){
       <div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${netTbody}</tbody></table></div>
     </div>`;
     body=`${personBlocks}${netBlock}`;
+  } else {
+    // Collapsed: compact per-year totals so the figures are visible without expanding.
+    const FYK=['fy25','fy26','fy27','fy28','fy29'], FYL=['FY25','FY26','FY27','FY28','FY29'];
+    const personTot=p=>{
+      const pccs=personCcs[p.id]||new Set();
+      const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+      sourceRows.forEach(sr=>{
+        if(!pccs.has(sr.ccCode))return;
+        const pr=findPersonRow(p,sr.ccCode,sr.row);
+        if(!pr)return;
+        FYK.forEach(fk=>{t[fk]+=Math.abs(getRowValue(pr,fk));});
+      });
+      return t;
+    };
+    const grand={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+    const rows=otherPersons.map(p=>{
+      const responded=Object.values(ciResponses).some(r=>r.person.id===p.id);
+      const t=personTot(p);
+      FYK.forEach(fk=>grand[fk]+=t[fk]);
+      const cells=responded
+        ?FYK.map(fk=>`<td class="ci-td-left" style="text-align:right;">${fmtVal(t[fk])}</td>`).join('')
+        :FYK.map(()=>`<td class="ci-td-pending" style="text-align:right;">—</td>`).join('');
+      return `<tr><td class="ci-td-left">${p.first} ${p.last} <span style="color:#888;font-size:10px;">${p.dept||''}</span></td>${cells}</tr>`;
+    }).join('');
+    const totalRow=`<tr style="font-weight:600;background:#f5f4f0;"><td class="ci-td-left">Total per year</td>${FYK.map(fk=>`<td class="ci-th-total" style="text-align:right;">${fmtVal(grand[fk])}</td>`).join('')}</tr>`;
+    body=`<div style="overflow-x:auto;margin-top:6px;"><table class="ci-others-table"><thead><tr><th class="ci-th-left" style="min-width:200px;">Contributor</th>${FYL.map(l=>`<th class="ci-th-future">${l}</th>`).join('')}</tr></thead><tbody>${rows}${totalRow}</tbody></table></div>`;
   }
 
   el.innerHTML=`<div class="ci-others-wrap">${header}${body}</div>`;

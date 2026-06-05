@@ -47,13 +47,18 @@ with sync_playwright() as p:
         })()""")
 
     collapsed=snap()
-    print('COLLAPSED (default):', collapsed)
+    collapsed_has_total=pg.evaluate("/Total per year/.test(document.getElementById('ci-others-wrap-cost').innerText)")
+    print('COLLAPSED (default):', collapsed, 'has Total per year:', collapsed_has_total)
     pg.evaluate("ciOthersCollapsed['cost']=false; renderCiOthersTable('cost')"); pg.wait_for_timeout(150)
     expanded=snap()
     print('EXPANDED:', expanded)
 
-    ok = (collapsed['collapsedGlyph'] and collapsed['tableCount']==0 and collapsed['summaryOne']
-          and expanded['expandedGlyph'] and expanded['tableCount']>0
+    # Collapsed shows a compact per-year totals table (1 table with a "Total per year"
+    # row) scoped to shared CCs — Farah excluded. Expanded shows the full
+    # per-contributor + Net Available tables.
+    ok = (collapsed['collapsedGlyph'] and collapsed['tableCount']==1 and collapsed['summaryOne']
+          and collapsed_has_total and not collapsed['hasFarah']
+          and expanded['expandedGlyph'] and expanded['tableCount']>1
           and expanded['hasDaniel'] and not expanded['hasFarah'] and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
