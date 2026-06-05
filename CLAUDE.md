@@ -44,7 +44,7 @@ These are settled. If a change would conflict with one of these, ask first.
 ### 2.1 Roles and orchestration
 
 - **SET BC Lead is orchestrator only.** A Lead cannot also be a Cost Out or Cost In Contributor. This was enforced through a substantial refactor.
-- **30 personas across 9 divisions**, with Lead and Contributor roles separated per person.
+- **33 personas across 10 divisions**, with Lead and Contributor roles separated per person. Every persona division has a matching branch + cost centres in the org hierarchy (`ccTree`), so a user can always find their own division's CCs.
 - **Multi-contributor submissions allowed.** In the prototype any CO Contributor may pick any CC; in production, contributors would be gated by SET area.
 - **Last-writer-wins** if two CO Contributors pick the same CC.
 
@@ -136,27 +136,31 @@ Every screen has a two-tier sticky stack that pins essential context as the user
 
 The **hints banner** and the **profile-panel** intentionally scroll away with content (they're reference info, not action affordances).
 
-### 2.11 Dept-grouped collapsible read-only tables
+### 2.11 Flat unified read-only cost tables
 
-In every **read-only** Cost Out / FTE table shown to a Lead or Cost In contributor for context, the table is **grouped by department** (R&D / SMM / G&A) and **collapsed by default**. Each dept group renders as a single aggregate row (dept chip + row count + per-FY totals); a **▶ Expand** button reveals the full row table beneath it, with a **▼ Collapse** to fold back.
+Every **cost** table — entry screens and read-only context tables alike — uses **one flat table with a fixed column set**, matching the Cost Out Detail screen. There is **no dept sub-grouping and no collapse**; rows are sorted **Dept (R&D → SMM → G&A) → Cost Centre** and every row is shown.
 
-State: `ciDeptExp` (Set keyed by `<scope>::<dept>`). Default for any key is collapsed (not in the set). `toggleCiDeptGroup(scope, dept)` flips the state and re-renders the active screen.
+**Unified columns:** `(Cost centre · Dept ·) GL account · Product · Project · UV` + the FY columns. The Cost centre + Dept columns are included on multi-CC tables (`roUniIdHead(true,hasSub)`) and omitted where the CC is already in a block/section header (`roUniIdHead(false,hasSub)`). Columns a row's shape doesn't use render as a greyed **N/A** (`.cod-na`):
+- R&D-shape rows (`gl+project+uv`) fill Project + UV; Product = N/A.
+- SMM-shape rows (`gl+product`) fill Product; Project + UV = N/A.
+- GL-only rows: Product + Project + UV all = N/A.
 
-**Where this is applied:**
-- Lead step 6 (`renderRvByCC`) — per-CC Cost Out tables.
-- CI step 1 (`renderCiByCc`) — per-CC Cost Out reference tables.
-- CI step 2 (`renderCiCoSummaryTable`) — Cost Out summary at top.
-- CI steps 2 & 3 (`renderCiOthersTable`) — per-person blocks and Net Available block.
-- CI step 3 (`renderCiFteCoSummaryTable`) — FTE Out summary at top.
+**Helpers** (defined together near the top of the `<script>`):
+- `roUniIdHead(showCc, hasSub)` — the fixed identity `<th>`s (adds `rowspan="2"` when a FY is month-expanded).
+- `roUniIdCells(row, showCc)` — the fixed identity `<td>`s with N/A fill.
+- `fmtCostM(v)` — cost value in **$m** (2dp), negatives in red parentheses.
 
-**Where this is NOT applied** (intentionally):
-- CI step 2's Cost In **values entry** table (`renderCiTable`) — must stay flat for editing.
-- CI step 3's FTE In **values entry** table (`renderCiFteTable`) — must stay flat for editing.
-- Lead step 6 FTE-out tables under each CC card — they're already organised by CC and aren't long.
+**Where applied:** Lead step 6 (`renderRvByCC`, `renderRvCostOut`), CI step 1 (`renderCiByCc`), CI step 2 (`renderCiCoSummaryTable`, `renderCiTable`, `renderCiCoTable`, single-CC auto-populated view), CI steps 2 & 3 (`renderCiOthersTable`), CI step 3 FTE summary (`renderCiFteCoSummaryTable` — flat, FTEs not $m), CI per-CC review (`renderCiReview`), and step 7 (`coOutSection` / `ciInSection`, plus the aggregate Cost/FTE/Net matrix).
 
-**Grouping helpers:**
-- `groupRowsByDept(rows)` — groups by row content (`project`/`uv` → R&D; `product` → SMM; else GL).
-- `groupPairsByCcDept(pairs)` — groups `{ccCode, row}` pairs by CC's BC dept. Used for FTE tables since FTE rows don't carry project/product markers.
+**Currency:** all cost values display in **USD millions ($m)** via `fmtM` / `fmtCostM`. The editable entry tables (`renderCiTable`, Cost Out Detail) display and accept input in $m and scale back to whole dollars (`×1e6`) for storage and balance math. FTE tables are unaffected (`fmtFte`, 1dp headcount).
+
+**Collapsible read-only Cost Out / FTE Out context views.** On the screens used by the BC Lead and Cost In Contributor, each read-only **Cost Out** and **FTE Out** table is wrapped by `coViewWrap(scope,label,totals,fullHTML,fmtv,totalsLabel)` and is **collapsed by default**, showing a compact per-year (FY25–FY29) totals row; clicking the `▶/▼` header expands the full flat table. Cost views use `fmtCostM` + "Cost out total ($m)"; FTE views pass `fmtFte` + "FTEs out total" (1dp headcount). State lives in the `coViewExpanded` Set (default = collapsed); `toggleCoView(scope)` flips it and re-renders the active screen.
+- **Cost Out:** Lead step 6 per-CC (`renderRvByCC`, `s6co:<cc>`), step 7 per-SET-area (`coOutSection`, `s7co:<area>`), CI step 1 per-CC (`renderCiByCc`, `ci1co:<cc>`), CI step 2 summary (`renderCiCoSummaryTable`, `ci2co:summary`), CI step 4 review (`renderCiReview`, `ci4co:<cc>`).
+- **FTE Out:** Lead step 6 per-CC (`renderRvByCC`, `s6fte:<cc>`), step 7 per-SET-area (`fteOutSection`, `s7fte:<area>`), CI step 1 per-CC (`renderCiByCc`, `ci1fte:<cc>`), CI step 3 summary (`renderCiFteCoSummaryTable`, `ci3fte:summary`).
+
+The editable Cost In / FTE In entry grids are not wrapped, and CI step 4's FTE table is the contributor's FTE *In* (not an FTE Out view), so it's left alone. (Separately, the "Other Cost In contributors" section uses its own `ciOthersCollapsed` toggle with the same per-year-totals idea.)
+
+**Step 7 (Lead Review · Submit to Group) is a two-block drill-down** (`buildStep7`): a **Cost** block and an **FTEs** block, each a 3-level hierarchy — *Aggregate* (an Out / In / Net matrix, always visible) → *By SET Area* (a collapsed `s7area:cost` / `s7area:fte` gate via `byAreaGate`) → *row detail*. Under "By SET Area", Cost Out / FTEs Out are listed by **source** SET area and Cost In / FTEs In by **destination** SET area (they land in different areas), each area being a `coViewWrap` collapsible: `coOutSection` (`s7co:<area>`), `ciInSection` (`s7ci:<area>`), `fteOutSection` (`s7fte:<area>`), `ciFteInSection` (`s7cifte:<area>`). The USD/Local currency toggle lives in the Cost block header; the balance check (`status==='ci-submitted'`) is unchanged.
 
 ---
 
@@ -185,7 +189,7 @@ For any non-trivial change, **state your understanding back to the user and conf
 
 ### 3.4 What's deliberately ad-hoc (won't break if changed, but worth flagging)
 
-- The `SET_AREA_TYPE` map (line ~1178) lists the 5 SET area types. Adding a new one means updating `coShape()` too.
+- The `SET_AREA_TYPE` map (line ~1195) lists the 7 SET area types (`corporate`, `operations`, `it`, `commercial`, `rnd`, `retail`, `risk`). Adding a new one only needs a `coShape()` change if it splits cost by an extra dimension — `retail`/`risk` are plain `gl` and fall through `coShape`'s default. Top-level SET areas must be kept in sync across `ccTree`, `SET_AREA_TYPE`, and `SET_AREAS` (step-7 aggregation).
 - The `SIM` map (line ~1154) is hand-coded sample data per CC. It's not exhaustive; `getSimRows()` returns a default if a CC isn't listed.
 - Persona definitions live in `PEOPLE` (search for `const PEOPLE`). Adding a new persona requires picking a `dept` and `role` consistent with the existing taxonomy.
 

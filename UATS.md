@@ -337,11 +337,13 @@ errors: []
 done
 ```
 
-### 6. `uat_dept_collapse.py` — Dept-grouped collapsible tables
+### 6. `uat_unified_cost_tables.py` — Flat unified cost tables
 
-Asserts that on Lead step 6, every CC's Cost Out section starts collapsed (one row per dept) and that the expand button reveals the full table.
+Asserts that on Lead step 6, every CC's Cost Out table is **flat** (no dept sub-grouping or collapse), uses the **unified columns** (`GL account · Product · Project · UV` + FY), renders **N/A** for columns a row's shape doesn't use, and shows values in **$m**. (Replaces the old `uat_dept_collapse.py`, which exercised the removed dept-collapse feature.)
 
 ```python
+from pathlib import Path
+PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch()
@@ -350,13 +352,13 @@ with sync_playwright() as p:
     errs=[]
     pg.on('pageerror',lambda e: errs.append('PE: '+str(e)))
     pg.on('console',lambda m: errs.append('CON: '+m.text) if m.type=='error' else None)
-    pg.goto('file:///mnt/user-data/outputs/transfer-hub-prototype.html')
+    pg.goto(f'file://{PROTO}')
     pg.wait_for_load_state('networkidle')
     pg.evaluate("""
       switchUser('jd');
       contribs=[PEOPLE.find(p=>p.id==='om')];
       go('step1');
-      document.getElementById('inp-bcname').value='Dept collapse test';
+      document.getElementById('inp-bcname').value='Unified cost tables test';
       saveAndNotifyCoPersons();
       switchUser('om');
       cc2Sel=[
@@ -373,24 +375,22 @@ with sync_playwright() as p:
       switchUser('jd'); go('step6');
     """); pg.wait_for_timeout(400)
 
-    initial=pg.evaluate("""
-      (() => ({
-        collapsedBlocks: document.querySelectorAll('.dept-group-collapsed').length,
-        expandBtns: document.querySelectorAll('.dept-expand-btn').length,
-        expState: ciDeptExp.size,
-      }))()
+    state=pg.evaluate("""
+      (() => {
+        const wrap=document.getElementById('rv-by-cc-wrap');
+        const tbl=wrap.querySelector('.rv-cc-block .rv-table');
+        const heads=Array.from(tbl.querySelectorAll('thead tr:first-child th'))
+          .map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean);
+        return {
+          expandBtns: wrap.querySelectorAll('.dept-expand-btn').length,
+          collapsedBlocks: wrap.querySelectorAll('.dept-group-collapsed').length,
+          headers: heads,
+          naCells: wrap.querySelectorAll('.rv-cc-block .rv-table td.cod-na').length,
+          dollarM: /\\d\\.\\d{2}/.test(tbl.innerText),
+        };
+      })()
     """)
-    print('Initial Lead step 6 state:', initial)
-
-    # Click expand on the first
-    pg.evaluate("document.querySelector('.dept-group-collapsed .dept-expand-btn')?.click()"); pg.wait_for_timeout(120)
-    after=pg.evaluate("""
-      (() => ({
-        collapsedBlocks: document.querySelectorAll('.dept-group-collapsed').length,
-        expState: ciDeptExp.size,
-      }))()
-    """)
-    print('After expanding first dept group:', after)
+    print('Lead step 6 Cost Out:', state)
     print('errors:',errs[:5])
     b.close()
 print("done")
@@ -398,8 +398,7 @@ print("done")
 
 **Expected output:**
 ```
-Initial Lead step 6 state: {'collapsedBlocks': 3, 'expandBtns': 3, 'expState': 0}
-After expanding first dept group: {'collapsedBlocks': 2, 'expState': 1}
+Lead step 6 Cost Out: {'expandBtns': 0, 'collapsedBlocks': 0, 'headers': ['GL account', 'Product', 'Project', 'UV', 'FY25', 'FY26', 'FY27', 'FY28', 'FY29'], 'naCells': 25, 'dollarM': True}
 errors: []
 done
 ```
@@ -461,6 +460,63 @@ Path cards: 5 (expected 5)
 Matrix rows: 5 (expected 5)
 After Edit click: {'editMode': True, 'anyEditable': True}
 After Cancel: editMode=False
+errors: []
+done
+```
+
+### 8. `uat_org_consistency.py` — Persona ↔ org-hierarchy consistency
+
+Guards the data model: every top-level SET area in `ccTree` is classified in both `SET_AREA_TYPE` and `SET_AREAS`; every leaf CC resolves to a real SET area; and no persona division is orphaned (has personas but no selectable cost centres) — except `Corporate Centre`, the umbrella over Finance/HR. Also checks the Retail/Risk/Commercial divisions added to close the original gap.
+
+```bash
+python tests/uat_org_consistency.py
+```
+
+**Expected output:**
+```
+topLevels: ['1000', '2000', '5000', '7000', '6200', '8000', '9000']
+missingType: []
+missingArea: []
+orphanDivs: []
+unresolved: []
+retailLeaves: ['8110', '8120', '8130']
+riskLeaves: ['9110', '9120', '9130']
+commercialHasLead: True
+PASS
+errors: []
+done
+```
+
+### 9. `uat_ci_assign_wiring.py` — Cost-In assignment picker wiring
+
+Regression for the bug where, on Lead step 6, the Cost-In person-picker was dead for a CC that only one contributor had submitted (the wiring keyed off the global `cc2Sel` instead of the rendered boxes). Reproduces the reported scenario (C1 partial+full, C2 two partial, C3 one full), forces the `cc2Sel` divergence, and asserts every picker opens and an assignment completes end-to-end.
+
+```bash
+python tests/uat_ci_assign_wiring.py
+```
+
+**Expected output:**
+```
+CI search boxes: [{'code': '7300RND-CC-041', 'works': True}, {'code': '5110', 'works': True}, {'code': '6200COM-CC-115', 'works': True}, {'code': '6200COM-CC-116', 'works': True}, {'code': '2110', 'works': True}]
+Assigned to 2110: ['Carlos Beltran']
+PASS
+errors: []
+done
+```
+
+### 10. `uat_ci_others_scope.py` — "Other Cost In contributors" scope + collapse
+
+Asserts that the "Other Cost In contributors" section on the CI screen (a) lists only contributors who share one of the current user's assigned CCs — not every CI contributor in the BC — and (b) starts collapsed and expands on click. Scenario: CC-X → lt + ds, CC-Y → fa; viewed as lt (on CC-X only) the section shows ds and not fa.
+
+```bash
+python tests/uat_ci_others_scope.py
+```
+
+**Expected output:**
+```
+COLLAPSED (default): {'collapsedGlyph': True, 'expandedGlyph': False, 'tableCount': 0, 'hasDaniel': False, 'hasFarah': False, 'summaryOne': True}
+EXPANDED: {'collapsedGlyph': False, 'expandedGlyph': True, 'tableCount': 2, 'hasDaniel': True, 'hasFarah': False, 'summaryOne': True}
+PASS
 errors: []
 done
 ```
