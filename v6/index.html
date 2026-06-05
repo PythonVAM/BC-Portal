@@ -1033,6 +1033,11 @@ const PEOPLE=[
   {id:'eh', first:'Emma',    last:'Hartley',   dept:'Immunology R&D',   initials:'EH'},
   {id:'mk', first:'Mateo',   last:'Kovac',     dept:'Immunology R&D',   initials:'MK'},
 
+  // ── Commercial ──
+  {id:'cm', first:'Clara',   last:'Mendez',    dept:'Commercial',       initials:'CM'},
+  {id:'rf', first:'Raj',     last:'Foster',    dept:'Commercial',       initials:'RF'},
+  {id:'iw', first:'Ingrid',  last:'Wagner',    dept:'Commercial',       initials:'IW'},
+
   // ── Digital & Tech ──
   {id:'so', first:'Sarah',   last:'Okafor',    dept:'Digital & Tech',   initials:'SO'},
   {id:'rh', first:'Ravi',    last:'Hegde',     dept:'Digital & Tech',   initials:'RH'},
@@ -1146,6 +1151,14 @@ const ccAttr={
   '6200COM-CC-115':{dept:'Commercial',cur:'GBP',bcDept:'SMM'},
   '6200COM-CC-116':{dept:'Commercial',cur:'USD',bcDept:'SMM'},
   '6200COM-CC-122':{dept:'Commercial',cur:'GBP',bcDept:'G&A'},
+  // Retail Division (SET area 8000)
+  '8110':{dept:'Retail Division',cur:'GBP',bcDept:'R&D'},
+  '8120':{dept:'Retail Division',cur:'USD',bcDept:'SMM'},
+  '8130':{dept:'Retail Division',cur:'GBP',bcDept:'G&A'},
+  // Risk & Compliance (SET area 9000)
+  '9110':{dept:'Risk & Compliance',cur:'GBP',bcDept:'R&D'},
+  '9120':{dept:'Risk & Compliance',cur:'EUR',bcDept:'SMM'},
+  '9130':{dept:'Risk & Compliance',cur:'GBP',bcDept:'G&A'},
 };
 function gca(c){return ccAttr[c]||{dept:'—',cur:'GBP',bcDept:'—'};}
 
@@ -1164,7 +1177,7 @@ function uvChipFor(uv){
 }
 const locMeta={'GB-LON-001':{city:'London',country:'UK'},'GB-LON-002':{city:'London',country:'UK'},'GB-LON-003':{city:'London',country:'UK'},'GB-CAM-001':{city:'Cambridge',country:'UK'},'GB-CAM-002':{city:'Cambridge',country:'UK'},'GB-MAN-001':{city:'Manchester',country:'UK'},'GB-MAN-002':{city:'Manchester',country:'UK'},'US-NYC-001':{city:'New York',country:'US'},'US-NYC-002':{city:'New York',country:'US'},'US-BOS-001':{city:'Boston',country:'US'},'US-BOS-002':{city:'Boston',country:'US'},'US-SFO-001':{city:'San Francisco',country:'US'},'DE-MUC-001':{city:'Munich',country:'DE'},'DE-BER-001':{city:'Berlin',country:'DE'},'CH-BSL-001':{city:'Basel',country:'CH'},'JP-TYO-001':{city:'Tokyo',country:'JP'}};
 function glm(c){return locMeta[c]||{city:'—',country:'—'};}
-const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre',children:[{code:'1100',name:'Finance',children:[{code:'1110',name:'FP&A',leaf:true},{code:'1120',name:'Financial Reporting',leaf:true},{code:'1130',name:'Treasury',leaf:true}]},{code:'1200',name:'HR & People',children:[{code:'1210',name:'Talent Acquisition',leaf:true},{code:'1220',name:'Learning & Development',leaf:true},{code:'1230',name:'HR Operations',leaf:true}]}]},{code:'2000',name:'Operations',children:[{code:'2100',name:'Supply Chain',children:[{code:'2110',name:'Procurement',leaf:true},{code:'2120',name:'Logistics',leaf:true},{code:'2130',name:'Demand Planning',leaf:true}]}]},{code:'5000',name:'Digital & Tech',children:[{code:'5100',name:'Engineering',children:[{code:'5110',name:'Platform Engineering',leaf:true},{code:'5120',name:'Data & Analytics',leaf:true},{code:'5130',name:'Infrastructure',leaf:true}]}]},{code:'7000',name:'R&D Division',children:[{code:'7300',name:'Oncology R&D',children:[{code:'7300RND-CC-041',name:'Clinical Trials',leaf:true},{code:'7300RND-CC-042',name:'Drug Discovery',leaf:true},{code:'7300RND-CC-043',name:'Regulatory Affairs',leaf:true}]},{code:'7400',name:'Immunology R&D',children:[{code:'7400RND-CC-051',name:'Pre-clinical Research',leaf:true},{code:'7400RND-CC-052',name:'Biomarkers',leaf:true},{code:'7400RND-CC-053',name:'Translational Medicine',leaf:true}]}]},{code:'6200',name:'Commercial',children:[{code:'6210',name:'Brand Marketing',children:[{code:'6200COM-CC-115',name:'Brand Marketing — Oncology',leaf:true},{code:'6200COM-CC-116',name:'Brand Marketing — Immunology',leaf:true}]},{code:'6220',name:'Commercial Operations',children:[{code:'6200COM-CC-122',name:'Sales Operations',leaf:true}]}]}]};
+const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre',children:[{code:'1100',name:'Finance',children:[{code:'1110',name:'FP&A',leaf:true},{code:'1120',name:'Financial Reporting',leaf:true},{code:'1130',name:'Treasury',leaf:true}]},{code:'1200',name:'HR & People',children:[{code:'1210',name:'Talent Acquisition',leaf:true},{code:'1220',name:'Learning & Development',leaf:true},{code:'1230',name:'HR Operations',leaf:true}]}]},{code:'2000',name:'Operations',children:[{code:'2100',name:'Supply Chain',children:[{code:'2110',name:'Procurement',leaf:true},{code:'2120',name:'Logistics',leaf:true},{code:'2130',name:'Demand Planning',leaf:true}]}]},{code:'5000',name:'Digital & Tech',children:[{code:'5100',name:'Engineering',children:[{code:'5110',name:'Platform Engineering',leaf:true},{code:'5120',name:'Data & Analytics',leaf:true},{code:'5130',name:'Infrastructure',leaf:true}]}]},{code:'7000',name:'R&D Division',children:[{code:'7300',name:'Oncology R&D',children:[{code:'7300RND-CC-041',name:'Clinical Trials',leaf:true},{code:'7300RND-CC-042',name:'Drug Discovery',leaf:true},{code:'7300RND-CC-043',name:'Regulatory Affairs',leaf:true}]},{code:'7400',name:'Immunology R&D',children:[{code:'7400RND-CC-051',name:'Pre-clinical Research',leaf:true},{code:'7400RND-CC-052',name:'Biomarkers',leaf:true},{code:'7400RND-CC-053',name:'Translational Medicine',leaf:true}]}]},{code:'6200',name:'Commercial',children:[{code:'6210',name:'Brand Marketing',children:[{code:'6200COM-CC-115',name:'Brand Marketing — Oncology',leaf:true},{code:'6200COM-CC-116',name:'Brand Marketing — Immunology',leaf:true}]},{code:'6220',name:'Commercial Operations',children:[{code:'6200COM-CC-122',name:'Sales Operations',leaf:true}]}]},{code:'8000',name:'Retail Division',children:[{code:'8100',name:'Retail Operations',children:[{code:'8110',name:'Store Operations',leaf:true},{code:'8120',name:'Merchandising',leaf:true},{code:'8130',name:'Retail Finance & Admin',leaf:true}]}]},{code:'9000',name:'Risk & Compliance',children:[{code:'9100',name:'Risk & Compliance',children:[{code:'9110',name:'Enterprise Risk',leaf:true},{code:'9120',name:'Regulatory Compliance',leaf:true},{code:'9130',name:'Internal Audit',leaf:true}]}]}]};
 const locTree={name:'All locations',children:[{name:'United Kingdom',code:'GB',children:[{name:'London',code:'GB-LON',children:[{code:'GB-LON-001',name:'Canary Wharf HQ',leaf:true},{code:'GB-LON-002',name:'Paddington Research Centre',leaf:true},{code:'GB-LON-003',name:'Southwark Operations Hub',leaf:true}]},{name:'Cambridge',code:'GB-CAM',children:[{code:'GB-CAM-001',name:'Cambridge Science Park',leaf:true},{code:'GB-CAM-002',name:"Addenbrooke's Site",leaf:true}]},{name:'Manchester',code:'GB-MAN',children:[{code:'GB-MAN-001',name:'Spinningfields Office',leaf:true},{code:'GB-MAN-002',name:'MediaCity Hub',leaf:true}]}]},{name:'United States',code:'US',children:[{name:'New York',code:'US-NYC',children:[{code:'US-NYC-001',name:'Midtown Manhattan Office',leaf:true},{code:'US-NYC-002',name:'Brooklyn R&D Lab',leaf:true}]},{name:'Boston',code:'US-BOS',children:[{code:'US-BOS-001',name:'Kendall Square Campus',leaf:true},{code:'US-BOS-002',name:'Longwood Medical Site',leaf:true}]},{name:'San Francisco',code:'US-SFO',children:[{code:'US-SFO-001',name:'Mission Bay Office',leaf:true}]}]},{name:'Germany',code:'DE',children:[{name:'Munich',code:'DE-MUC',children:[{code:'DE-MUC-001',name:'Schwabing Research Park',leaf:true}]},{name:'Berlin',code:'DE-BER',children:[{code:'DE-BER-001',name:'Mitte Innovation Hub',leaf:true}]}]},{name:'Switzerland',code:'CH',children:[{name:'Basel',code:'CH-BSL',children:[{code:'CH-BSL-001',name:'Basel Life Sciences Campus',leaf:true}]}]},{name:'Japan',code:'JP',children:[{name:'Tokyo',code:'JP-TYO',children:[{code:'JP-TYO-001',name:'Shinjuku Office',leaf:true}]}]}]};
 
 /* ── Simulated GL × Product data ── */
@@ -1198,6 +1211,8 @@ const SET_AREA_TYPE={
   '5000':'it',          // Digital & Tech
   '6200':'commercial',  // Commercial
   '7000':'rnd',         // R&D Division
+  '8000':'retail',      // Retail Division — gl-shaped (coShape default)
+  '9000':'risk',        // Risk & Compliance — gl-shaped (coShape default)
 };
 // Map a CC code → its top-level SET area node {code,name}, by walking ccTree.
 const _ccSetAreaCache={};
@@ -3192,22 +3207,27 @@ function renderRvByCC(){
     const attr=gca(cc.code);
     const cur=attr.cur||'USD';
     const sym=rvCurrency==='local'?currSymbol(cur):'$';
-    const isFull=isCcFull(cc.code);
+    // Derive Full/Partial from this submission's own entry, not the global cc2Sel
+    // (during the Lead's aggregated view cc2Sel may not carry every contributor's CC).
+    const isFull=cc.type?cc.type==='full':isCcFull(cc.code);
 
     // Cost Out table — Dept-grouped sub-tables (CC is in the block header)
     const coRows=ccData[cc.code]||[];
-    let coTableHTML='<span class="rv-none" style="font-size:12px;">No cost data entered.</span>';
+    let coTableHTML=`<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:2px;">Cost out</div><span class="rv-none" style="font-size:12px;">No cost data entered.</span>`;
     if(coRows.length){
       const hasSub=exp25||exp26;
       const formatCost=(v)=>fmtCostM(toLocal(v||0,cur));
       // One flat unified table (CC & Dept are in the block header, so omit those columns).
       const tbody=coRows.map((row,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${dataCellsForRow(row,formatCost)}</tr>`).join('');
-      coTableHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
+      const fullTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
+      const rt=fyTotals(coRows);
+      const tot={fy25:toLocal(rt.fy25,cur),fy26:toLocal(rt.fy26,cur),fy27:toLocal(rt.fy27,cur),fy28:toLocal(rt.fy28,cur),fy29:toLocal(rt.fy29,cur)};
+      coTableHTML=coViewWrap(`s6co:${cc.code}`,'Cost out',tot,fullTable);
     }
 
     // FTE table
     const fteRows=fteData.filter(r=>r.cc===cc.code);
-    let fteTableHTML='<span class="rv-none" style="font-size:12px;">No FTE data entered.</span>';
+    let fteTableHTML=`<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out</div><span class="rv-none" style="font-size:12px;">No FTE data entered.</span>`;
     if(fteRows.length){
       const hasSub=exp25||exp26;
       const fteThead=`<tr>
@@ -3230,7 +3250,8 @@ function renderRvByCC(){
           ${dataCellsForRow(row,formatFte)}
         </tr>`;
       }).join('');
-      fteTableHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`;
+      const full=`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`;
+      fteTableHTML=coViewWrap(`s6fte:${cc.code}`,'FTEs out',fyTotals(fteRows),full,fmtFte,'FTEs out total');
     }
 
     // Cost In persons (only assignable when not awaiting)
@@ -3263,9 +3284,7 @@ function renderRvByCC(){
         </div>
       </div>
       <div class="rv-cc-block-body">
-        <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:2px;">Cost out</div>
         ${coTableHTML}
-        <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out</div>
         ${fteTableHTML}
         ${ciPanelHTML}
       </div>
@@ -3313,14 +3332,17 @@ function renderRvByCC(){
 
   wrap.innerHTML=html;
 
-  // Wire person pickers for each CC (only on the assignable CCs — those that have submitted)
+  // Wire person pickers for each rendered CI search box. We query the DOM rather
+  // than iterate getAllCostOut() (global cc2Sel) because the rendered CC set is the
+  // union of all contributors' submissions, which can differ from cc2Sel — keying
+  // off cc2Sel left some boxes (e.g. a CC only one contributor submitted) un-wired.
   if(!isAwaitingCo){
-    ccs.forEach(cc=>{
-      const inp=document.getElementById(`rv-ci-search-${cc.code}`);
-      const dd=document.getElementById(`rv-ci-dd-${cc.code}`);
-      if(inp&&dd){
-        inp.addEventListener('focus',()=>renderCiDropdown(cc.code,inp.value));
-        inp.addEventListener('input',()=>renderCiDropdown(cc.code,inp.value));
+    wrap.querySelectorAll('input[id^="rv-ci-search-"]').forEach(inp=>{
+      const code=inp.id.slice('rv-ci-search-'.length);
+      const dd=document.getElementById(`rv-ci-dd-${code}`);
+      if(dd){
+        inp.addEventListener('focus',()=>renderCiDropdown(code,inp.value));
+        inp.addEventListener('input',()=>renderCiDropdown(code,inp.value));
         inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
       }
     });
@@ -3386,6 +3408,11 @@ const USER_PROFILES={
   jl:{...PEOPLE.find(p=>p.id==='jl'), deptCode:'7400IMM', deptName:'Immunology R&D',   role:'Finance Business Partner', personaRole:'SET BC Lead'},
   eh:{...PEOPLE.find(p=>p.id==='eh'), deptCode:'7400IMM', deptName:'Immunology R&D',   role:'Finance Analyst',          personaRole:'BC Contributor'},
   mk:{...PEOPLE.find(p=>p.id==='mk'), deptCode:'7400IMM', deptName:'Immunology R&D',   role:'Finance Analyst',          personaRole:'BC Contributor'},
+
+  // ── Commercial ──
+  cm:{...PEOPLE.find(p=>p.id==='cm'), deptCode:'6200COM', deptName:'Commercial',       role:'Finance Business Partner', personaRole:'SET BC Lead'},
+  rf:{...PEOPLE.find(p=>p.id==='rf'), deptCode:'6200COM', deptName:'Commercial',       role:'Finance Analyst',          personaRole:'BC Contributor'},
+  iw:{...PEOPLE.find(p=>p.id==='iw'), deptCode:'6200COM', deptName:'Commercial',       role:'Finance Analyst',          personaRole:'BC Contributor'},
 
   // ── Digital & Tech ──
   so:{...PEOPLE.find(p=>p.id==='so'), deptCode:'5000DIG', deptName:'Digital & Tech',   role:'Finance Business Partner', personaRole:'SET BC Lead'},
@@ -3457,7 +3484,7 @@ function renderUserMenu(){
     byDivision[k].push([id,u]);
   });
   // Order divisions in a stable, readable sequence
-  const divisionOrder=['Oncology R&D','Immunology R&D','Digital & Tech','Finance','HR & People','Operations','Corporate Centre','Risk & Compliance','Retail Division'];
+  const divisionOrder=['Oncology R&D','Immunology R&D','Commercial','Digital & Tech','Finance','HR & People','Operations','Corporate Centre','Risk & Compliance','Retail Division'];
   const divisions=divisionOrder.filter(d=>byDivision[d]);
   let html='';
   divisions.forEach((div)=>{
@@ -3769,6 +3796,45 @@ let ciFteData=[];    // fte in rows
 let ciSel=new Set();
 let ciFteSel=new Set();
 let ciExp={fy25:false,fy26:false};
+// "Other Cost In contributors" section starts collapsed to keep the CI screen compact.
+let ciOthersCollapsed={cost:true,fte:true};
+// Read-only Cost Out context views (Lead step 6/7, CI step 1/2/4) start collapsed,
+// showing per-year totals; expanding reveals the full rows. `coViewExpanded` holds
+// the scopes that are currently expanded (default for any scope is collapsed).
+const coViewExpanded=new Set();
+function toggleCoView(scope){
+  if(coViewExpanded.has(scope))coViewExpanded.delete(scope);else coViewExpanded.add(scope);
+  const id=document.querySelector('.screen.active')?.id||'';
+  if(id==='screen-step6')renderRvByCC();
+  else if(id==='screen-step7')buildStep7();
+  else if(id==='screen-ci-step1')renderCiByCc();
+  else if(id==='screen-ci-step2')renderCiStep2();
+  else if(id==='screen-ci-step3')renderCiStep3();
+  else if(id==='screen-ci-step4')renderCiReview();
+}
+// Sum a list of rows into per-FY totals (rows carry fy25/fy26 arrays + fy27..fy29).
+function fyTotals(rows){
+  const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+  (rows||[]).forEach(r=>{t.fy25+=rowTotal(r.fy25||[]);t.fy26+=rowTotal(r.fy26||[]);t.fy27+=Number(r.fy27)||0;t.fy28+=Number(r.fy28)||0;t.fy29+=Number(r.fy29)||0;});
+  return t;
+}
+// Wrap a Cost Out table in a collapsible section. Collapsed shows a compact per-year
+// totals row; expanded shows `fullHTML`. `totals` is precomputed in display units.
+function coViewWrap(scope,label,totals,fullHTML,fmtv,totalsLabel){
+  fmtv=fmtv||fmtCostM;
+  totalsLabel=totalsLabel||'Cost out total ($m)';
+  const expanded=coViewExpanded.has(scope);
+  const safe=String(scope).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const head=`<div onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;font-size:11px;font-weight:500;color:#666;margin:2px 0 6px;display:inline-flex;align-items:center;gap:6px;">${expanded?'▼':'▶'} ${label}</div>`;
+  if(expanded)return `<div>${head}${fullHTML}</div>`;
+  const thS='padding:3px 10px;font-size:10px;color:#888;font-weight:500;text-align:right;border-bottom:0.5px solid #eee;';
+  const tdS='padding:3px 10px;font-size:11px;text-align:right;';
+  const fys=['fy25','fy26','fy27','fy28','fy29'],lbls=['FY25','FY26','FY27','FY28','FY29'];
+  const hcells=lbls.map(l=>`<th style="${thS}">${l}</th>`).join('');
+  const cells=fys.map(fk=>`<td style="${tdS}font-weight:600;">${fmtv(totals[fk])}</td>`).join('');
+  const tbl=`<table style="border-collapse:collapse;margin:0 0 6px;"><thead><tr><th style="${thS}text-align:left;">${totalsLabel}</th>${hcells}</tr></thead><tbody><tr><td style="${tdS}text-align:left;color:#888;">per year</td>${cells}</tr></tbody></table>`;
+  return `<div>${head}${tbl}</div>`;
+}
 
 function openCiFlow(){
   // If BC is locked, show read-only review
@@ -4008,8 +4074,8 @@ function renderCiByCc(){
       fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),
       fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)}));
     const coTableHTML=coConv.length
-      ?`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`
-      :'<span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
+      ?coViewWrap(`ci1co:${cc.code}`,'Cost out rows',fyTotals(coConv),`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`)
+      :'<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;">Cost out rows</div><span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
     const fteThead=`<tr>
       <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
       <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
@@ -4046,10 +4112,8 @@ function renderCiByCc(){
         </div>
       </div>
       <div class="rv-cc-block-body">
-        <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;">Cost out rows</div>
         ${coTableHTML}
-        <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out rows</div>
-        ${fteRows.length?`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No FTE rows.</span>'}
+        ${fteRows.length?coViewWrap(`ci1fte:${cc.code}`,'FTEs out rows',fyTotals(fteRows),`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`,fmtFte,'FTEs out total'):'<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out rows</div><span class="rv-none" style="font-size:12px;">No FTE rows.</span>'}
         <div class="rv-ci-label">Cost In cost centre(s) receiving this cost <span style="font-size:11px;color:#888;font-weight:400;">— type is fixed by the Cost Out selection</span></div>
         <div class="rv-ci-panel" id="ci-panel-${cc.code}">
           <div class="method-toggle" style="margin-bottom:10px;">
@@ -4307,7 +4371,6 @@ function renderCiStep2Multi(card){
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Review the Cost Out summary below, then enter your Cost In values. The master data (cost centre, GL account, product) is fixed — you can only edit the numeric values.</p>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:12px;font-weight:500;margin-bottom:6px;color:#0C447C;">Cost Out summary (read only)</div>
       <div id="ci-co-summary-table"></div>
     </div>
 
@@ -4431,7 +4494,6 @@ function renderCiStep3Multi(card){
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Enter the FTE values for each cost centre. Master data (cost centre, location, workforce, worker type) is fixed — only the numeric values are editable.</p>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:12px;font-weight:500;margin-bottom:6px;color:#0C447C;">FTEs Out summary (read only)</div>
       <div id="ci-fte-co-summary-table"></div>
     </div>
 
@@ -4513,7 +4575,7 @@ function renderCiFteCoSummaryTable(){
       <td class="td-future">${fmtFte(row.fy29||0)}</td>
     </tr>`;
   }).join('');
-  el.innerHTML=allRows.length?`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No FTE data.</span>';
+  el.innerHTML=allRows.length?coViewWrap('ci3fte:summary','FTEs Out summary (read only)',fyTotals(allRows.map(p=>p.row)),`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`,fmtFte,'FTEs out total'):'<span class="rv-none" style="font-size:12px;">No FTE data.</span>';
 }
 
 /* Cost Out summary at top of multi-CC Cost In step 2 — read-only, expandable */
@@ -4577,7 +4639,7 @@ function renderCiCoSummaryTable(){
       <td class="td-future">${fmtM(row.fy29||0)}</td>
     </tr>`;
   }).join('');
-  el.innerHTML=allRows.length?`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No Cost Out data.</span>';
+  el.innerHTML=allRows.length?coViewWrap('ci2co:summary','Cost Out summary (read only)',fyTotals(allRows.map(p=>p.row)),`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`):'<span class="rv-none" style="font-size:12px;">No Cost Out data.</span>';
 }
 
 /* ── Other Cost In contributors section ──
@@ -4588,8 +4650,19 @@ function renderCiOthersTable(mode){
   const el=document.getElementById(mode==='cost'?'ci-others-wrap-cost':'ci-others-wrap-fte');
   if(!el||!submittedBC)return;
   const u=currentUser();
+  // Only the CCs routed to the current contributor — other contributors are relevant
+  // only where they share one of THESE cost centres, not the whole boundary change.
+  const myCcs=getMyAssignedCcCodes();
   const allPersonsMap={};
-  Object.values(submittedBC.costInPersons||{}).flat().forEach(p=>{if(p.id!==u.id)allPersonsMap[p.id]=p;});
+  const personCcs={}; // person id → Set of shared CC codes (within my assigned CCs)
+  Object.entries(submittedBC.costInPersons||{}).forEach(([ccCode,persons])=>{
+    if(!myCcs.has(ccCode))return;
+    persons.forEach(p=>{
+      if(p.id===u.id)return;
+      allPersonsMap[p.id]=p;
+      (personCcs[p.id]=personCcs[p.id]||new Set()).add(ccCode);
+    });
+  });
   const otherPersons=Object.values(allPersonsMap);
   if(!otherPersons.length){el.innerHTML='';return;}
 
@@ -4736,60 +4809,80 @@ function renderCiOthersTable(mode){
   // Stash ccCode on source rows for net calc lookup
   sourceRows.forEach(sr=>{sr.row._ccCode=sr.ccCode;});
 
-  // One flat unified table — all source rows in a single group (no dept sub-grouping/collapse).
-  const dGroups=[{dept:null,pairs:sourceRows}];
-
-  // Render a person's block as dept-grouped collapsible sections
-  function renderPersonGroupedBody(p, responded, blockScope) {
-    return dGroups.map(g=>{
-      // Flat unified table with the full rows.
-      const tbody=g.pairs.map((sr,si)=>{
-        const pr=findPersonRow(p,sr.ccCode,sr.row);
-        return`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${valCells(pr,!responded||!pr)}</tr>`;
-      }).join('');
-      return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
+  // A person's block: only the rows for CCs they actually share with the current user.
+  function renderPersonBody(p, responded) {
+    const pccs=personCcs[p.id]||new Set();
+    const pairs=sourceRows.filter(sr=>pccs.has(sr.ccCode));
+    const tbody=pairs.map((sr,si)=>{
+      const pr=findPersonRow(p,sr.ccCode,sr.row);
+      return`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${valCells(pr,!responded||!pr)}</tr>`;
     }).join('');
+    return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
   }
 
-  // One block per other Cost In person
-  const personBlocks=otherPersons.map(p=>{
-    const responded=Object.values(ciResponses).some(resp=>resp.person.id===p.id);
-    const blockScope=`ci-others-${mode}:${p.id}`;
-    return`<div style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="font-size:12px;font-weight:500;color:#444;">${p.first} ${p.last}</span>
-        <span style="font-size:11px;color:#888;">${p.dept||''}</span>
-        ${responded
-          ?'<span class="badge badge-approved" style="font-size:10px;">Submitted</span>'
-          :'<span class="badge badge-pending" style="font-size:10px;">Pending</span>'}
-      </div>
-      ${renderPersonGroupedBody(p, responded, blockScope)}
-    </div>`;
-  }).join('');
-
-  // Final block: Net available per row — also dept-grouped & collapsible
-  const netLabel=mode==='cost'?'Net available cost':'Net available FTEs';
-  const netScope=`ci-others-${mode}:net`;
-  const netSections=dGroups.map(g=>{
-    // Flat unified Net Available table.
-    const tbody=g.pairs.map((sr,si)=>`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${netCells({...sr.row,_ccCode:sr.ccCode})}</tr>`).join('');
-    return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
-  }).join('');
-  const netBlock=`<div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-      <span style="font-size:12px;font-weight:600;color:#1a1a1a;">${netLabel}</span>
-      <span style="font-size:10px;color:#666;font-weight:400;">Cost Out − submitted responses from other contributors</span>
-    </div>
-    ${netSections}
-  </div>`;
-
   const sectionTitle=mode==='cost'?'Other Cost In contributors':'Other FTE In contributors';
-  el.innerHTML=`
-    <div class="ci-others-wrap">
-      <div class="ci-others-title">${sectionTitle} <span style="color:#888;font-weight:400;font-size:11px;">— values shown for context only</span></div>
-      ${personBlocks}
-      ${netBlock}
+  const collapsed=ciOthersCollapsed[mode];
+  const nP=otherPersons.length;
+  const summary=`${nP} other contributor${nP===1?'':'s'} on your cost centre${myCcs.size===1?'':'s'} · values shown for context only`;
+  const header=`<div class="ci-others-title" style="cursor:pointer;user-select:none;" onclick="ciOthersCollapsed['${mode}']=!ciOthersCollapsed['${mode}'];renderCiOthersTable('${mode}')">${collapsed?'▶':'▼'} ${sectionTitle} <span style="color:#888;font-weight:400;font-size:11px;">— ${summary}</span></div>`;
+
+  // Build the heavy tables only when the section is expanded (keeps the screen compact).
+  let body='';
+  if(!collapsed){
+    const personBlocks=otherPersons.map(p=>{
+      const responded=Object.values(ciResponses).some(resp=>resp.person.id===p.id);
+      return`<div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:500;color:#444;">${p.first} ${p.last}</span>
+          <span style="font-size:11px;color:#888;">${p.dept||''}</span>
+          ${responded
+            ?'<span class="badge badge-approved" style="font-size:10px;">Submitted</span>'
+            :'<span class="badge badge-pending" style="font-size:10px;">Pending</span>'}
+        </div>
+        ${renderPersonBody(p, responded)}
+      </div>`;
+    }).join('');
+
+    // Net available per row across the current user's source rows.
+    const netLabel=mode==='cost'?'Net available cost':'Net available FTEs';
+    const netTbody=sourceRows.map((sr,si)=>`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${netCells({...sr.row,_ccCode:sr.ccCode})}</tr>`).join('');
+    const netBlock=`<div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:12px;font-weight:600;color:#1a1a1a;">${netLabel}</span>
+        <span style="font-size:10px;color:#666;font-weight:400;">Cost Out − submitted responses from other contributors</span>
+      </div>
+      <div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${netTbody}</tbody></table></div>
     </div>`;
+    body=`${personBlocks}${netBlock}`;
+  } else {
+    // Collapsed: compact per-year totals so the figures are visible without expanding.
+    const FYK=['fy25','fy26','fy27','fy28','fy29'], FYL=['FY25','FY26','FY27','FY28','FY29'];
+    const personTot=p=>{
+      const pccs=personCcs[p.id]||new Set();
+      const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+      sourceRows.forEach(sr=>{
+        if(!pccs.has(sr.ccCode))return;
+        const pr=findPersonRow(p,sr.ccCode,sr.row);
+        if(!pr)return;
+        FYK.forEach(fk=>{t[fk]+=Math.abs(getRowValue(pr,fk));});
+      });
+      return t;
+    };
+    const grand={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+    const rows=otherPersons.map(p=>{
+      const responded=Object.values(ciResponses).some(r=>r.person.id===p.id);
+      const t=personTot(p);
+      FYK.forEach(fk=>grand[fk]+=t[fk]);
+      const cells=responded
+        ?FYK.map(fk=>`<td class="ci-td-left" style="text-align:right;">${fmtVal(t[fk])}</td>`).join('')
+        :FYK.map(()=>`<td class="ci-td-pending" style="text-align:right;">—</td>`).join('');
+      return `<tr><td class="ci-td-left">${p.first} ${p.last} <span style="color:#888;font-size:10px;">${p.dept||''}</span></td>${cells}</tr>`;
+    }).join('');
+    const totalRow=`<tr style="font-weight:600;background:#f5f4f0;"><td class="ci-td-left">Total per year</td>${FYK.map(fk=>`<td class="ci-th-total" style="text-align:right;">${fmtVal(grand[fk])}</td>`).join('')}</tr>`;
+    body=`<div style="overflow-x:auto;margin-top:6px;"><table class="ci-others-table"><thead><tr><th class="ci-th-left" style="min-width:200px;">Contributor</th>${FYL.map(l=>`<th class="ci-th-future">${l}</th>`).join('')}</tr></thead><tbody>${rows}${totalRow}</tbody></table></div>`;
+  }
+
+  el.innerHTML=`<div class="ci-others-wrap">${header}${body}</div>`;
 }
 
 function renderCiTable(){
@@ -5068,7 +5161,7 @@ function renderCiReview(){
   const el=document.getElementById('ci-review-wrap');
   const coRows=submittedBC?submittedBC.ccData[ciActiveCcCode]||[]:[];
   const hasSub=fyHasSubRow();
-  const coTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coRows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
+  const coTable=coViewWrap(`ci4co:${ciActiveCcCode}`,'Cost out rows',fyTotals(coRows),`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coRows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`);
 
   const ciTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${ciData.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
 
@@ -5248,14 +5341,14 @@ function buildStep7(){
     ${hasSubRow?`<tr>${s6Exp.fy25?`<th class="s6-th-mo s6-th-total">Total</th>${subRow25}`:''}${s6Exp.fy26?`<th class="s6-th-mo s6-th-total">Total</th>${subRow26}`:''}</tr>`:''}
   </thead>`;
 
-  const tableRows=[
+  const costAggRows=[
     buildRow(aggCo,true,'Cost Out','s6-tr-out'),
-    buildRow(aggCoFte,false,'FTEs Out','s6-tr-fte-out'),
-    `<tr class="s6-tr-divider"><td colspan="100"></td></tr>`,
     buildRow(v=>aggCi(v),true,'Cost In','s6-tr-in'),
-    buildRow(v=>aggCiFte(v),false,'FTEs In','s6-tr-fte-in'),
-    `<tr class="s6-tr-divider"><td colspan="100"></td></tr>`,
     buildNetRow(aggCo,aggCi,true,'Net cost'),
+  ].join('');
+  const fteAggRows=[
+    buildRow(aggCoFte,false,'FTEs Out','s6-tr-fte-out'),
+    buildRow(v=>aggCiFte(v),false,'FTEs In','s6-tr-fte-in'),
     buildNetRow(aggCoFte,aggCiFte,false,'Net FTEs'),
   ].join('');
 
@@ -5313,10 +5406,8 @@ function buildStep7(){
     sortDeptCc(flat);
     const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true,'out')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    return `
-      <div style="font-size:11px;font-weight:500;color:#0C447C;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
-        <span>Cost Out</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>
-      </div>${inner}`;
+    const label=`<span class="set-area-code">${area.code}</span> ${area.name} · Cost Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
+    return coViewWrap(`s7co:${area.code}`,label,fyTotals(flat),inner);
   }
   function fteOutSection(area){
     const fteTbody=area.fteRows.map(({cc,row},gi)=>{
@@ -5328,11 +5419,8 @@ function buildStep7(){
         ${fyDataCells(row,fmtFte)}
       </tr>`;
     }).join('');
-    return area.fteRows.length?`
-      <div style="font-size:11px;font-weight:500;color:#0C447C;margin:10px 0 5px;display:flex;align-items:center;gap:8px;">
-        <span>FTEs Out</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>
-      </div>
-      <div class="rv-table-wrap"><table class="rv-table"><thead>
+    if(!area.fteRows.length)return '';
+    const fteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
         <tr>
           <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
           <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
@@ -5344,7 +5432,9 @@ function buildStep7(){
           ${fyHeaderCells()}
         </tr>
         ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-      </thead><tbody>${fteTbody}</tbody></table></div>`:'';
+      </thead><tbody>${fteTbody}</tbody></table></div>`;
+    const fteLabel=`<span class="set-area-code">${area.code}</span> ${area.name} · FTEs Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
+    return coViewWrap(`s7fte:${area.code}`,fteLabel,fyTotals(area.fteRows.map(p=>p.row)),fteFull,fmtFte,'FTEs out total');
   }
   function ciInSection(area){
     if(!area.ciRows.length)return '';
@@ -5352,10 +5442,8 @@ function buildStep7(){
     sortDeptCc(flat);
     const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${roUniIdCells(row,true,'in')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    return `
-      <div style="font-size:11px;font-weight:500;color:#27500A;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
-        <span>Cost In</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>
-      </div>${inner}`;
+    const label=`<span class="set-area-code">${area.code}</span> ${area.name} · Cost In <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
+    return coViewWrap(`s7ci:${area.code}`,label,fyTotals(flat),inner,fmtCostM,'Cost in total ($m)');
   }
   function ciFteInSection(area){
     const ciFteTbody=area.ciFteRows.map(({ccCode,row,person},gi)=>{
@@ -5367,11 +5455,8 @@ function buildStep7(){
         ${fyDataCells(row,fmtFte)}
       </tr>`;
     }).join('');
-    return area.ciFteRows.length?`
-      <div style="font-size:11px;font-weight:500;color:#27500A;margin:10px 0 5px;display:flex;align-items:center;gap:8px;">
-        <span>FTEs In</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>
-      </div>
-      <div class="rv-table-wrap"><table class="rv-table"><thead>
+    if(!area.ciFteRows.length)return '';
+    const ciFteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
         <tr>
           <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
           <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
@@ -5383,42 +5468,41 @@ function buildStep7(){
           ${fyHeaderCells()}
         </tr>
         ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-      </thead><tbody>${ciFteTbody}</tbody></table></div>`:'';
+      </thead><tbody>${ciFteTbody}</tbody></table></div>`;
+    const ciFteLabel=`<span class="set-area-code">${area.code}</span> ${area.name} · FTEs In <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
+    return coViewWrap(`s7cifte:${area.code}`,ciFteLabel,fyTotals(area.ciFteRows.map(p=>p.row)),ciFteFull,fmtFte,'FTEs in total');
   }
 
-  function areaBlock(setCode,inner,kind){
-    const sa=byArea[setCode];
-    const kindLabel=kind==='out'?'Source':'Destination';
-    const kindClass=kind==='out'?'set-area-kind-out':'set-area-kind-in';
-    return `<div class="set-area-block" style="margin-bottom:14px;">
-      <div class="set-area-hdr" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <span class="set-area-code">${setCode}</span>
-        <span class="set-area-name">${sa.name}</span>
-        <span class="${kindClass}" style="margin-left:auto;font-size:10px;font-weight:500;padding:2px 8px;border-radius:6px;">${kindLabel}</span>
-      </div>
-      <div style="padding:14px 16px;background:#fff;">${inner||'<span class="rv-none" style="font-size:12px;">No data.</span>'}</div>
-    </div>`;
+  // Collapsible "By SET Area" gate. No totals row of its own — the aggregate matrix
+  // above each block already shows the total; this just reveals the per-area breakdown.
+  function byAreaGate(scope,detailHTML){
+    if(!detailHTML)return '';
+    const expanded=coViewExpanded.has(scope);
+    const safe=String(scope).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div style="margin-top:10px;">
+      <div onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;font-size:12px;font-weight:500;color:#444;">${expanded?'▼':'▶'} By SET Area</div>
+      ${expanded?`<div style="margin-top:8px;">${detailHTML}</div>`:''}</div>`;
   }
 
-  // Pass 1 — all Source (Cost Out) SET areas, sorted by code
   const sourceAreas=Object.keys(byArea).filter(k=>byArea[k].coRows.length||byArea[k].fteRows.length).sort();
-  // Pass 2 — all Destination (Cost In) SET areas, sorted by code
   const destAreas=Object.keys(byArea).filter(k=>byArea[k].ciRows.length||byArea[k].ciFteRows.length).sort();
+  const subLabel=(txt,color)=>`<div style="font-size:11px;font-weight:500;color:${color};margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">${txt}</div>`;
 
-  let setHtml='';
-  if(sourceAreas.length){
-    setHtml+=`<div style="font-size:12px;font-weight:500;color:#0C447C;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cost Out — by Source SET Area</div>`;
-    sourceAreas.forEach(setCode=>{
-      const area=byArea[setCode];
-      setHtml+=areaBlock(setCode,coOutSection(area)+fteOutSection(area),'out');
-    });
+  function costAreaDetail(){
+    let h='';
+    const outAreas=sourceAreas.filter(k=>byArea[k].coRows.length);
+    const inAreas=destAreas.filter(k=>byArea[k].ciRows.length);
+    if(outAreas.length){h+=subLabel('Cost Out — by source SET area','#0C447C');outAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${coOutSection(byArea[k])}</div>`);}
+    if(inAreas.length){h+=subLabel('Cost In — by destination SET area','#27500A');inAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${ciInSection(byArea[k])}</div>`);}
+    return h;
   }
-  if(destAreas.length){
-    setHtml+=`<div style="font-size:12px;font-weight:500;color:#27500A;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cost In — by Destination SET Area</div>`;
-    destAreas.forEach(setCode=>{
-      const area=byArea[setCode];
-      setHtml+=areaBlock(setCode,ciInSection(area)+ciFteInSection(area),'in');
-    });
+  function fteAreaDetail(){
+    let h='';
+    const outAreas=sourceAreas.filter(k=>byArea[k].fteRows.length);
+    const inAreas=destAreas.filter(k=>byArea[k].ciFteRows.length);
+    if(outAreas.length){h+=subLabel('FTEs Out — by source SET area','#0C447C');outAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${fteOutSection(byArea[k])}</div>`);}
+    if(inAreas.length){h+=subLabel('FTEs In — by destination SET area','#27500A');inAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${ciFteInSection(byArea[k])}</div>`);}
+    return h;
   }
 
   // Collect unique Cost In Contributors across all CCs for the BC details panel
@@ -5448,19 +5532,31 @@ function buildStep7(){
       </div>
     </div>
     <div class="rv-divider"></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-      <span style="font-size:13px;font-weight:500;">Aggregate summary</span>
-      <div class="method-toggle" style="margin-bottom:0;margin-left:auto;" onclick="event.stopPropagation()">
-        <button class="method-btn ${!isLocal?'active':''}" onclick="setStep7Currency('usd')">USD</button>
-        <button class="method-btn ${isLocal?'active':''}" onclick="setStep7Currency('local')">Local</button>
+    <p style="font-size:12px;color:#666;margin:6px 0 14px;">Each block shows the aggregate total; expand <strong>By SET Area</strong> for the per-area breakdown, then a SET area for its row detail. Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:600;color:#0C447C;">💷 Cost</span>
+        <div class="method-toggle" style="margin-bottom:0;margin-left:auto;" onclick="event.stopPropagation()">
+          <button class="method-btn ${!isLocal?'active':''}" onclick="setStep7Currency('usd')">USD</button>
+          <button class="method-btn ${isLocal?'active':''}" onclick="setStep7Currency('local')">Local</button>
+        </div>
+        <span class="unit-pill">${isLocal?'Local Currency':'USD ($m)'}</span>
       </div>
-      <span class="unit-pill">${isLocal?'Local Currency':'USD ($m)'}</span>
+      <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${costAggRows}</tbody></table></div>
+      ${byAreaGate('s7area:cost',costAreaDetail())}
     </div>
-    <p style="font-size:12px;color:#666;margin-bottom:12px;">Totals across all cost centres. Click <strong>FY25</strong> or <strong>FY26</strong> to expand monthly detail. The currency toggle affects all cost tables on this screen (FTE tables are unaffected).</p>
-    <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${tableRows}</tbody></table></div>
+
     <div class="rv-divider" style="margin-top:16px;"></div>
-    <div style="font-size:13px;font-weight:500;margin:12px 0 10px;">Detail by SET Area</div>
-    ${setHtml}`;
+
+    <div style="margin-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:600;color:#1a1a1a;">👥 FTEs</span>
+        <span class="unit-pill" style="margin-left:auto;">FTEs (headcount)</span>
+      </div>
+      <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${fteAggRows}</tbody></table></div>
+      ${byAreaGate('s7area:fte',fteAreaDetail())}
+    </div>`;
 
   // ── Submit button logic ──
   const submitBox=el.parentElement?.querySelector('.submit-box');
@@ -5509,7 +5605,10 @@ const SET_AREAS={
   '1000':{name:'Corporate Centre',codes:['1']},
   '2000':{name:'Operations',codes:['2']},
   '5000':{name:'Digital & Tech',codes:['5']},
+  '6200':{name:'Commercial',codes:['6']},
   '7000':{name:'R&D Division',codes:['7']},
+  '8000':{name:'Retail Division',codes:['8']},
+  '9000':{name:'Risk & Compliance',codes:['9']},
 };
 function getSetArea(ccCode){
   const first=String(ccCode).charAt(0);
