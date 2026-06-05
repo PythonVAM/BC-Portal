@@ -45,19 +45,35 @@ with sync_playwright() as p:
               hasRows:!!blk.querySelector('.rv-table-wrap table.rv-table td.cod-na')};})()""")
     print('STEP6 expanded first:', s6exp)
 
-    pg.evaluate("openLeadView('step7')"); pg.wait_for_timeout(300); s7=toggles('step7'); print('STEP7:', s7)
+    # Step 7 is now two blocks (Cost, FTEs), each with a collapsed "By SET Area"
+    # gate that reveals the per-area collapsible Cost Out / FTEs Out views.
+    pg.evaluate("openLeadView('step7')"); pg.wait_for_timeout(300)
+    s7gates=pg.evaluate("""[...document.querySelectorAll('#screen-step7 [onclick^="toggleCoView"]')].filter(x=>/By SET Area/.test(x.textContent)).map(x=>x.textContent.trim())""")
+    pg.evaluate("""[...document.querySelectorAll('#screen-step7 [onclick^="toggleCoView"]')].filter(x=>/By SET Area/.test(x.textContent)).forEach(g=>g.click())""")
+    pg.wait_for_timeout(250)
+    s7=pg.evaluate("""(()=>{const s=document.getElementById('screen-step7');
+      const t=[...s.querySelectorAll('[onclick^="toggleCoView"]')];
+      const co=t.filter(x=>/Cost Out/.test(x.textContent));
+      const fte=t.filter(x=>/FTEs Out/.test(x.textContent));
+      return {coAreas:co.length, coCollapsed:co.every(x=>x.textContent.trim().startsWith('▶')), coTotals:/Cost out total/.test(s.innerText),
+              fteAreas:fte.length, fteCollapsed:fte.every(x=>x.textContent.trim().startsWith('▶')), fteTotals:/FTEs out total/.test(s.innerText),
+              twoMatrices:s.querySelectorAll('table.s6-table').length===2};})()""")
+    print('STEP7 gates:', s7gates, '| areas:', s7)
     pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200); c1=toggles('ci-step1'); print('CI1:', c1)
     pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200); c2=toggles('ci-step2'); print('CI2:', c2)
     pg.evaluate("go('ci-step3')"); pg.wait_for_timeout(200); c3=toggles('ci-step3'); print('CI3:', c3)
 
     ok = (s6['n']>=2 and s6['collapsed'] and s6['totals']
           and s6exp['glyph'].startswith('▼') and s6exp['hasRows']
-          and s7['n']>=1 and s7['collapsed'] and s7['totals']
           and c1['n']>=2 and c1['collapsed'] and c1['totals']
           and c2['collapsed'] and c2['totals']
-          # FTE Out views are also collapsible with headcount totals
+          # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
+          # per-area Cost Out / FTEs Out views with per-year totals.
+          and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
+          and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
+          and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
+          # FTE Out views collapsible with headcount totals on the per-CC screens
           and s6['nFte']>=1 and s6['fteTotals']
-          and s7['nFte']>=1 and s7['fteTotals']
           and c1['nFte']>=1 and c1['fteTotals']
           and c3['nFte']>=1 and c3['collapsed'] and c3['fteTotals']
           and not errs)

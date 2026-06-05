@@ -160,6 +160,8 @@ Every **cost** table — entry screens and read-only context tables alike — us
 
 The editable Cost In / FTE In entry grids are not wrapped, and CI step 4's FTE table is the contributor's FTE *In* (not an FTE Out view), so it's left alone. (Separately, the "Other Cost In contributors" section uses its own `ciOthersCollapsed` toggle with the same per-year-totals idea.)
 
+**Step 7 (Lead Review · Submit to Group) is a two-block drill-down** (`buildStep7`): a **Cost** block and an **FTEs** block, each a 3-level hierarchy — *Aggregate* (an Out / In / Net matrix, always visible) → *By SET Area* (a collapsed `s7area:cost` / `s7area:fte` gate via `byAreaGate`) → *row detail*. Under "By SET Area", Cost Out / FTEs Out are listed by **source** SET area and Cost In / FTEs In by **destination** SET area (they land in different areas), each area being a `coViewWrap` collapsible: `coOutSection` (`s7co:<area>`), `ciInSection` (`s7ci:<area>`), `fteOutSection` (`s7fte:<area>`), `ciFteInSection` (`s7cifte:<area>`). The USD/Local currency toggle lives in the Cost block header; the balance check (`status==='ci-submitted'`) is unchanged.
+
 ---
 
 ## 3. Working conventions

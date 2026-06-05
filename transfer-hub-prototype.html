@@ -5341,14 +5341,14 @@ function buildStep7(){
     ${hasSubRow?`<tr>${s6Exp.fy25?`<th class="s6-th-mo s6-th-total">Total</th>${subRow25}`:''}${s6Exp.fy26?`<th class="s6-th-mo s6-th-total">Total</th>${subRow26}`:''}</tr>`:''}
   </thead>`;
 
-  const tableRows=[
+  const costAggRows=[
     buildRow(aggCo,true,'Cost Out','s6-tr-out'),
-    buildRow(aggCoFte,false,'FTEs Out','s6-tr-fte-out'),
-    `<tr class="s6-tr-divider"><td colspan="100"></td></tr>`,
     buildRow(v=>aggCi(v),true,'Cost In','s6-tr-in'),
-    buildRow(v=>aggCiFte(v),false,'FTEs In','s6-tr-fte-in'),
-    `<tr class="s6-tr-divider"><td colspan="100"></td></tr>`,
     buildNetRow(aggCo,aggCi,true,'Net cost'),
+  ].join('');
+  const fteAggRows=[
+    buildRow(aggCoFte,false,'FTEs Out','s6-tr-fte-out'),
+    buildRow(v=>aggCiFte(v),false,'FTEs In','s6-tr-fte-in'),
     buildNetRow(aggCoFte,aggCiFte,false,'Net FTEs'),
   ].join('');
 
@@ -5406,7 +5406,7 @@ function buildStep7(){
     sortDeptCc(flat);
     const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true,'out')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    const label=`Cost Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
+    const label=`<span class="set-area-code">${area.code}</span> ${area.name} · Cost Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
     return coViewWrap(`s7co:${area.code}`,label,fyTotals(flat),inner);
   }
   function fteOutSection(area){
@@ -5433,7 +5433,7 @@ function buildStep7(){
         </tr>
         ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
       </thead><tbody>${fteTbody}</tbody></table></div>`;
-    const fteLabel=`FTEs Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
+    const fteLabel=`<span class="set-area-code">${area.code}</span> ${area.name} · FTEs Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
     return coViewWrap(`s7fte:${area.code}`,fteLabel,fyTotals(area.fteRows.map(p=>p.row)),fteFull,fmtFte,'FTEs out total');
   }
   function ciInSection(area){
@@ -5442,10 +5442,8 @@ function buildStep7(){
     sortDeptCc(flat);
     const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${roUniIdCells(row,true,'in')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
     const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    return `
-      <div style="font-size:11px;font-weight:500;color:#27500A;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
-        <span>Cost In</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>
-      </div>${inner}`;
+    const label=`<span class="set-area-code">${area.code}</span> ${area.name} · Cost In <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
+    return coViewWrap(`s7ci:${area.code}`,label,fyTotals(flat),inner,fmtCostM,'Cost in total ($m)');
   }
   function ciFteInSection(area){
     const ciFteTbody=area.ciFteRows.map(({ccCode,row,person},gi)=>{
@@ -5457,11 +5455,8 @@ function buildStep7(){
         ${fyDataCells(row,fmtFte)}
       </tr>`;
     }).join('');
-    return area.ciFteRows.length?`
-      <div style="font-size:11px;font-weight:500;color:#27500A;margin:10px 0 5px;display:flex;align-items:center;gap:8px;">
-        <span>FTEs In</span><span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>
-      </div>
-      <div class="rv-table-wrap"><table class="rv-table"><thead>
+    if(!area.ciFteRows.length)return '';
+    const ciFteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
         <tr>
           <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
           <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
@@ -5473,42 +5468,41 @@ function buildStep7(){
           ${fyHeaderCells()}
         </tr>
         ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-      </thead><tbody>${ciFteTbody}</tbody></table></div>`:'';
+      </thead><tbody>${ciFteTbody}</tbody></table></div>`;
+    const ciFteLabel=`<span class="set-area-code">${area.code}</span> ${area.name} · FTEs In <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
+    return coViewWrap(`s7cifte:${area.code}`,ciFteLabel,fyTotals(area.ciFteRows.map(p=>p.row)),ciFteFull,fmtFte,'FTEs in total');
   }
 
-  function areaBlock(setCode,inner,kind){
-    const sa=byArea[setCode];
-    const kindLabel=kind==='out'?'Source':'Destination';
-    const kindClass=kind==='out'?'set-area-kind-out':'set-area-kind-in';
-    return `<div class="set-area-block" style="margin-bottom:14px;">
-      <div class="set-area-hdr" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <span class="set-area-code">${setCode}</span>
-        <span class="set-area-name">${sa.name}</span>
-        <span class="${kindClass}" style="margin-left:auto;font-size:10px;font-weight:500;padding:2px 8px;border-radius:6px;">${kindLabel}</span>
-      </div>
-      <div style="padding:14px 16px;background:#fff;">${inner||'<span class="rv-none" style="font-size:12px;">No data.</span>'}</div>
-    </div>`;
+  // Collapsible "By SET Area" gate. No totals row of its own — the aggregate matrix
+  // above each block already shows the total; this just reveals the per-area breakdown.
+  function byAreaGate(scope,detailHTML){
+    if(!detailHTML)return '';
+    const expanded=coViewExpanded.has(scope);
+    const safe=String(scope).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div style="margin-top:10px;">
+      <div onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;font-size:12px;font-weight:500;color:#444;">${expanded?'▼':'▶'} By SET Area</div>
+      ${expanded?`<div style="margin-top:8px;">${detailHTML}</div>`:''}</div>`;
   }
 
-  // Pass 1 — all Source (Cost Out) SET areas, sorted by code
   const sourceAreas=Object.keys(byArea).filter(k=>byArea[k].coRows.length||byArea[k].fteRows.length).sort();
-  // Pass 2 — all Destination (Cost In) SET areas, sorted by code
   const destAreas=Object.keys(byArea).filter(k=>byArea[k].ciRows.length||byArea[k].ciFteRows.length).sort();
+  const subLabel=(txt,color)=>`<div style="font-size:11px;font-weight:500;color:${color};margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">${txt}</div>`;
 
-  let setHtml='';
-  if(sourceAreas.length){
-    setHtml+=`<div style="font-size:12px;font-weight:500;color:#0C447C;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cost Out — by Source SET Area</div>`;
-    sourceAreas.forEach(setCode=>{
-      const area=byArea[setCode];
-      setHtml+=areaBlock(setCode,coOutSection(area)+fteOutSection(area),'out');
-    });
+  function costAreaDetail(){
+    let h='';
+    const outAreas=sourceAreas.filter(k=>byArea[k].coRows.length);
+    const inAreas=destAreas.filter(k=>byArea[k].ciRows.length);
+    if(outAreas.length){h+=subLabel('Cost Out — by source SET area','#0C447C');outAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${coOutSection(byArea[k])}</div>`);}
+    if(inAreas.length){h+=subLabel('Cost In — by destination SET area','#27500A');inAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${ciInSection(byArea[k])}</div>`);}
+    return h;
   }
-  if(destAreas.length){
-    setHtml+=`<div style="font-size:12px;font-weight:500;color:#27500A;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cost In — by Destination SET Area</div>`;
-    destAreas.forEach(setCode=>{
-      const area=byArea[setCode];
-      setHtml+=areaBlock(setCode,ciInSection(area)+ciFteInSection(area),'in');
-    });
+  function fteAreaDetail(){
+    let h='';
+    const outAreas=sourceAreas.filter(k=>byArea[k].fteRows.length);
+    const inAreas=destAreas.filter(k=>byArea[k].ciFteRows.length);
+    if(outAreas.length){h+=subLabel('FTEs Out — by source SET area','#0C447C');outAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${fteOutSection(byArea[k])}</div>`);}
+    if(inAreas.length){h+=subLabel('FTEs In — by destination SET area','#27500A');inAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${ciFteInSection(byArea[k])}</div>`);}
+    return h;
   }
 
   // Collect unique Cost In Contributors across all CCs for the BC details panel
@@ -5538,19 +5532,31 @@ function buildStep7(){
       </div>
     </div>
     <div class="rv-divider"></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-      <span style="font-size:13px;font-weight:500;">Aggregate summary</span>
-      <div class="method-toggle" style="margin-bottom:0;margin-left:auto;" onclick="event.stopPropagation()">
-        <button class="method-btn ${!isLocal?'active':''}" onclick="setStep7Currency('usd')">USD</button>
-        <button class="method-btn ${isLocal?'active':''}" onclick="setStep7Currency('local')">Local</button>
+    <p style="font-size:12px;color:#666;margin:6px 0 14px;">Each block shows the aggregate total; expand <strong>By SET Area</strong> for the per-area breakdown, then a SET area for its row detail. Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:600;color:#0C447C;">💷 Cost</span>
+        <div class="method-toggle" style="margin-bottom:0;margin-left:auto;" onclick="event.stopPropagation()">
+          <button class="method-btn ${!isLocal?'active':''}" onclick="setStep7Currency('usd')">USD</button>
+          <button class="method-btn ${isLocal?'active':''}" onclick="setStep7Currency('local')">Local</button>
+        </div>
+        <span class="unit-pill">${isLocal?'Local Currency':'USD ($m)'}</span>
       </div>
-      <span class="unit-pill">${isLocal?'Local Currency':'USD ($m)'}</span>
+      <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${costAggRows}</tbody></table></div>
+      ${byAreaGate('s7area:cost',costAreaDetail())}
     </div>
-    <p style="font-size:12px;color:#666;margin-bottom:12px;">Totals across all cost centres. Click <strong>FY25</strong> or <strong>FY26</strong> to expand monthly detail. The currency toggle affects all cost tables on this screen (FTE tables are unaffected).</p>
-    <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${tableRows}</tbody></table></div>
+
     <div class="rv-divider" style="margin-top:16px;"></div>
-    <div style="font-size:13px;font-weight:500;margin:12px 0 10px;">Detail by SET Area</div>
-    ${setHtml}`;
+
+    <div style="margin-top:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:600;color:#1a1a1a;">👥 FTEs</span>
+        <span class="unit-pill" style="margin-left:auto;">FTEs (headcount)</span>
+      </div>
+      <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${fteAggRows}</tbody></table></div>
+      ${byAreaGate('s7area:fte',fteAreaDetail())}
+    </div>`;
 
   // ── Submit button logic ──
   const submitBox=el.parentElement?.querySelector('.submit-box');
