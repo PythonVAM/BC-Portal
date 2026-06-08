@@ -49,11 +49,21 @@ with sync_playwright() as p:
       return {present:!!el.innerText.trim(), ccs, labels};})()""")
     print('FTE agg:', fte)
 
+    # Review & submit screen (step 4) shows both aggregates too (own -r4 element ids).
+    pg.evaluate("ciActiveCcCode='7300RND-CC-041'; go('ci-step4')"); pg.wait_for_timeout(300)
+    rev=pg.evaluate("""(()=>{
+      const c=document.getElementById('ci-cc-agg-cost-r4'),f=document.getElementById('ci-cc-agg-fte-r4');
+      const lbl=el=>el?[...el.querySelectorAll('.s6-td-label')].map(x=>x.textContent.trim()):[];
+      return {costLabels:lbl(c), fteLabels:lbl(f)};})()""")
+    print('REVIEW agg:', rev)
+
     ok = (cost['present'] and cost['ccs']==['7300RND-CC-041']  # only the shared CC
           and cost['labels']==['Cost Out','Cost In (all)','Net cost']
           and '5110' not in cost['ccs']
           and fte['present'] and fte['ccs']==['7300RND-CC-041']
           and fte['labels']==['FTEs Out','FTEs In (all)','Net FTEs']
+          and rev['costLabels']==['Cost Out','Cost In (all)','Net cost']
+          and rev['fteLabels']==['FTEs Out','FTEs In (all)','Net FTEs']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

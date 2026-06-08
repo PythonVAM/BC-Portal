@@ -4255,8 +4255,8 @@ function getSingleCiCc(){
    screens for any source CC that has MORE THAN ONE Cost In Contributor — mirrors
    the Lead's Step 7 aggregate but scoped to one cost centre. "Cost In" is the live
    total across all contributors (this user's draft + others' submitted values). */
-function renderCiCcAggregate(mode){
-  const el=document.getElementById(mode==='cost'?'ci-cc-agg-cost':'ci-cc-agg-fte');
+function renderCiCcAggregate(mode,elId){
+  const el=document.getElementById(elId||(mode==='cost'?'ci-cc-agg-cost':'ci-cc-agg-fte'));
   if(!el)return;
   if(!submittedBC){el.innerHTML='';return;}
   const u=currentUser();
@@ -5208,11 +5208,15 @@ function renderCiReview(){
   </tbody></table></div>`;
 
   el.innerHTML=`
+    <div id="ci-cc-agg-cost-r4"></div>
+    <div id="ci-cc-agg-fte-r4"></div>
     <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">Cost Out values (reference) <span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;"><span class="cc-badge-out">${ciActiveCcCode}</span> ${deptChipFor(ciActiveCcCode)}</span></div></div>${coTable}</div>
     <div class="rv-divider"></div>
     <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">Your Cost In values ${ciData[0]?.cc?`<span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;"><span class="cc-badge-out">${ciData[0].cc}</span> ${deptChipFor(ciData[0].cc)}</span>`:''}</div><button class="rv-edit" onclick="go('ci-step2')">Edit</button></div>${ciTable}</div>
     <div class="rv-divider"></div>
     <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">FTEs In ${ciFteData[0]?.cc?`<span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;"><span class="cc-badge-out">${ciFteData[0].cc}</span> ${deptChipFor(ciFteData[0].cc)}</span>`:''}</div><button class="rv-edit" onclick="go('ci-step3')">Edit</button></div>${fteTable}</div>`;
+  renderCiCcAggregate('cost','ci-cc-agg-cost-r4');
+  renderCiCcAggregate('fte','ci-cc-agg-fte-r4');
 }
 
 function submitCostIn(){
