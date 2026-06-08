@@ -4251,6 +4251,57 @@ function getSingleCiCc(){
   return entries[0];
 }
 
+/* Per-cost-centre aggregate (Cost Out / Cost In / Net) shown on the Cost In
+   screens for any source CC that has MORE THAN ONE Cost In Contributor — mirrors
+   the Lead's Step 7 aggregate but scoped to one cost centre. "Cost In" is the live
+   total across all contributors (this user's draft + others' submitted values). */
+function renderCiCcAggregate(mode){
+  const el=document.getElementById(mode==='cost'?'ci-cc-agg-cost':'ci-cc-agg-fte');
+  if(!el)return;
+  if(!submittedBC){el.innerHTML='';return;}
+  const u=currentUser();
+  const shared=[...getMyAssignedCcCodes()].sort().filter(cc=>((submittedBC.costInPersons||{})[cc]||[]).length>1);
+  if(!shared.length){el.innerHTML='';return;}
+  const FYK=['fy25','fy26','fy27','fy28','fy29'],FYL=['FY25','FY26','FY27','FY28','FY29'];
+  const fmtv=mode==='cost'?fmtCostM:fmtFte;
+  const ccName=cc=>(submittedBC.cc2Sel||[]).find(c=>c.code===cc)?.name||'';
+  const sumRows=rows=>{const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};(rows||[]).forEach(r=>{t.fy25+=rowTotal(r.fy25||[]);t.fy26+=rowTotal(r.fy26||[]);t.fy27+=Number(r.fy27)||0;t.fy28+=Number(r.fy28)||0;t.fy29+=Number(r.fy29)||0;});return t;};
+  const coFor=cc=>sumRows(mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc));
+  const ciFor=cc=>{
+    const t=sumRows((mode==='cost'?ciData:ciFteData).filter(r=>r.sourceCc===cc)); // this user's draft
+    Object.values(ciResponses).forEach(resp=>{
+      if(resp.person.id===u.id)return; // other contributors' submitted values
+      const o=sumRows(((mode==='cost'?resp.ciData:resp.ciFteData)||[]).filter(r=>r.sourceCc===cc));
+      FYK.forEach(fk=>t[fk]+=o[fk]);
+    });
+    return t;
+  };
+  const dataRow=(label,vals,cls)=>`<tr class="${cls}"><td class="s6-td-label">${label}</td>${FYK.map(fk=>`<td>${fmtv(vals[fk])}</td>`).join('')}</tr>`;
+  const netRow=net=>`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">${mode==='cost'?'Net cost':'Net FTEs'}</td>${FYK.map(fk=>{const v=net[fk];const cls=v<0?'s6-td-neg':v>0?'s6-td-pos':'s6-td-zero';const d=fmtv(Math.abs(v));return`<td class="s6-td-net ${cls}">${v<0?'('+d+')':d}</td>`;}).join('')}</tr>`;
+  const head=`<thead><tr><th class="s6-th-label"></th>${FYL.map(l=>`<th class="s6-th-fy">${l}</th>`).join('')}</tr></thead>`;
+  const blocks=shared.map(cc=>{
+    const co=coFor(cc),ci=ciFor(cc),net={};FYK.forEach(fk=>net[fk]=co[fk]-ci[fk]);
+    const nC=((submittedBC.costInPersons||{})[cc]||[]).length;
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:500;color:#444;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span>
+        <span style="color:#888;font-weight:400;">· ${nC} Cost In contributors</span>
+      </div>
+      <div class="s6-table-wrap"><table class="s6-table">${head}<tbody>
+        ${dataRow(mode==='cost'?'Cost Out':'FTEs Out',co,'s6-tr-out')}
+        ${dataRow(mode==='cost'?'Cost In (all)':'FTEs In (all)',ci,'s6-tr-in')}
+        ${netRow(net)}
+      </tbody></table></div>
+    </div>`;
+  }).join('');
+  const unit=mode==='cost'?'USD ($m)':'FTEs (headcount)';
+  el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
+    <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:4px;display:flex;align-items:center;gap:8px;">Shared cost centre aggregate <span class="unit-pill">${unit}</span></div>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">These cost centres have more than one Cost In Contributor. Totals combine all contributors' Cost In (including your draft) against Cost Out, so you can see whether each balances.</p>
+    ${blocks}
+  </div>`;
+}
+
 function renderCiStep2(){
   const single=getSingleCiCc();
   const card=document.querySelector('#screen-ci-step2 .card');
@@ -4282,7 +4333,7 @@ function renderCiStep2Single(single,card){
     ['fy27','fy28','fy29'].forEach(fk=>{m[fk]=Number(r[fk])||0;});
     return m;
   };
-  ciData=coRows.map(r=>({...mirrorRow(r),cc:inCc.code}));
+  ciData=coRows.map(r=>({...mirrorRow(r),cc:inCc.code,sourceCc:outCcCode}));
 
   const hasSub=fyHasSubRow();
   const coThead=`<tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
@@ -4291,6 +4342,7 @@ function renderCiStep2Single(single,card){
   card.innerHTML=`
     <div class="card-title">Cost In — Cost in values</div>
     <div id="ci-si-step2"></div>
+    <div id="ci-cc-agg-cost"></div>
     <div style="padding:10px 14px;background:#EAF3DE;border:0.5px solid #A3CC72;border-radius:8px;font-size:12px;color:#27500A;margin-bottom:16px;">
       One Cost In cost centre selected — values are auto-populated from the Cost Out data with reversed signs.
     </div>
@@ -4314,7 +4366,8 @@ function renderCiStep2Single(single,card){
     </div>`;
   const siEl=document.getElementById('ci-si-step2');if(siEl)siEl.innerHTML=ciSi(1);
   // Preload ciFteData so step 3 single view can use it (mirror, positive)
-  ciFteData=fteRows.map(r=>({...mirrorRow(r),cc:inCc.code}));
+  ciFteData=fteRows.map(r=>({...mirrorRow(r),cc:inCc.code,sourceCc:outCcCode}));
+  renderCiCcAggregate('cost');
 }
 
 function allowCiEdit(){
@@ -4370,6 +4423,8 @@ function renderCiStep2Multi(card){
     <div id="ci-si-step2"></div>
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Review the Cost Out summary below, then enter your Cost In values. The master data (cost centre, GL account, product) is fixed — you can only edit the numeric values.</p>
 
+    <div id="ci-cc-agg-cost"></div>
+
     <div style="margin-bottom:18px;">
       <div id="ci-co-summary-table"></div>
     </div>
@@ -4391,6 +4446,7 @@ function renderCiStep2Multi(card){
 
     <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="go('ci-step1')">← Back</button><button class="btn btn-primary" onclick="go('ci-step3')">FTEs in →</button></div>`;
   const siEl=document.getElementById('ci-si-step2');if(siEl)siEl.innerHTML=ciSi(1);
+  renderCiCcAggregate('cost');
   renderCiCoSummaryTable();
   renderCiOthersTable('cost');
   renderCiTable();
@@ -4438,6 +4494,7 @@ function renderCiStep3Single(single,card){
   card.innerHTML=`
     <div class="card-title">Cost In — FTEs in</div>
     <div id="ci-si-step3"></div>
+    <div id="ci-cc-agg-fte"></div>
     <div style="padding:10px 14px;background:#EAF3DE;border:0.5px solid #A3CC72;border-radius:8px;font-size:12px;color:#27500A;margin-bottom:16px;">
       One Cost In cost centre selected — FTE values are auto-populated from the Cost Out FTE data with reversed signs.
     </div>
@@ -4459,6 +4516,7 @@ function renderCiStep3Single(single,card){
       <button class="btn btn-primary" onclick="go('ci-step4')">Review →</button>
     </div>`;
   const siEl=document.getElementById('ci-si-step3');if(siEl)siEl.innerHTML=ciSi(2);
+  renderCiCcAggregate('fte');
 }
 
 function allowCiEditFte(){
@@ -4493,6 +4551,8 @@ function renderCiStep3Multi(card){
     <div id="ci-si-step3"></div>
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Enter the FTE values for each cost centre. Master data (cost centre, location, workforce, worker type) is fixed — only the numeric values are editable.</p>
 
+    <div id="ci-cc-agg-fte"></div>
+
     <div style="margin-bottom:18px;">
       <div id="ci-fte-co-summary-table"></div>
     </div>
@@ -4514,6 +4574,7 @@ function renderCiStep3Multi(card){
 
     <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="go('ci-step2')">← Back</button><button class="btn btn-primary" onclick="go('ci-step4')">Review →</button></div>`;
   const siEl=document.getElementById('ci-si-step3');if(siEl)siEl.innerHTML=ciSi(2);
+  renderCiCcAggregate('fte');
   renderCiFteCoSummaryTable();
   renderCiOthersTable('fte');
   renderCiFteTable();
@@ -4905,10 +4966,10 @@ function renderCiTable(){
     ['fy26','fy25'].forEach(fk=>{MO.forEach((_,mi)=>{
       const el=document.getElementById(`ci-inp-${ri}-${fk}-${mi}`);
       if(el)el.addEventListener('input',()=>{ciData[ri][fk][mi]=toUsd(el.value);
-        const tot=rowTotal(ciData[ri][fk]);const te=document.getElementById(`ci-tot-${ri}-${fk}`);if(te)te.textContent=fmtM(tot);});
+        const tot=rowTotal(ciData[ri][fk]);const te=document.getElementById(`ci-tot-${ri}-${fk}`);if(te)te.textContent=fmtM(tot);renderCiCcAggregate('cost');});
     });});
     ['fy27','fy28','fy29'].forEach(fk=>{const el=document.getElementById(`ci-inp-${ri}-${fk}`);
-      if(el)el.addEventListener('input',()=>{ciData[ri][fk]=toUsd(el.value);});});
+      if(el)el.addEventListener('input',()=>{ciData[ri][fk]=toUsd(el.value);renderCiCcAggregate('cost');});});
   });
 }
 
@@ -4969,10 +5030,10 @@ function renderCiFteTable(){
     ['fy26','fy25'].forEach(fk=>{MO.forEach((_,mi)=>{
       const el=document.getElementById(`ci-fte-inp-${ri}-${fk}-${mi}`);
       if(el)el.addEventListener('input',()=>{ciFteData[ri][fk][mi]=el.value===''?0:Number(el.value.replace(/,/g,''));
-        const tot=rowTotal(ciFteData[ri][fk]);const te=document.getElementById(`ci-fte-tot-${ri}-${fk}`);if(te)te.textContent=fmt(tot);});
+        const tot=rowTotal(ciFteData[ri][fk]);const te=document.getElementById(`ci-fte-tot-${ri}-${fk}`);if(te)te.textContent=fmt(tot);renderCiCcAggregate('fte');});
     });});
     ['fy27','fy28','fy29'].forEach(fk=>{const el=document.getElementById(`ci-fte-inp-${ri}-${fk}`);
-      if(el)el.addEventListener('input',()=>{ciFteData[ri][fk]=el.value===''?0:Number(el.value.replace(/,/g,''));});});
+      if(el)el.addEventListener('input',()=>{ciFteData[ri][fk]=el.value===''?0:Number(el.value.replace(/,/g,''));renderCiCcAggregate('fte');});});
   });
 }
 function toggleCiFteRow(ri,checked){checked?ciFteSel.add(ri):ciFteSel.delete(ri);const tr=document.getElementById(`ci-fte-tr-${ri}`);if(tr)tr.classList.toggle('row-selected',checked);}
