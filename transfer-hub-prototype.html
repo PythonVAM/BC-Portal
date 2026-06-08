@@ -4735,32 +4735,6 @@ function renderCiOthersTable(mode){
     return cells.join('');
   }
 
-  function netCells(sourceRow){
-    function netVal(fk,mi){
-      const co=getRowValue(sourceRow,fk,mi);
-      // Subtract only other persons' submitted responses.
-      // Do NOT subtract the current user's pending values — the "available" amount
-      // shows what's still left for them (and any pending others) to allocate.
-      let othersAbs=0;
-      otherPersons.forEach(p=>{
-        const pr=findPersonRow(p,sourceRow._ccCode,sourceRow);
-        if(pr)othersAbs+=Math.abs(getRowValue(pr,fk,mi));
-      });
-      return co-othersAbs;
-    }
-    function netCell(v,isSubtotal){
-      const cls=(v<0?'ci-td-neg ':v>0?'ci-td-pos ':'')+(isSubtotal?'ci-th-total':'');
-      return`<td class="${cls}" style="font-weight:600;">${fmtNeg(v)}</td>`;
-    }
-    const cells=[];
-    if(exp25){cells.push(netCell(netVal('fy25'),true));MO.forEach((_,mi)=>cells.push(netCell(netVal('fy25',mi),false)));}
-    else cells.push(netCell(netVal('fy25'),false));
-    if(exp26){cells.push(netCell(netVal('fy26'),true));MO.forEach((_,mi)=>cells.push(netCell(netVal('fy26',mi),false)));}
-    else cells.push(netCell(netVal('fy26'),false));
-    ['fy27','fy28','fy29'].forEach(fk=>cells.push(netCell(netVal(fk),false)));
-    return cells.join('');
-  }
-
   const renderCalls=mode==='cost'
     ?"renderCiCoSummaryTable();renderCiOthersTable('cost');renderCiTable();"
     :"renderCiFteCoSummaryTable();renderCiOthersTable('fte');renderCiFteTable();";
@@ -4806,9 +4780,6 @@ function renderCiOthersTable(mode){
       <td class="ci-td-left">${row.wt||'—'}</td>`;
   }
 
-  // Stash ccCode on source rows for net calc lookup
-  sourceRows.forEach(sr=>{sr.row._ccCode=sr.ccCode;});
-
   // A person's block: only the rows for CCs they actually share with the current user.
   function renderPersonBody(p, responded) {
     const pccs=personCcs[p.id]||new Set();
@@ -4842,18 +4813,7 @@ function renderCiOthersTable(mode){
         ${renderPersonBody(p, responded)}
       </div>`;
     }).join('');
-
-    // Net available per row across the current user's source rows.
-    const netLabel=mode==='cost'?'Net available cost':'Net available FTEs';
-    const netTbody=sourceRows.map((sr,si)=>`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${netCells({...sr.row,_ccCode:sr.ccCode})}</tr>`).join('');
-    const netBlock=`<div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="font-size:12px;font-weight:600;color:#1a1a1a;">${netLabel}</span>
-        <span style="font-size:10px;color:#666;font-weight:400;">Cost Out − submitted responses from other contributors</span>
-      </div>
-      <div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${netTbody}</tbody></table></div>
-    </div>`;
-    body=`${personBlocks}${netBlock}`;
+    body=personBlocks;
   } else {
     // Collapsed: compact per-year totals so the figures are visible without expanding.
     const FYK=['fy25','fy26','fy27','fy28','fy29'], FYL=['FY25','FY26','FY27','FY28','FY29'];

@@ -58,7 +58,7 @@ with sync_playwright() as p:
     # per-contributor + Net Available tables.
     ok = (collapsed['collapsedGlyph'] and collapsed['tableCount']==1 and collapsed['summaryOne']
           and collapsed_has_total and not collapsed['hasFarah']
-          and expanded['expandedGlyph'] and expanded['tableCount']>1
+          and expanded['expandedGlyph'] and expanded['tableCount']==1
           and expanded['hasDaniel'] and not expanded['hasFarah'] and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
