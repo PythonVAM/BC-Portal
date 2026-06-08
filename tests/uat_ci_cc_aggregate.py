@@ -53,6 +53,16 @@ with sync_playwright() as p:
     expanded=pg.evaluate("document.querySelectorAll('#ci-cc-agg-cost .rv-table').length")
     print('detail tables after expanding 5110:', expanded)
 
+    # The shared CC's "Cost In (all)" row expands to a per-contributor split:
+    # "You (draft)" + each other contributor (Daniel = submitted half). The old
+    # standalone "Other Cost In contributors" section is gone.
+    pg.evaluate("toggleCoView('ciagg-coin:7300RND-CC-041')"); pg.wait_for_timeout(200)
+    split=pg.evaluate("""(()=>{const el=document.getElementById('ci-cc-agg-cost');
+      const txt=el.innerText;
+      return {othersSectionGone:!document.getElementById('ci-others-wrap-cost'),
+              hasYou:/You \\(draft\\)/.test(txt), hasDaniel:/Daniel Stein/.test(txt)};})()""")
+    print('Cost In split:', split)
+
     pg.evaluate("go('ci-step3')"); pg.wait_for_timeout(300)
     fte=pg.evaluate("""(()=>{const el=document.getElementById('ci-cc-agg-fte');
       const ccs=[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim());
@@ -64,8 +74,9 @@ with sync_playwright() as p:
     # Review & submit screen (step 4) shows both aggregates too (own -r4 element ids).
     pg.evaluate("ciActiveCcCode='7300RND-CC-041'; go('ci-step4')"); pg.wait_for_timeout(300)
     rev=pg.evaluate("""(()=>{
+      // matrix rows only (Out/In/Net) — exclude any expanded per-contributor sub-rows
       const c=document.getElementById('ci-cc-agg-cost-r4'),f=document.getElementById('ci-cc-agg-fte-r4');
-      const lbl=el=>el?[...el.querySelectorAll('.s6-td-label')].map(x=>x.textContent.trim()):[];
+      const lbl=el=>el?[...el.querySelectorAll('.s6-tr-out .s6-td-label, .s6-tr-in .s6-td-label, .s6-tr-net .s6-td-label')].map(x=>x.textContent.trim()):[];
       return {costLabels:lbl(c), fteLabels:lbl(f)};})()""")
     print('REVIEW agg:', rev)
 
@@ -75,6 +86,7 @@ with sync_playwright() as p:
           # single-contributor 5110 -> only one Cost Out row; shared 7300RND -> Out/In/Net
           and cl==['Cost Out','Cost Out','Cost In (all)','Net cost']
           and expanded==1
+          and split['othersSectionGone'] and split['hasYou'] and split['hasDaniel']
           and fte['present'] and fte['sepFteSummaryGone'] and set(fte['ccs'])=={'7300RND-CC-041','5110'}
           and fl==['FTEs Out','FTEs Out','FTEs In (all)','Net FTEs']
           and norm(rev['costLabels'])==['Cost Out','Cost Out','Cost In (all)','Net cost']

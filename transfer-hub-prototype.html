@@ -3797,7 +3797,6 @@ let ciSel=new Set();
 let ciFteSel=new Set();
 let ciExp={fy25:false,fy26:false};
 // "Other Cost In contributors" section starts collapsed to keep the CI screen compact.
-let ciOthersCollapsed={cost:true,fte:true};
 // Read-only Cost Out context views (Lead step 6/7, CI step 1/2/4) start collapsed,
 // showing per-year totals; expanding reveals the full rows. `coViewExpanded` holds
 // the scopes that are currently expanded (default for any scope is collapsed).
@@ -4293,6 +4292,27 @@ function renderCiCcAggregate(mode,elId){
   };
   const outLabel=mode==='cost'?'Cost Out':'FTEs Out';
   const inLabel=mode==='cost'?'Cost In (all)':'FTEs In (all)';
+  // Per-contributor split of the Cost In (all) total for one CC: the current user's
+  // live draft plus each other assigned contributor's submitted values (or Pending).
+  const contribRows=cc=>{
+    return ((submittedBC.costInPersons||{})[cc]||[]).map(p=>{
+      const mine=p.id===u.id;
+      let t,responded;
+      if(mine){t=sumRows((mode==='cost'?ciData:ciFteData).filter(r=>r.sourceCc===cc));responded=true;}
+      else{
+        t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+        responded=Object.values(ciResponses).some(r=>r.person.id===p.id);
+        Object.values(ciResponses).forEach(resp=>{if(resp.person.id!==p.id)return;const o=sumRows(((mode==='cost'?resp.ciData:resp.ciFteData)||[]).filter(r=>r.sourceCc===cc));FYK.forEach(fk=>t[fk]+=o[fk]);});
+      }
+      return {label:mine?'You (draft)':`${p.first} ${p.last}`,dept:p.dept||'',t,responded,mine};
+    });
+  };
+  const subRow=r=>{
+    const badge=r.mine?'<span class="badge badge-pending" style="font-size:9px;">Draft</span>'
+      :r.responded?'<span class="badge badge-approved" style="font-size:9px;">Submitted</span>':'<span class="badge badge-pending" style="font-size:9px;">Pending</span>';
+    const cells=FYK.map(fk=>r.responded?`<td style="color:#555;font-weight:400;">${fmtv(r.t[fk])}</td>`:'<td style="color:#bbb;">—</td>').join('');
+    return `<tr style="background:#fbfcfe;"><td class="s6-td-label" style="padding-left:24px;font-weight:400;color:#666;">${r.label} ${r.dept?`<span style="color:#aaa;font-size:10px;">${r.dept}</span> `:''}${badge}</td>${cells}</tr>`;
+  };
   const dataRow=(label,vals,cls)=>`<tr class="${cls}"><td class="s6-td-label">${label}</td>${FYK.map(fk=>`<td>${fmtv(vals[fk])}</td>`).join('')}</tr>`;
   const netRow=net=>`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">${mode==='cost'?'Net cost':'Net FTEs'}</td>${FYK.map(fk=>{const v=net[fk];const cls=v<0?'s6-td-neg':v>0?'s6-td-pos':'s6-td-zero';const d=fmtv(Math.abs(v));return`<td class="s6-td-net ${cls}">${v<0?'('+d+')':d}</td>`;}).join('')}</tr>`;
   const head=`<thead><tr><th class="s6-th-label"></th>${FYL.map(l=>`<th class="s6-th-fy">${l}</th>`).join('')}</tr></thead>`;
@@ -4306,7 +4326,16 @@ function renderCiCcAggregate(mode,elId){
     // Cost Out / FTEs Out row — its label cell toggles the inline detail.
     const out=`<tr class="s6-tr-out"><td class="s6-td-label" onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;">${expanded?'▼':'▶'} ${outLabel}</td>${FYK.map(fk=>`<td>${fmtv(co[fk])}</td>`).join('')}</tr>`;
     let body=out;
-    if(shared){const ci=ciFor(cc),net={};FYK.forEach(fk=>net[fk]=co[fk]-ci[fk]);body+=dataRow(inLabel,ci,'s6-tr-in')+netRow(net);}
+    if(shared){
+      const ci=ciFor(cc),net={};FYK.forEach(fk=>net[fk]=co[fk]-ci[fk]);
+      // Cost In (all) row — its label cell toggles the per-contributor breakdown.
+      const inScope=(mode==='cost'?'ciagg-coin:':'ciagg-ftein:')+cc;
+      const inExp=coViewExpanded.has(inScope);
+      const inSafe=inScope.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      body+=`<tr class="s6-tr-in"><td class="s6-td-label" onclick="toggleCoView('${inSafe}')" style="cursor:pointer;user-select:none;">${inExp?'▼':'▶'} ${inLabel}</td>${FYK.map(fk=>`<td>${fmtv(ci[fk])}</td>`).join('')}</tr>`;
+      if(inExp)body+=contribRows(cc).map(subRow).join('');
+      body+=netRow(net);
+    }
     return `<div style="margin-bottom:12px;">
       <div style="font-size:11px;font-weight:500;color:#444;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span>
@@ -4320,7 +4349,7 @@ function renderCiCcAggregate(mode,elId){
   const title=mode==='cost'?'Cost out summary by cost centre':'FTEs out summary by cost centre';
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:4px;display:flex;align-items:center;gap:8px;">${title} <span class="unit-pill">${unit}</span></div>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">Click a ${outLabel} row to see its detail. Cost centres with more than one Cost In Contributor also show the combined ${inLabel} (everyone's, including your draft) and the Net, so you can see whether each balances.</p>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">Click a ${outLabel} row to see its detail. Cost centres with more than one Cost In Contributor also show the combined ${inLabel} (everyone's, including your draft) and the Net, so you can see whether each balances. <strong>Expand the ${inLabel} row to see each contributor's split</strong> — your draft plus what every other contributor has submitted (Pending until they do). Other contributors' figures are shown for context only.</p>
     ${blocks}
   </div>`;
 }
@@ -4448,8 +4477,6 @@ function renderCiStep2Multi(card){
 
     <div id="ci-cc-agg-cost"></div>
 
-    <div id="ci-others-wrap-cost"></div>
-
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <span style="font-size:13px;font-weight:500;">Cost In values</span>
       <span class="unit-pill" style="margin-left:auto;">USD ($m)</span>
@@ -4466,7 +4493,6 @@ function renderCiStep2Multi(card){
     <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="go('ci-step1')">← Back</button><button class="btn btn-primary" onclick="go('ci-step3')">FTEs in →</button></div>`;
   const siEl=document.getElementById('ci-si-step2');if(siEl)siEl.innerHTML=ciSi(1);
   renderCiCcAggregate('cost');
-  renderCiOthersTable('cost');
   renderCiTable();
 }
 
@@ -4571,8 +4597,6 @@ function renderCiStep3Multi(card){
 
     <div id="ci-cc-agg-fte"></div>
 
-    <div id="ci-others-wrap-fte"></div>
-
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <span style="font-size:13px;font-weight:500;">FTEs In values</span>
       <span class="unit-pill" style="margin-left:auto;">FTEs (headcount)</span>
@@ -4589,211 +4613,7 @@ function renderCiStep3Multi(card){
     <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="go('ci-step2')">← Back</button><button class="btn btn-primary" onclick="go('ci-step4')">Review →</button></div>`;
   const siEl=document.getElementById('ci-si-step3');if(siEl)siEl.innerHTML=ciSi(2);
   renderCiCcAggregate('fte');
-  renderCiOthersTable('fte');
   renderCiFteTable();
-}
-
-/* ── Other Cost In contributors section ──
-   Renders one sub-block per other CI person showing all their per-row submitted data,
-   then a final sub-block showing the Net Available per row across all contributors.
-*/
-function renderCiOthersTable(mode){
-  const el=document.getElementById(mode==='cost'?'ci-others-wrap-cost':'ci-others-wrap-fte');
-  if(!el||!submittedBC)return;
-  const u=currentUser();
-  // Only the CCs routed to the current contributor — other contributors are relevant
-  // only where they share one of THESE cost centres, not the whole boundary change.
-  const myCcs=getMyAssignedCcCodes();
-  const allPersonsMap={};
-  const personCcs={}; // person id → Set of shared CC codes (within my assigned CCs)
-  Object.entries(submittedBC.costInPersons||{}).forEach(([ccCode,persons])=>{
-    if(!myCcs.has(ccCode))return;
-    persons.forEach(p=>{
-      if(p.id===u.id)return;
-      allPersonsMap[p.id]=p;
-      (personCcs[p.id]=personCcs[p.id]||new Set()).add(ccCode);
-    });
-  });
-  const otherPersons=Object.values(allPersonsMap);
-  if(!otherPersons.length){el.innerHTML='';return;}
-
-  const exp25=ciExp.fy25,exp26=ciExp.fy26;
-  const moTh=MO.map(m=>`<th class="ci-th-mo">${m}</th>`).join('');
-  const hasSubRow=exp25||exp26;
-
-  // Build source row list from Cost Out side
-  const incoming=getCiIncoming().map(x=>x.ccCode);
-  let sourceRows=[];
-  if(mode==='cost'){
-    incoming.forEach(ccCode=>{(submittedBC.ccData[ccCode]||[]).forEach(row=>sourceRows.push({ccCode,row}));});
-  } else {
-    (submittedBC.fteData||[]).filter(r=>incoming.includes(r.cc)).forEach(row=>sourceRows.push({ccCode:row.cc,row}));
-  }
-
-  // Find the matching response row in a person's response
-  function findPersonRow(person,sourceCcCode,sourceRow){
-    let match=null;
-    Object.values(ciResponses).forEach(resp=>{
-      if(resp.person.id!==person.id)return;
-      const rows=mode==='cost'?(resp.ciData||[]):(resp.ciFteData||[]);
-      rows.forEach(r=>{
-        if(r.sourceCc!==sourceCcCode)return;
-        if(mode==='cost'){
-          if(r.gl===sourceRow.gl&&r.prod===sourceRow.prod)match=r;
-        } else {
-          if(r.loc===sourceRow.loc&&r.azW===sourceRow.azW&&r.wt===sourceRow.wt)match=r;
-        }
-      });
-    });
-    return match;
-  }
-  function findMyRow(sourceCcCode,sourceRow){
-    let match=null;
-    const rows=mode==='cost'?ciData:ciFteData;
-    rows.forEach(r=>{
-      if(r.sourceCc!==sourceCcCode)return;
-      if(mode==='cost'){
-        if(r.gl===sourceRow.gl&&r.prod===sourceRow.prod)match=r;
-      } else {
-        if(r.loc===sourceRow.loc&&r.azW===sourceRow.azW&&r.wt===sourceRow.wt)match=r;
-      }
-    });
-    return match;
-  }
-
-  function getRowValue(row,fk,mi){
-    if(!row)return 0;
-    if(mi!==undefined)return row[fk]?.[mi]||0;
-    return (fk==='fy27'||fk==='fy28'||fk==='fy29')?(row[fk]||0):rowTotal(row[fk]||[]);
-  }
-
-  const sym='';
-  const fmtVal=mode==='cost'?fmtM:fmtFte;
-  function fmtNeg(v){return v<0?'('+sym+fmtVal(Math.abs(v))+')':sym+fmtVal(v);}
-
-  function valCells(row,pending){
-    const cells=[];
-    function valCell(fk,mi,isSubtotal){
-      if(pending)return`<td class="${isSubtotal?'ci-th-total ':''}ci-td-pending">—</td>`;
-      const v=getRowValue(row,fk,mi);
-      return`<td${isSubtotal?' class="ci-th-total" style="font-weight:500;"':''}>${fmtNeg(v)}</td>`;
-    }
-    if(exp25){cells.push(valCell('fy25',undefined,true));MO.forEach((_,mi)=>cells.push(valCell('fy25',mi,false)));}
-    else cells.push(valCell('fy25',undefined,false));
-    if(exp26){cells.push(valCell('fy26',undefined,true));MO.forEach((_,mi)=>cells.push(valCell('fy26',mi,false)));}
-    else cells.push(valCell('fy26',undefined,false));
-    ['fy27','fy28','fy29'].forEach(fk=>cells.push(valCell(fk,undefined,false)));
-    return cells.join('');
-  }
-
-  const renderCalls=mode==='cost'
-    ?"renderCiOthersTable('cost');renderCiTable();"
-    :"renderCiOthersTable('fte');renderCiFteTable();";
-
-  const masterCols=mode==='cost'
-    ?['Cost centre','Dept','GL account','Product','Project','UV']
-    :['Cost centre','Dept','Location','City','Country','AZ Workforce','Worker type'];
-
-  function buildThead(){
-    return`<tr>
-      ${masterCols.map(c=>`<th class="ci-th-left"${hasSubRow?' rowspan="2"':''}>${c}</th>`).join('')}
-      <th class="ci-th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;${renderCalls}">FY25 ${exp25?'▼':'▶'}</th>
-      <th class="ci-th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;${renderCalls}">FY26 ${exp26?'▼':'▶'}</th>
-      <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
-      <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
-      <th class="ci-th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
-    </tr>
-    ${hasSubRow?`<tr>
-      ${exp25?`<th class="ci-th-total">Total</th>${moTh}`:''}
-      ${exp26?`<th class="ci-th-total">Total</th>${moTh}`:''}
-    </tr>`:''}`;
-  }
-
-  function masterCells(sr){
-    const {ccCode,row}=sr;
-    if(mode==='cost'){
-      const isRnd=!!(row.project||row.projectName||row.uv);
-      const isSmm=!isRnd&&!!(row.product||row.productName);
-      const na='<td class="ci-td-left cod-na">N/A</td>';
-      return`<td class="ci-td-left"><span class="cc-badge-out">${ccCode}</span></td>
-        <td class="ci-td-left">${deptChipFor(ccCode)}</td>
-        <td class="ci-td-left"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-        ${isSmm?`<td class="ci-td-left">${row.productName||row.prod||'—'}</td>`:na}
-        ${isRnd?`<td class="ci-td-left">${row.projectName||row.prod||'—'}</td>`:na}
-        ${isRnd?`<td class="ci-td-left">${row.uv||'—'}</td>`:na}`;
-    }
-    return`<td class="ci-td-left"><span class="cc-badge-out">${ccCode}</span></td>
-      <td class="ci-td-left">${deptChipFor(ccCode)}</td>
-      <td class="ci-td-left">${row.loc||'—'}</td>
-      <td class="ci-td-left">${row.city||'—'}</td>
-      <td class="ci-td-left">${row.country||'—'}</td>
-      <td class="ci-td-left">${row.azW||'—'}</td>
-      <td class="ci-td-left">${row.wt||'—'}</td>`;
-  }
-
-  // A person's block: only the rows for CCs they actually share with the current user.
-  function renderPersonBody(p, responded) {
-    const pccs=personCcs[p.id]||new Set();
-    const pairs=sourceRows.filter(sr=>pccs.has(sr.ccCode));
-    const tbody=pairs.map((sr,si)=>{
-      const pr=findPersonRow(p,sr.ccCode,sr.row);
-      return`<tr${si%2===1?' style="background:#fafaf8;"':''}>${masterCells(sr)}${valCells(pr,!responded||!pr)}</tr>`;
-    }).join('');
-    return `<div style="overflow-x:auto;"><table class="ci-others-table"><thead>${buildThead()}</thead><tbody>${tbody}</tbody></table></div>`;
-  }
-
-  const sectionTitle=mode==='cost'?'Other Cost In contributors':'Other FTE In contributors';
-  const collapsed=ciOthersCollapsed[mode];
-  const nP=otherPersons.length;
-  const summary=`${nP} other contributor${nP===1?'':'s'} on your cost centre${myCcs.size===1?'':'s'} · values shown for context only`;
-  const header=`<div class="ci-others-title" style="cursor:pointer;user-select:none;" onclick="ciOthersCollapsed['${mode}']=!ciOthersCollapsed['${mode}'];renderCiOthersTable('${mode}')">${collapsed?'▶':'▼'} ${sectionTitle} <span style="color:#888;font-weight:400;font-size:11px;">— ${summary}</span></div>`;
-
-  // Build the heavy tables only when the section is expanded (keeps the screen compact).
-  let body='';
-  if(!collapsed){
-    const personBlocks=otherPersons.map(p=>{
-      const responded=Object.values(ciResponses).some(resp=>resp.person.id===p.id);
-      return`<div style="margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="font-size:12px;font-weight:500;color:#444;">${p.first} ${p.last}</span>
-          <span style="font-size:11px;color:#888;">${p.dept||''}</span>
-          ${responded
-            ?'<span class="badge badge-approved" style="font-size:10px;">Submitted</span>'
-            :'<span class="badge badge-pending" style="font-size:10px;">Pending</span>'}
-        </div>
-        ${renderPersonBody(p, responded)}
-      </div>`;
-    }).join('');
-    body=personBlocks;
-  } else {
-    // Collapsed: compact per-year totals so the figures are visible without expanding.
-    const FYK=['fy25','fy26','fy27','fy28','fy29'], FYL=['FY25','FY26','FY27','FY28','FY29'];
-    const personTot=p=>{
-      const pccs=personCcs[p.id]||new Set();
-      const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
-      sourceRows.forEach(sr=>{
-        if(!pccs.has(sr.ccCode))return;
-        const pr=findPersonRow(p,sr.ccCode,sr.row);
-        if(!pr)return;
-        FYK.forEach(fk=>{t[fk]+=Math.abs(getRowValue(pr,fk));});
-      });
-      return t;
-    };
-    const grand={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
-    const rows=otherPersons.map(p=>{
-      const responded=Object.values(ciResponses).some(r=>r.person.id===p.id);
-      const t=personTot(p);
-      FYK.forEach(fk=>grand[fk]+=t[fk]);
-      const cells=responded
-        ?FYK.map(fk=>`<td class="ci-td-left" style="text-align:right;">${fmtVal(t[fk])}</td>`).join('')
-        :FYK.map(()=>`<td class="ci-td-pending" style="text-align:right;">—</td>`).join('');
-      return `<tr><td class="ci-td-left">${p.first} ${p.last} <span style="color:#888;font-size:10px;">${p.dept||''}</span></td>${cells}</tr>`;
-    }).join('');
-    const totalRow=`<tr style="font-weight:600;background:#f5f4f0;"><td class="ci-td-left">Total per year</td>${FYK.map(fk=>`<td class="ci-th-total" style="text-align:right;">${fmtVal(grand[fk])}</td>`).join('')}</tr>`;
-    body=`<div style="overflow-x:auto;margin-top:6px;"><table class="ci-others-table"><thead><tr><th class="ci-th-left" style="min-width:200px;">Contributor</th>${FYL.map(l=>`<th class="ci-th-future">${l}</th>`).join('')}</tr></thead><tbody>${rows}${totalRow}</tbody></table></div>`;
-  }
-
-  el.innerHTML=`<div class="ci-others-wrap">${header}${body}</div>`;
 }
 
 function renderCiTable(){
@@ -4810,8 +4630,8 @@ function renderCiTable(){
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:130px;">Product</th>
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:140px;">Project</th>
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:56px;">UV</th>
-    <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiOthersTable('cost');renderCiTable();">FY25 ${exp25?'▼':'▶'}</th>
-    <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiOthersTable('cost');renderCiTable();">FY26 ${exp26?'▼':'▶'}</th>
+    <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiTable();">FY25 ${exp25?'▼':'▶'}</th>
+    <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiTable();">FY26 ${exp26?'▼':'▶'}</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
@@ -4883,8 +4703,8 @@ function renderCiFteTable(){
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:60px;">Country</th>
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:120px;">AZ Workforce</th>
     <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:90px;">Worker type</th>
-    <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiOthersTable('fte');renderCiFteTable();">FY25 ${exp25?'▼':'▶'}</th>
-    <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiOthersTable('fte');renderCiFteTable();">FY26 ${exp26?'▼':'▶'}</th>
+    <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiFteTable();">FY25 ${exp25?'▼':'▶'}</th>
+    <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiFteTable();">FY26 ${exp26?'▼':'▶'}</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
     <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>

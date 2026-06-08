@@ -2,12 +2,15 @@ from pathlib import Path
 PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 
-# Regression for the "Other Cost In contributors" section on the CI screen:
-#  1) it must list only contributors who share one of the current user's assigned
-#     CCs (not every CI contributor in the boundary change);
-#  2) it must start collapsed and expand on click.
+# Regression for the per-contributor breakdown now folded into the Cost In summary
+# (the old standalone "Other Cost In contributors" section was removed):
+#  1) the summary lists only the current user's assigned CCs;
+#  2) a shared CC's "Cost In (all)" row expands to a per-contributor split listing
+#     only contributors who share THAT CC — not every CI contributor in the BC;
+#  3) the breakdown starts collapsed and expands on click.
 # Scenario: CC-X (7300RND-CC-041) -> lt + ds ; CC-Y (5110) -> fa. Viewed as lt
-# (assigned to CC-X only), the section should show ds and NOT fa.
+# (assigned to CC-X only), the split should show "You (draft)" + Daniel Stein and
+# NOT Farah Ahmed (she's only on CC-Y, which lt isn't assigned to).
 with sync_playwright() as p:
     b=p.chromium.launch()
     pg=b.new_context(viewport={'width':1400,'height':1100}).new_page()
@@ -33,33 +36,35 @@ with sync_playwright() as p:
 
     def snap():
         return pg.evaluate("""(()=>{
-          const el=document.getElementById('ci-others-wrap-cost');
-          const title=el.querySelector('.ci-others-title').textContent.trim();
+          const el=document.getElementById('ci-cc-agg-cost');
+          const ccs=[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim());
+          const inRow=el.querySelector('.s6-tr-in .s6-td-label');
           const txt=el.innerText;
           return {
-            collapsedGlyph: title.startsWith('▶'),
-            expandedGlyph: title.startsWith('▼'),
-            tableCount: el.querySelectorAll('table.ci-others-table').length,
+            ccs,
+            inCollapsed: inRow ? inRow.textContent.trim().startsWith('▶') : null,
+            inExpanded: inRow ? inRow.textContent.trim().startsWith('▼') : null,
+            hasYou: /You \\(draft\\)/.test(txt),
             hasDaniel: /Daniel Stein/.test(txt),
             hasFarah: /Farah Ahmed/.test(txt),
-            summaryOne: /1 other contributor/.test(title),
           };
         })()""")
 
     collapsed=snap()
-    collapsed_has_total=pg.evaluate("/Total per year/.test(document.getElementById('ci-others-wrap-cost').innerText)")
-    print('COLLAPSED (default):', collapsed, 'has Total per year:', collapsed_has_total)
-    pg.evaluate("ciOthersCollapsed['cost']=false; renderCiOthersTable('cost')"); pg.wait_for_timeout(150)
+    print('COLLAPSED (default):', collapsed)
+    pg.evaluate("toggleCoView('ciagg-coin:7300RND-CC-041')"); pg.wait_for_timeout(150)
     expanded=snap()
     print('EXPANDED:', expanded)
 
-    # Collapsed shows a compact per-year totals table (1 table with a "Total per year"
-    # row) scoped to shared CCs — Farah excluded. Expanded shows the full
-    # per-contributor + Net Available tables.
-    ok = (collapsed['collapsedGlyph'] and collapsed['tableCount']==1 and collapsed['summaryOne']
-          and collapsed_has_total and not collapsed['hasFarah']
-          and expanded['expandedGlyph'] and expanded['tableCount']==1
-          and expanded['hasDaniel'] and not expanded['hasFarah'] and not errs)
+    ok = (
+        # only lt's assigned CC appears (CC-Y / 5110 excluded)
+        collapsed['ccs']==['7300RND-CC-041']
+        # breakdown collapsed by default — no contributor rows yet
+        and collapsed['inCollapsed'] and not collapsed['hasDaniel'] and not collapsed['hasYou']
+        # expanded shows You + the CC-sharing contributor (Daniel), never Farah
+        and expanded['inExpanded'] and expanded['hasYou'] and expanded['hasDaniel']
+        and not collapsed['hasFarah'] and not expanded['hasFarah']
+        and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
     b.close()
