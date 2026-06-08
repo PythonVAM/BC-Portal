@@ -2,14 +2,18 @@ from pathlib import Path
 PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 
-# When a source Cost Centre has MORE THAN ONE Cost In Contributor, the Cost In
-# screens show a per-CC aggregate (Cost Out / Cost In (all) / Net), like the
-# Lead's Step 7 matrix. CCs with a single contributor are not shown. The "Cost In
-# (all)" total combines the current user's draft with other contributors' submitted
-# values, and updates live. Applies to cost (step 2) and FTEs (step 3).
+# The Cost In screens show a per-CC summary at the top: EVERY assigned CC gets a
+# compact matrix whose "Cost Out" / "FTEs Out" row is clickable to reveal that CC's
+# full flat detail inline (replacing the old separate Cost Out summary block). CCs
+# with MORE THAN ONE Cost In Contributor additionally show a "… In (all)" row (this
+# user's draft + others' submitted) and a Net row. Applies to cost (step 2), FTEs
+# (step 3) and the Review & submit screen (step 4).
+def norm(labels):
+    return [l.lstrip('▶▼ ').strip() for l in labels]
+
 with sync_playwright() as p:
     b=p.chromium.launch()
-    pg=b.new_context(viewport={'width':1500,'height':1200}).new_page()
+    pg=b.new_context(viewport={'width':1500,'height':1300}).new_page()
     errs=[]
     pg.on('pageerror',lambda e: errs.append('PE: '+str(e)))
     pg.goto(f'file://{PROTO}')
@@ -25,8 +29,8 @@ with sync_playwright() as p:
       fteData=[{cc:'7300RND-CC-041',loc:'GB-LON-001',city:'London',country:'UK',azW:'Employee - Regular',wt:'Lab',fy25:Array(12).fill(2),fy26:Array(12).fill(2),fy27:2,fy28:0,fy29:0}];
       go('step5'); submitToLead();
       switchUser('jd'); openLeadView('step6');
-      // 7300RND has TWO CI contributors (lt + ds); 5110 has ONE (fa) -> only 7300RND should aggregate
-      submittedBC.costInPersons={'7300RND-CC-041':[PEOPLE.find(p=>p.id==='lt'),PEOPLE.find(p=>p.id==='ds')],'5110':[PEOPLE.find(p=>p.id==='fa')]};
+      // lt is assigned BOTH CCs: 7300RND is SHARED (lt + ds); 5110 is lt only (single)
+      submittedBC.costInPersons={'7300RND-CC-041':[PEOPLE.find(p=>p.id==='lt'),PEOPLE.find(p=>p.id==='ds')],'5110':[PEOPLE.find(p=>p.id==='lt')]};
       // ds has submitted HALF of the Cost Out for 7300RND
       const co=submittedBC.ccData['7300RND-CC-041']||[];
       ciResponses={}; ciResponses['ds::7300RND-CC-041']={person:PEOPLE.find(p=>p.id==='ds'),ccCode:'7300RND-CC-041',
@@ -39,14 +43,22 @@ with sync_playwright() as p:
     cost=pg.evaluate("""(()=>{const el=document.getElementById('ci-cc-agg-cost');
       const ccs=[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim());
       const labels=[...el.querySelectorAll('.s6-td-label')].map(x=>x.textContent.trim());
-      return {present:!!el.innerText.trim(), ccs, labels, hasNetCost:labels.includes('Net cost')};})()""")
+      return {present:!!el.innerText.trim(), ccs, labels,
+              sepSummaryGone:!document.getElementById('ci-co-summary-table'),
+              outIsClickable: !!el.querySelector('.s6-tr-out .s6-td-label[onclick]')};})()""")
     print('COST agg:', cost)
+
+    # Expand 5110's Cost Out -> its detail table appears inline within the aggregate.
+    pg.evaluate("toggleCoView('ciagg-co:5110')"); pg.wait_for_timeout(200)
+    expanded=pg.evaluate("document.querySelectorAll('#ci-cc-agg-cost .rv-table').length")
+    print('detail tables after expanding 5110:', expanded)
 
     pg.evaluate("go('ci-step3')"); pg.wait_for_timeout(300)
     fte=pg.evaluate("""(()=>{const el=document.getElementById('ci-cc-agg-fte');
       const ccs=[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim());
       const labels=[...el.querySelectorAll('.s6-td-label')].map(x=>x.textContent.trim());
-      return {present:!!el.innerText.trim(), ccs, labels};})()""")
+      return {present:!!el.innerText.trim(), ccs, labels,
+              sepFteSummaryGone:!document.getElementById('ci-fte-co-summary-table')};})()""")
     print('FTE agg:', fte)
 
     # Review & submit screen (step 4) shows both aggregates too (own -r4 element ids).
@@ -57,13 +69,16 @@ with sync_playwright() as p:
       return {costLabels:lbl(c), fteLabels:lbl(f)};})()""")
     print('REVIEW agg:', rev)
 
-    ok = (cost['present'] and cost['ccs']==['7300RND-CC-041']  # only the shared CC
-          and cost['labels']==['Cost Out','Cost In (all)','Net cost']
-          and '5110' not in cost['ccs']
-          and fte['present'] and fte['ccs']==['7300RND-CC-041']
-          and fte['labels']==['FTEs Out','FTEs In (all)','Net FTEs']
-          and rev['costLabels']==['Cost Out','Cost In (all)','Net cost']
-          and rev['fteLabels']==['FTEs Out','FTEs In (all)','Net FTEs']
+    cl, fl = norm(cost['labels']), norm(fte['labels'])
+    ok = (cost['present'] and cost['sepSummaryGone'] and cost['outIsClickable']
+          and set(cost['ccs'])=={'7300RND-CC-041','5110'}  # ALL assigned CCs shown
+          # single-contributor 5110 -> only one Cost Out row; shared 7300RND -> Out/In/Net
+          and cl==['Cost Out','Cost Out','Cost In (all)','Net cost']
+          and expanded==1
+          and fte['present'] and fte['sepFteSummaryGone'] and set(fte['ccs'])=={'7300RND-CC-041','5110'}
+          and fl==['FTEs Out','FTEs Out','FTEs In (all)','Net FTEs']
+          and norm(rev['costLabels'])==['Cost Out','Cost Out','Cost In (all)','Net cost']
+          and norm(rev['fteLabels'])==['FTEs Out','FTEs Out','FTEs In (all)','Net FTEs']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

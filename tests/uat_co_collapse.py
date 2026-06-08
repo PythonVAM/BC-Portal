@@ -66,7 +66,10 @@ with sync_playwright() as p:
     ok = (s6['n']>=2 and s6['collapsed'] and s6['totals']
           and s6exp['glyph'].startswith('▼') and s6exp['hasRows']
           and c1['n']>=2 and c1['collapsed'] and c1['totals']
-          and c2['collapsed'] and c2['totals']
+          # CI step 2: the Cost Out detail is now folded into the per-CC aggregate —
+          # each CC's "Cost Out" row is a collapsed toggleCoView trigger (no separate
+          # "Cost out total" summary block any more).
+          and c2['n']>=1 and c2['collapsed']
           # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
           # per-area Cost Out / FTEs Out views with per-year totals.
           and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
@@ -75,7 +78,9 @@ with sync_playwright() as p:
           # FTE Out views collapsible with headcount totals on the per-CC screens
           and s6['nFte']>=1 and s6['fteTotals']
           and c1['nFte']>=1 and c1['fteTotals']
-          and c3['nFte']>=1 and c3['collapsed'] and c3['fteTotals']
+          # CI step 3: same folding for FTEs — each CC's "FTEs Out" row is a
+          # collapsed toggleCoView trigger inside the aggregate.
+          and c3['nFte']>=1 and c3['collapsed']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
