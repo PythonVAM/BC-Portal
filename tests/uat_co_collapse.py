@@ -61,10 +61,12 @@ with sync_playwright() as p:
               fteAreas:fte.length, fteCollapsed:fte.every(x=>x.textContent.trim().startsWith('▶')), fteTotals:/FTEs out total/.test(s.innerText),
               twoMatrices:s.querySelectorAll('table.s6-table').length===2};})()""")
     print('STEP7 gates:', s7gates, '| areas:', s7)
-    # Receiver flow: ci-step1 = Cost summary (per-CC drilldown toggles), ci-step2 =
-    # FTEs summary (per-CC drilldown toggles), ci-step3 = Summary (no collapsibles).
-    pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200); c1=toggles('ci-step1'); print('CI1:', c1)
-    pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200); c2=toggles('ci-step2'); print('CI2:', c2)
+    # Receiver flow: ci-step1 = Cost summary, ci-step2 = FTEs summary — each has a
+    # CC-level/Detail-level toggle (not per-CC collapsibles).
+    pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200)
+    c1=pg.evaluate("[...document.querySelectorAll('#screen-ci-step1 .method-btn')].map(x=>x.textContent.trim())"); print('CI1 toggle:', c1)
+    pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200)
+    c2=pg.evaluate("[...document.querySelectorAll('#screen-ci-step2 .method-btn')].map(x=>x.textContent.trim())"); print('CI2 toggle:', c2)
 
     ok = (s6['n']>=2 and s6['collapsed'] and s6['totals']
           and s6exp['glyph'].startswith('▼') and s6exp['hasRows']
@@ -74,10 +76,9 @@ with sync_playwright() as p:
           and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
           and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
           and s6['nFte']>=1 and s6['fteTotals']
-          # Receiver Cost (ci-step1) + FTEs (ci-step2): one drilldown table each, with
-          # a collapsed toggleCoView trigger per cost centre.
-          and c1['n']>=1 and c1['collapsed']
-          and c2['n']>=1 and c2['collapsed']
+          # Receiver Cost (ci-step1) + FTEs (ci-step2): CC-level/Detail-level toggle.
+          and c1==['By cost centre','Detail']
+          and c2==['By cost centre','Detail']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

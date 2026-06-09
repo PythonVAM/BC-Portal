@@ -28,26 +28,32 @@ with sync_playwright() as p:
         return pg.evaluate(f"""(()=>{{const el=document.getElementById('{el_id}');if(!el)return null;
           return {{tables:el.querySelectorAll('table.rv-table').length,
                    ccRows:[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim()).sort(),
-                   toggles:el.querySelectorAll('[onclick^="toggleCoView"]').length,
+                   toggleBtns:[...el.querySelectorAll('.method-btn')].map(x=>x.textContent.trim()),
                    fyClickable:!!el.querySelector('[onclick^="toggleS6Fy"]'),
+                   headers:[...el.querySelectorAll('thead tr:first-child th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,6),
+                   naCells:el.querySelectorAll('td.cod-na').length,
                    hasTotal:/Total — all cost centres/.test(el.innerText),
                    title:el.querySelector('div')?.textContent.trim().slice(0,30)}};}})()""")
 
-    cost=summary('ci-cc-agg-cost'); print('COST (ci-step1):', cost)
-    pg.evaluate("toggleCoView('ciagg-co:7300RND-CC-041')"); pg.wait_for_timeout(150)
-    costDetail=pg.evaluate("document.querySelectorAll('#ci-cc-agg-cost table.rv-table').length")  # summary + 1 detail
+    cost=summary('ci-cc-agg-cost'); print('COST cc-view:', cost)
+    # Toggle to Detail level -> one flat table with line-level identity columns (N/A cells)
+    pg.evaluate("setCiAggView('cost','detail')"); pg.wait_for_timeout(150)
+    costDetail=summary('ci-cc-agg-cost'); print('COST detail-view:', costDetail)
     pg.evaluate("toggleS6Fy('fy25')"); pg.wait_for_timeout(120)
     monthCols=pg.evaluate("document.querySelectorAll('#ci-cc-agg-cost .rv-th-mo').length")
-    pg.evaluate("toggleS6Fy('fy25')")  # collapse back
+    pg.evaluate("toggleS6Fy('fy25'); setCiAggView('cost','cc')")  # reset
 
     pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(300)
     fte=summary('ci-cc-agg-fte'); print('FTE (ci-step2):', fte)
-    print('cost detail tables after expand:', costDetail, '| month cols after fy25 expand:', monthCols)
+    print('month cols (detail, fy25 expanded):', monthCols)
 
     ok = (cost and cost['tables']==1 and cost['ccRows']==['5110','7300RND-CC-041']
-          and cost['toggles']==2 and cost['fyClickable'] and cost['hasTotal']
+          and cost['toggleBtns']==['By cost centre','Detail'] and cost['fyClickable'] and cost['hasTotal']
           and cost['title'].startswith('Cost out by cost centre')
-          and costDetail==2 and monthCols>=12  # FY25 month columns appear (summary + expanded detail)
+          and cost['headers']==['Cost centre','FY25','FY26','FY27','FY28','FY29']  # cc-level columns
+          # detail level: one table, line-level columns, N/A cells, month-expandable
+          and costDetail['tables']==1 and costDetail['headers']==['Cost centre','Dept','GL account','Product','Project','UV']
+          and costDetail['naCells']>0 and monthCols>=12
           and fte and fte['tables']==1 and fte['ccRows']==['5110','7300RND-CC-041'] and fte['hasTotal']
           and fte['title'].startswith('FTEs out by cost centre')
           and not errs)

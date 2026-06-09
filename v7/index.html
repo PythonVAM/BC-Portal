@@ -3793,6 +3793,8 @@ let ciSectionB=true;
 let ciInCcSel={};
 // Per-CC hierarchy state for CI CC picker
 let ciCcPaths={};
+// Receiver Cost/FTE summary view level: 'cc' (totals per cost centre) or 'detail'.
+let ciAggView={cost:'cc',fte:'cc'};
 
 function setCiCurrency(c){
   ciRvCurrency=c;
@@ -4236,37 +4238,55 @@ function renderCiCcAggregate(mode,elId){
   // so fyDataCells can month-expand the totals.
   const aggRow=rows=>{const r={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};(rows||[]).forEach(x=>{(x.fy25||[]).forEach((v,i)=>r.fy25[i]+=Number(v)||0);(x.fy26||[]).forEach((v,i)=>r.fy26[i]+=Number(v)||0);r.fy27+=Number(x.fy27)||0;r.fy28+=Number(x.fy28)||0;r.fy29+=Number(x.fy29)||0;});return r;};
   const hasSub=fyHasSubRow();
-  const colcount=1+(s6Exp.fy25?13:1)+(s6Exp.fy26?13:1)+3;
-  const detailTable=cc=>{
-    const rows=outRows(cc);
-    if(!rows.length)return '<div style="font-size:11px;color:#888;margin:2px 0 6px;">No rows.</div>';
-    if(mode==='cost')
-      return `<div class="rv-table-wrap" style="margin:0 0 6px;"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${rows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
-    return `<div class="rv-table-wrap" style="margin:0 0 6px;"><table class="rv-table"><thead><tr>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${rows.map(row=>`<tr><td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td><td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>${fyDataCells(row,fmtFte)}</tr>`).join('')}</tbody></table></div>`;
-  };
-  const grand={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-  const bodyRows=ccs.map(cc=>{
-    const agg=aggRow(outRows(cc));
-    agg.fy25.forEach((v,i)=>grand.fy25[i]+=v);agg.fy26.forEach((v,i)=>grand.fy26[i]+=v);grand.fy27+=agg.fy27;grand.fy28+=agg.fy28;grand.fy29+=agg.fy29;
-    const scope=(mode==='cost'?'ciagg-co:':'ciagg-fte:')+cc;
-    const expanded=coViewExpanded.has(scope);
-    const safe=scope.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const labelCell=`<td class="rv-td-left rv-sticky rv-sticky-0" onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">${expanded?'▼':'▶'} <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>`;
-    const sumr=`<tr>${labelCell}${fyDataCells(agg,fmtv)}</tr>`;
-    const detr=expanded?`<tr><td colspan="${colcount}" style="padding:2px 4px 8px;">${detailTable(cc)}</td></tr>`:'';
-    return sumr+detr;
-  }).join('');
-  const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0">Total — all cost centres</td>${fyDataCells(grand,fmtv)}</tr>`;
-  const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:240px;">Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+  const view=(ciAggView&&ciAggView[mode])||'cc';
+  const allRows=[];ccs.forEach(cc=>outRows(cc).forEach(r=>allRows.push({...r,cc})));
+  const grand=aggRow(allRows);
+
+  let table;
+  if(view==='cc'){
+    // CC level: one row per cost centre + a grand-total row.
+    const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:240px;">Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    const rows=ccs.map(cc=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>${fyDataCells(aggRow(outRows(cc)),fmtv)}</tr>`).join('');
+    const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0">Total — all cost centres</td>${fyDataCells(grand,fmtv)}</tr>`;
+    table=`<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${rows}${totalRow}</tbody></table></div>`;
+  } else {
+    // Detail level: one flat unified table across all cost centres (columns line up).
+    const deptOrder2={'R&D':0,'SMM':1,'G&A':2};
+    allRows.sort((a,b)=>{const da=deptOrder2[gca(a.cc)?.bcDept]??9,db=deptOrder2[gca(b.cc)?.bcDept]??9;return da!==db?da-db:a.cc.localeCompare(b.cc);});
+    if(mode==='cost'){
+      const tbody=allRows.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(r,true,'out')}${fyDataCells(r,fmtCostM)}</tr>`).join('');
+      const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0" colspan="6">Total — all cost centres</td>${fyDataCells(grand,fmtCostM)}</tr>`;
+      table=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody||''}${totalRow}</tbody></table></div>`;
+    } else {
+      const fteThead=`<tr>
+        <th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:90px;">Cost centre</th>
+        <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
+        <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
+      const tbody=allRows.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}><td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${r.cc}</span></td><td class="rv-td-left">${r.loc||'—'}</td><td class="rv-td-left">${r.city||'—'}</td><td class="rv-td-left">${r.azW||'—'}</td><td class="rv-td-left">${r.wt||'—'}</td>${fyDataCells(r,fmtFte)}</tr>`).join('');
+      const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0" colspan="5">Total — all cost centres</td>${fyDataCells(grand,fmtFte)}</tr>`;
+      table=`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${tbody||''}${totalRow}</tbody></table></div>`;
+    }
+  }
+
   const unit=mode==='cost'?'USD ($m)':'FTEs (headcount)';
   const title=mode==='cost'?'Cost out by cost centre':'FTEs out by cost centre';
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
-    <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:4px;display:flex;align-items:center;gap:8px;">${title} <span class="unit-pill">${unit}</span></div>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">Totals by cost centre — click a cost centre to expand its detail. Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
-    <div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${bodyRows}${totalRow}</tbody></table></div>
+    <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${title} <span class="unit-pill">${unit}</span>
+      <span class="method-toggle" style="margin-left:auto;margin-bottom:0;">
+        <button class="method-btn ${view==='cc'?'active':''}" onclick="setCiAggView('${mode}','cc')">By cost centre</button>
+        <button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${mode}','detail')">Detail</button>
+      </span>
+    </div>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='cc'?'Totals by cost centre. Switch to <strong>Detail</strong> for the full line-level breakdown.':'Full line-level detail across all cost centres.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    ${table}
   </div>`;
   if(bcMany()==='in')dirSwapNodes(el);  // self-swap so labels stay correct across re-renders
+}
+// CC-level vs Detail-level view of the receiver's Cost / FTE summary tables.
+function setCiAggView(mode,level){
+  ciAggView[mode]=level;
+  if(mode==='cost')renderCiCostScreen();else renderCiFteScreen();
+  applyDirLabels();
 }
 
 // Mirror the entire Many side into the single chosen One CC (ciData/ciFteData), so
