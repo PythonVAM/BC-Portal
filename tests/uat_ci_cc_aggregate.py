@@ -30,7 +30,7 @@ with sync_playwright() as p:
                    ccRows:[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim()).sort(),
                    toggleBtns:[...el.querySelectorAll('.method-btn')].map(x=>x.textContent.trim()),
                    fyClickable:!!el.querySelector('[onclick^="toggleS6Fy"]'),
-                   headers:[...el.querySelectorAll('thead tr:first-child th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,6),
+                   headers:[...el.querySelectorAll('thead tr:first-child th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,8),
                    naCells:el.querySelectorAll('td.cod-na').length,
                    hasTotal:/Total — all cost centres/.test(el.innerText),
                    title:el.querySelector('div')?.textContent.trim().slice(0,30)}};}})()""")
@@ -52,7 +52,7 @@ with sync_playwright() as p:
           and cost['title'].startswith('Cost out by cost centre')
           and cost['headers']==['Cost centre','FY25','FY26','FY27','FY28','FY29']  # cc-level columns
           # detail level: one table, line-level columns, N/A cells, month-expandable
-          and costDetail['tables']==1 and costDetail['headers']==['Cost centre','Dept','GL account','Product','Project','UV']
+          and costDetail['tables']==1 and costDetail['headers']==['Cost centre','Dept','MU','Curr','GL account','Product','Project','UV']
           and costDetail['naCells']>0 and monthCols>=12
           and fte and fte['tables']==1 and fte['ccRows']==['5110','7300RND-CC-041'] and fte['hasTotal']
           and fte['title'].startswith('FTEs out by cost centre')

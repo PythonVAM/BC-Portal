@@ -56,7 +56,7 @@ with sync_playwright() as p:
     print('Lead step 6 Cost Out:', state)
 
     ok = (state['expandBtns']==0 and state['collapsedBlocks']==0
-          and state['headers'][:6]==['Cost centre','Dept','GL account','Product','Project','UV']
+          and state['headers'][:8]==['Cost centre','Dept','MU','Curr','GL account','Product','Project','UV']
           and state['naCells']>0 and state['dollarM'])
     print('PASS' if ok and not errs else 'FAIL')
     print('errors:',errs[:5])
