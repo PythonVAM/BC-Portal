@@ -210,7 +210,7 @@ For any non-trivial change, **state your understanding back to the user and conf
 These are open at the time of writing this CLAUDE.md. Update or strike through as resolved.
 
 - **Path documentation `transfer-hub-paths.html` is Cost Out focused.** Cost In paths and FTE rules from a process angle aren't documented yet — user said start with CO; expand later.
-- **Filter dropdowns on column headers** (deferred by user).
+- **Filter dropdowns on column headers** — done for the **receiver Detail view** (`renderCiCcAggregate` detail mode): each identity column has a header filter control; opening one shows a searchable value checklist (`ciDetailFilters[mode][colKey]` = Set of shown values; absence = all). Rows filter live (AND across columns), with an active-filter chip bar, a "showing N of M" count and a grand total over the filtered rows. Helpers: `ciFilterColSpec`/`ciFilterDistinct`/`ciFilterOpenToggle`/`ciFilterToggleVal`/`ciFilterClearCol`/`ciFilterClearAll`/`ciFilterSearchList`. Not yet applied to the Lead step-6 combined Detail table or the Many-side Cost Out screens.
 - **Bottom button row sticky-pin to viewport bottom** — would mirror the top stable region. Future improvement.
 - **Step 4 (FTEs Out) doesn't yet use `.screen-action` wrapping** — its toolbar would benefit, but data is usually short enough that it isn't urgent.
 - **Dashboard's dynamic content** isn't wrapped with `screen-head` — would need `renderDashboard()` to emit the wrapper. Low priority.
