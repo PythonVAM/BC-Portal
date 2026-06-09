@@ -16,7 +16,7 @@ The prototype is fully self-contained, with simulated personas, fake hierarchica
 
 ### Files
 
-- **`transfer-hub-prototype.html`** (repo root) — the **canonical working file** and the prototype itself. ~6,074 lines of HTML/CSS/JS in one file. This is the single source of truth and the **only** prototype file Claude Code should ever edit. Edit it in place at the repo root.
+- **`transfer-hub-prototype.html`** (repo root) — the **canonical working file** and the prototype itself. ~4,800 lines of HTML/CSS/JS in one file. This is the single source of truth and the **only** prototype file Claude Code should ever edit. Edit it in place at the repo root.
 - **`transfer-hub-paths.html`** (repo root) — standalone documentation file that maps the Cost Out paths across SET Area × BC Dept × Full/Partial combinations, with in-browser editing and persistent change history. Linked from the prototype's topbar ("📖 Paths").
 - **`vN/index.html`** (e.g. `v2/`, `v3/`, `v4/`, `v5/`, …) — **frozen, read-only snapshots** of the prototype at past milestones. They exist so colleagues can open a stable link to a specific version (e.g. via GitHub Pages at `…/BC-Portal/v5/`). **Never edit, rename, or delete these.** They are an archive, not working code. All new work happens in the root `transfer-hub-prototype.html`, never in a `vN/` folder.
 
