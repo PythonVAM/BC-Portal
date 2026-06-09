@@ -2,12 +2,10 @@ from pathlib import Path
 PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 
-# Regression for the "Other Cost In contributors" section on the CI screen:
-#  1) it must list only contributors who share one of the current user's assigned
-#     CCs (not every CI contributor in the boundary change);
-#  2) it must start collapsed and expand on click.
-# Scenario: CC-X (7300RND-CC-041) -> lt + ds ; CC-Y (5110) -> fa. Viewed as lt
-# (assigned to CC-X only), the section should show ds and NOT fa.
+# The One-side summary is scoped to the cost centres routed to THIS contributor —
+# a Many CC assigned to a different Cost In Contributor must not appear in their
+# summary. Scenario: CC-X (7300RND-CC-041) -> lt ; CC-Y (5110) -> fa. Viewed as lt,
+# the summary shows only CC-X, not CC-Y.
 with sync_playwright() as p:
     b=p.chromium.launch()
     pg=b.new_context(viewport={'width':1400,'height':1100}).new_page()
@@ -17,7 +15,7 @@ with sync_playwright() as p:
     pg.wait_for_load_state('networkidle')
     pg.evaluate("""
       switchUser('jd'); contribs=[PEOPLE.find(p=>p.id==='om')];
-      go('step1'); document.getElementById('inp-bcname').value='Others test'; saveAndNotifyCoPersons();
+      go('step1'); document.getElementById('inp-bcname').value='Scope test'; saveAndNotifyCoPersons();
       switchUser('om');
       cc2Sel=[{code:'7300RND-CC-041',name:'X',type:'partial'},{code:'5110',name:'Y',type:'partial'}];
       ccData={}; fteData=[];
@@ -25,41 +23,18 @@ with sync_playwright() as p:
         fy25:Array(12).fill(1000),fy26:Array(12).fill(1000),fy27:0,fy28:0,fy29:0}];});
       submitToLead();
       submittedBC.costInPersons={
-        '7300RND-CC-041':[{...PEOPLE.find(p=>p.id==='lt')},{...PEOPLE.find(p=>p.id==='ds')}],
+        '7300RND-CC-041':[{...PEOPLE.find(p=>p.id==='lt')}],
         '5110':[{...PEOPLE.find(p=>p.id==='fa')}]
       };
-      switchUser('lt'); openCiFlow(); go('ci-step2');
+      switchUser('lt'); openCiFlow(); go('ci-step1');
     """); pg.wait_for_timeout(300)
 
-    def snap():
-        return pg.evaluate("""(()=>{
-          const el=document.getElementById('ci-others-wrap-cost');
-          const title=el.querySelector('.ci-others-title').textContent.trim();
-          const txt=el.innerText;
-          return {
-            collapsedGlyph: title.startsWith('▶'),
-            expandedGlyph: title.startsWith('▼'),
-            tableCount: el.querySelectorAll('table.ci-others-table').length,
-            hasDaniel: /Daniel Stein/.test(txt),
-            hasFarah: /Farah Ahmed/.test(txt),
-            summaryOne: /1 other contributor/.test(title),
-          };
-        })()""")
+    snap=pg.evaluate("""(()=>{const el=document.getElementById('ci-cc-agg-cost');
+      const ccs=[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim());
+      return {ccs, hasX:ccs.includes('7300RND-CC-041'), hasY:ccs.includes('5110'), tables:el.querySelectorAll('table.rv-table').length};})()""")
+    print('lt summary:', snap)
 
-    collapsed=snap()
-    collapsed_has_total=pg.evaluate("/Total per year/.test(document.getElementById('ci-others-wrap-cost').innerText)")
-    print('COLLAPSED (default):', collapsed, 'has Total per year:', collapsed_has_total)
-    pg.evaluate("ciOthersCollapsed['cost']=false; renderCiOthersTable('cost')"); pg.wait_for_timeout(150)
-    expanded=snap()
-    print('EXPANDED:', expanded)
-
-    # Collapsed shows a compact per-year totals table (1 table with a "Total per year"
-    # row) scoped to shared CCs — Farah excluded. Expanded shows the full
-    # per-contributor + Net Available tables.
-    ok = (collapsed['collapsedGlyph'] and collapsed['tableCount']==1 and collapsed['summaryOne']
-          and collapsed_has_total and not collapsed['hasFarah']
-          and expanded['expandedGlyph'] and expanded['tableCount']>1
-          and expanded['hasDaniel'] and not expanded['hasFarah'] and not errs)
+    ok = (snap['tables']==1 and snap['hasX'] and not snap['hasY'] and snap['ccs']==['7300RND-CC-041'] and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
     b.close()

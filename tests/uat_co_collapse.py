@@ -38,11 +38,13 @@ with sync_playwright() as p:
         }})()""")
 
     s6=toggles('step6'); print('STEP6:', s6)
-    # Expand the first step-6 CO view -> full rows (N/A cells) appear
-    pg.evaluate("""document.querySelector('#screen-step6 [onclick^="toggleCoView"]').click()"""); pg.wait_for_timeout(150)
-    s6exp=pg.evaluate("""(()=>{const blk=document.querySelector('#screen-step6 .rv-cc-block');
-      return {glyph:blk.querySelector('[onclick^="toggleCoView"]').textContent.trim().slice(0,8),
-              hasRows:!!blk.querySelector('.rv-table-wrap table.rv-table td.cod-na')};})()""")
+    # Step 6 now shows ONE combined Cost Out view (not per-CC blocks). Expand it ->
+    # the full flat table with N/A cells appears.
+    pg.evaluate("""(()=>{const g=[...document.querySelectorAll('#screen-step6 [onclick^="toggleCoView"]')].find(x=>/Cost out/.test(x.textContent)); g.click();})()"""); pg.wait_for_timeout(150)
+    s6exp=pg.evaluate("""(()=>{const s=document.getElementById('screen-step6');
+      const g=[...s.querySelectorAll('[onclick^="toggleCoView"]')].find(x=>/Cost out/.test(x.textContent));
+      return {glyph:g.textContent.trim().slice(0,8),
+              hasRows:!!s.querySelector('.rv-table-wrap table.rv-table td.cod-na')};})()""")
     print('STEP6 expanded first:', s6exp)
 
     # Step 7 is now two blocks (Cost, FTEs), each with a collapsed "By SET Area"
@@ -59,23 +61,24 @@ with sync_playwright() as p:
               fteAreas:fte.length, fteCollapsed:fte.every(x=>x.textContent.trim().startsWith('▶')), fteTotals:/FTEs out total/.test(s.innerText),
               twoMatrices:s.querySelectorAll('table.s6-table').length===2};})()""")
     print('STEP7 gates:', s7gates, '| areas:', s7)
-    pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200); c1=toggles('ci-step1'); print('CI1:', c1)
-    pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200); c2=toggles('ci-step2'); print('CI2:', c2)
-    pg.evaluate("go('ci-step3')"); pg.wait_for_timeout(200); c3=toggles('ci-step3'); print('CI3:', c3)
+    # Receiver flow: ci-step1 = Cost summary, ci-step2 = FTEs summary — each has a
+    # CC-level/Detail-level toggle (not per-CC collapsibles).
+    pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200)
+    c1=pg.evaluate("[...document.querySelectorAll('#screen-ci-step1 .method-btn')].map(x=>x.textContent.trim())"); print('CI1 toggle:', c1)
+    pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200)
+    c2=pg.evaluate("[...document.querySelectorAll('#screen-ci-step2 .method-btn')].map(x=>x.textContent.trim())"); print('CI2 toggle:', c2)
 
     ok = (s6['n']>=2 and s6['collapsed'] and s6['totals']
           and s6exp['glyph'].startswith('▼') and s6exp['hasRows']
-          and c1['n']>=2 and c1['collapsed'] and c1['totals']
-          and c2['collapsed'] and c2['totals']
           # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
           # per-area Cost Out / FTEs Out views with per-year totals.
           and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
           and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
           and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
-          # FTE Out views collapsible with headcount totals on the per-CC screens
           and s6['nFte']>=1 and s6['fteTotals']
-          and c1['nFte']>=1 and c1['fteTotals']
-          and c3['nFte']>=1 and c3['collapsed'] and c3['fteTotals']
+          # Receiver Cost (ci-step1) + FTEs (ci-step2): CC-level/Detail-level toggle.
+          and c1==['By cost centre','Detail']
+          and c2==['By cost centre','Detail']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

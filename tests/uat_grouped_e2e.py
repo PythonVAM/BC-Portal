@@ -33,7 +33,8 @@ with sync_playwright() as p:
       Object.keys(submittedBC.ccData).forEach(cc=>{costInPersons[cc]=[PEOPLE.find(p=>p.id==='lt')];});
       step6Proceed();
       switchUser('lt'); openCiFlow();
-      Object.keys(submittedBC.costInPersons).forEach(out=>toggleCiInCc(out,'5130','Infrastructure',{stopPropagation(){}}));
+      // One side = a single cost centre absorbing the whole Many side (pick once).
+      toggleCiInCc('__one__','5130','Infrastructure',{stopPropagation(){}});
       go('ci-step2');
       const bySource={};
       ciData.forEach(r=>{ (bySource[r.sourceCc]=bySource[r.sourceCc]||[]).push(r); });
