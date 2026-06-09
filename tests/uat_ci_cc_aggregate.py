@@ -48,7 +48,7 @@ with sync_playwright() as p:
     print('month cols (detail, fy25 expanded):', monthCols)
 
     ok = (cost and cost['tables']==1 and cost['ccRows']==['5110','7300RND-CC-041']
-          and cost['toggleBtns']==['By cost centre','Detail'] and cost['fyClickable'] and cost['hasTotal']
+          and cost['toggleBtns']==['By SET Area','By cost centre','Detail'] and cost['fyClickable'] and cost['hasTotal']
           and cost['title'].startswith('Cost out by cost centre')
           and cost['headers']==['Cost centre','FY25','FY26','FY27','FY28','FY29']  # cc-level columns
           # detail level: one table, line-level columns, N/A cells, month-expandable

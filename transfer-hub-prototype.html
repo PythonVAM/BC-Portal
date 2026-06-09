@@ -125,7 +125,7 @@ tr.clickable:hover td { background: #f5f4f0; cursor: pointer; }
 .method-toggle { display: flex; margin-bottom: 12px; border: 0.5px solid #ccc; border-radius: 8px; overflow: hidden; width: fit-content; }
 .method-btn { font-size: 12px; padding: 6px 14px; cursor: pointer; background: transparent; border: none; color: #666; font-family: inherit; }
 .method-btn.active { background: #E6F1FB; color: #0C447C; font-weight: 500; }
-.method-btn:first-child { border-right: 0.5px solid #ccc; }
+.method-btn:not(:last-child) { border-right: 0.5px solid #ccc; }
 .hierarchy-panel { border: 0.5px solid #ccc; border-radius: 8px; overflow: hidden; }
 .breadcrumb { font-size: 12px; padding: 7px 12px; background: #f5f4f0; border-bottom: 0.5px solid #e0ded8; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .breadcrumb span.bc-link { cursor: pointer; color: #185FA5; }
@@ -3852,7 +3852,17 @@ function renderCiCcAggregate(mode,elId,opts){
   const grand=aggRow(allRows);
 
   let table, detailControls='';
-  if(view==='cc'){
+  if(view==='area'){
+    // SET Area level: one row per SET area (the coarsest roll-up), aggregating
+    // every cost centre that falls under it, + a grand-total row.
+    const byArea={};
+    ccs.forEach(cc=>{const a=getSetArea(cc);(byArea[a.code]=byArea[a.code]||{name:a.name,rows:[]}).rows.push(...outRows(cc));});
+    const areaKeys=Object.keys(byArea).sort();
+    const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:240px;">SET Area</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    const rows=areaKeys.map(k=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0"><span style="font-weight:500;">${byArea[k].name}</span> <span style="color:#888;font-weight:400;">(${k})</span></td>${fyDataCells(aggRow(byArea[k].rows),fmtv)}</tr>`).join('');
+    const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0">Total — all SET areas</td>${fyDataCells(grand,fmtv)}</tr>`;
+    table=`<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${rows}${totalRow}</tbody></table></div>`;
+  } else if(view==='cc'){
     // CC level: one row per cost centre + a grand-total row.
     const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:240px;">Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
     const rows=ccs.map(cc=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>${fyDataCells(aggRow(outRows(cc)),fmtv)}</tr>`).join('');
@@ -3913,11 +3923,12 @@ function renderCiCcAggregate(mode,elId,opts){
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${title} <span class="unit-pill">${unit}</span>
       <span class="method-toggle" style="margin-left:auto;margin-bottom:0;">
+        <button class="method-btn ${view==='area'?'active':''}" onclick="setCiAggView('${scope}','area')">By SET Area</button>
         <button class="method-btn ${view==='cc'?'active':''}" onclick="setCiAggView('${scope}','cc')">By cost centre</button>
         <button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${scope}','detail')">Detail</button>
       </span>
     </div>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='cc'?'Totals by cost centre. Switch to <strong>Detail</strong> for the full line-level breakdown.':'Full line-level detail across all cost centres — use the per-column filters to narrow it.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='area'?'Totals by SET area. Switch to <strong>By cost centre</strong> or <strong>Detail</strong> for finer breakdowns.':view==='cc'?'Totals by cost centre. Switch to <strong>By SET Area</strong> for a coarser view or <strong>Detail</strong> for the full line-level breakdown.':'Full line-level detail across all cost centres — use the per-column filters to narrow it.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
     ${detailControls}
     ${table}
   </div>`;
