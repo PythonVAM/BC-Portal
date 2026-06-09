@@ -26,7 +26,7 @@ with sync_playwright() as p:
       switchUser('jd'); openLeadView('step6');
       submittedBC.costInPersons={}; Object.keys(submittedBC.ccData).forEach(cc=>{submittedBC.costInPersons[cc]=[PEOPLE.find(p=>p.id==='lt')];});
       switchUser('lt'); openCiFlow();
-      Object.keys(submittedBC.costInPersons).forEach(out=>toggleCiInCc(out,'5130','Infrastructure',{stopPropagation(){}}));
+      toggleCiInCc('__one__','5130','Infrastructure',{stopPropagation(){}});
       go('ci-step2');
       const bySource={}; ciData.forEach(r=>{(bySource[r.sourceCc]=bySource[r.sourceCc]||[]).push(r);});
       Object.entries(bySource).forEach(([src,rows])=>{const co=submittedBC.ccData[src]||[];rows.forEach((r,i)=>{if(co[i]){r.fy25=[...co[i].fy25];r.fy26=[...co[i].fy26];r.fy27=co[i].fy27;r.fy28=co[i].fy28;r.fy29=co[i].fy29;}});});

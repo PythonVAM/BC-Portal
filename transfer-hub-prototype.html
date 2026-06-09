@@ -4087,7 +4087,7 @@ function renderCiByCc(){
   if(!allCcs.length){wrap.innerHTML='<span class="rv-none">No cost centres assigned to you for this Boundary Change.</span>';return;}
   const hasSub=fyHasSubRow();
 
-  wrap.innerHTML=allCcs.map(cc=>{
+  const blocksHTML=allCcs.map(cc=>{
     const attr=gca(cc.code);const cur=attr.cur||'USD';const sym=ciRvCurrency==='local'?currSymbol(cur):'$';
     const isFull=cc.type==='full';
     const coRows=bc.ccData[cc.code]||[];
@@ -4139,31 +4139,68 @@ function renderCiByCc(){
       <div class="rv-cc-block-body">
         ${coTableHTML}
         ${fteRows.length?coViewWrap(`ci1fte:${cc.code}`,'FTEs out rows',fyTotals(fteRows),`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`,fmtFte,'FTEs out total'):'<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out rows</div><span class="rv-none" style="font-size:12px;">No FTE rows.</span>'}
-        <div class="rv-ci-label">Cost In cost centre(s) receiving this cost <span style="font-size:11px;color:#888;font-weight:400;">— type is fixed by the Cost Out selection</span></div>
-        <div class="rv-ci-panel" id="ci-panel-${cc.code}">
-          <div class="method-toggle" style="margin-bottom:10px;">
-            <button class="method-btn active" id="ci-cc-btn-hier-${cc.code}" onclick="swCiCcMethod('${cc.code}','hier')">Browse hierarchy</button>
-            <button class="method-btn" id="ci-cc-btn-manual-${cc.code}" onclick="swCiCcMethod('${cc.code}','manual')">Enter manually</button>
-          </div>
-          <div id="ci-cc-hier-wrap-${cc.code}">
-            <div class="hierarchy-panel"><div class="breadcrumb" id="ci-cc-bc-${cc.code}"></div><ul class="hier-list" id="ci-cc-hl-${cc.code}"></ul></div>
-          </div>
-          <div id="ci-cc-manual-wrap-${cc.code}" style="display:none;">
-            <div class="manual-add-row"><div class="field"><label>CC code</label><input type="text" id="ci-cc-mi-${cc.code}" placeholder="e.g. 5110"/></div><button class="btn-add" onclick="addCiCcManual('${cc.code}')">+ Add</button></div>
-          </div>
-          <div class="sel-tray" style="margin-top:8px;">
-            <div class="sel-tray-header"><span id="ci-cc-cnt-${cc.code}">${ciSel.length?ciSel.length+' cost centre'+(ciSel.length!==1?'s':'')+ ' selected':'No cost centres selected'}</span>${ciSel.length?`<button class="sel-tray-clear" onclick="clrCiInCc('${cc.code}')">Remove all</button>`:''}</div>
-            <div id="ci-cc-tags-${cc.code}">${ciSelHTML||'<span class="sel-empty">Cost centres you select will appear here.</span>'}</div>
-          </div>
-        </div>
       </div>
     </div>`;
   }).join('');
 
-  // Wire hierarchy for each CC
-  allCcs.forEach(cc=>{
-    if(!ciCcPaths[cc.code])ciCcPaths[cc.code]=[{name:'Organisation',node:ccTree}];
-    renderCiCcHier(cc.code);
+  // The One side is a SINGLE cost centre that absorbs the entire Many side — one
+  // picker (capped at 1), not a picker per Many CC.
+  const one=getOneCc();
+  const verb=oneWord()==='in'?'receives':'transfers out';
+  const oneTag=one
+    ?`<div class="generic-tag"><span class="cc-badge-out">${one.code}</span>${deptChipFor(one.code)}<span class="tag-name">${one.name}</span><button class="tag-remove" onclick="clrCiInCc()">×</button></div>`
+    :'<span class="sel-empty">Pick one cost centre.</span>';
+  const pickerHTML=`<div class="rv-cc-block" style="border-color:#B5D4F4;">
+    <div class="rv-cc-block-hdr"><div class="rv-cc-block-title">${oneLabel()} cost centre — the single CC that ${verb} the whole transfer</div></div>
+    <div class="rv-cc-block-body">
+      <p style="font-size:12px;color:#666;margin:0 0 10px;">The whole transfer above lands in one cost centre. Pick exactly one — its values are then auto-populated to mirror the total, ready for you to review and adjust.</p>
+      <div class="rv-ci-panel">
+        <div class="method-toggle" style="margin-bottom:10px;">
+          <button class="method-btn active" id="ci-cc-btn-hier-__one__" onclick="swCiCcMethod('__one__','hier')">Browse hierarchy</button>
+          <button class="method-btn" id="ci-cc-btn-manual-__one__" onclick="swCiCcMethod('__one__','manual')">Enter manually</button>
+        </div>
+        <div id="ci-cc-hier-wrap-__one__"><div class="hierarchy-panel"><div class="breadcrumb" id="ci-cc-bc-__one__"></div><ul class="hier-list" id="ci-cc-hl-__one__"></ul></div></div>
+        <div id="ci-cc-manual-wrap-__one__" style="display:none;"><div class="manual-add-row"><div class="field"><label>CC code</label><input type="text" id="ci-cc-mi-__one__" placeholder="e.g. 5110"/></div><button class="btn-add" onclick="addCiCcManual()">+ Add</button></div></div>
+        <div class="sel-tray" style="margin-top:8px;">
+          <div class="sel-tray-header"><span>${one?'1 cost centre selected':'No cost centre selected'}</span></div>
+          <div>${oneTag}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  wrap.innerHTML=blocksHTML+pickerHTML;
+
+  // Wire the single One-CC hierarchy picker.
+  if(!ciCcPaths['__one__'])ciCcPaths['__one__']=[{name:'Organisation',node:ccTree}];
+  renderOneCcHier();
+}
+
+// Hierarchy browser for the single One-side CC (selection marked from getOneCc()).
+function renderOneCcHier(){
+  const KEY='__one__';
+  const paths=ciCcPaths[KEY];if(!paths)return;
+  const cur=paths[paths.length-1].node;
+  const bcEl=document.getElementById(`ci-cc-bc-${KEY}`);
+  if(bcEl)bcEl.innerHTML=paths.map((p,i)=>i<paths.length-1?`<span class="bc-link" onclick="navCiCcHier('${KEY}',${i})">${p.name}</span><span class="sep"> › </span>`:`<span class="current">${p.name}</span>`).join('');
+  const list=document.getElementById(`ci-cc-hl-${KEY}`);if(!list)return;
+  const sel=getOneCc();
+  list.innerHTML='';
+  (cur.children||[]).forEach(child=>{
+    const li=document.createElement('li');
+    const s=child.leaf&&sel&&sel.code===child.code;
+    li.className='hier-item'+(child.leaf?' leaf-item':'')+(s?' sel-row':'');
+    if(child.leaf){
+      li.innerHTML=`
+        <div class="hier-item-left" style="cursor:pointer;" onclick="toggleCiInCc('${KEY}','${child.code}','${child.name}',event)">
+          <div class="hier-icon ${s?'cc-chk':'cc'}">CC</div>
+          <div><div style="font-size:12px;display:flex;align-items:center;gap:6px;">${child.name} ${deptChipFor(child.code)}</div><div class="hier-code">${child.code}</div></div>
+        </div>
+        <div class="hier-checkbox ${s?'checked':''}" onclick="toggleCiInCc('${KEY}','${child.code}','${child.name}',event)"></div>`;
+    } else {
+      li.innerHTML=`<div class="hier-item-left"><div class="hier-icon folder">▶</div><div><div style="font-size:12px;">${child.name}</div>${child.code?`<div class="hier-code">${child.code}</div>`:''}</div></div><span class="hier-arrow">›</span>`;
+      li.onclick=()=>{ciCcPaths[KEY].push({name:child.name,node:child});renderOneCcHier();};
+    }
+    list.appendChild(li);
   });
 }
 
@@ -4202,35 +4239,40 @@ function renderCiCcHier(outCcCode){
   });
 }
 
-function navCiCcHier(outCcCode,i){ciCcPaths[outCcCode]=ciCcPaths[outCcCode].slice(0,i+1);renderCiCcHier(outCcCode);}
+function navCiCcHier(outCcCode,i){ciCcPaths[outCcCode]=ciCcPaths[outCcCode].slice(0,i+1);if(outCcCode==='__one__')renderOneCcHier();else renderCiCcHier(outCcCode);}
 
-function toggleCiInCc(outCcCode,code,name,e){
-  e.stopPropagation();
-  if(!ciInCcSel[outCcCode])ciInCcSel[outCcCode]=[];
-  const exists=ciInCcSel[outCcCode].some(x=>x.code===code);
-  if(exists){ciInCcSel[outCcCode]=ciInCcSel[outCcCode].filter(x=>x.code!==code);}
-  else{
-    // Inherit type from the Cost Out CC
-    const inheritedType=(submittedBC?.cc2Sel||[]).find(x=>x.code===outCcCode)?.type||'partial';
-    ciInCcSel[outCcCode].push({code,name,type:inheritedType});
+// The One side is exactly ONE cost centre that absorbs the entire Many side. The
+// chosen CC is mirrored against every Many CC assigned to the contributor, so it
+// receives all of them. getOneCc returns that single pick (or null).
+function getOneCc(){
+  for(const arr of Object.values(ciInCcSel)){if(arr&&arr.length)return arr[0];}
+  return null;
+}
+// Set (or clear) the single One-side CC across all the contributor's Many CCs.
+function setOneCc(code,name){
+  const cur=getOneCc();
+  ciInCcSel={};
+  if(!(cur&&cur.code===code)){
+    [...getMyAssignedCcCodes()].forEach(src=>{
+      const type=(submittedBC?.cc2Sel||[]).find(x=>x.code===src)?.type||'partial';
+      ciInCcSel[src]=[{code,name,type}];
+    });
   }
-  renderCiCcHier(outCcCode);renderCiCcTray(outCcCode);
+  // Selection changed → drop any seeded entry data so it re-mirrors next render.
+  ciData=[];ciFteData=[];
+  renderCiByCc();
 }
-
-function removeCiInCc(outCcCode,code){
-  if(ciInCcSel[outCcCode])ciInCcSel[outCcCode]=ciInCcSel[outCcCode].filter(x=>x.code!==code);
-  renderCiCcHier(outCcCode);renderCiCcTray(outCcCode);
+function toggleCiInCc(outCcCode,code,name,e){
+  if(e)e.stopPropagation();
+  setOneCc(code,name);
 }
-
-function clrCiInCc(outCcCode){ciInCcSel[outCcCode]=[];renderCiCcHier(outCcCode);renderCiCcTray(outCcCode);}
-
-function addCiCcManual(outCcCode){
-  const inp=document.getElementById(`ci-cc-mi-${outCcCode}`);const code=inp?.value.trim();
+function removeCiInCc(outCcCode,code){const o=getOneCc();if(o)setOneCc(o.code,o.name);/* toggles off */}
+function clrCiInCc(){const o=getOneCc();if(o)setOneCc(o.code,o.name);}
+function addCiCcManual(){
+  const inp=document.getElementById('ci-cc-mi-__one__');const code=inp?.value.trim();
   if(!code)return;
-  if(!ciInCcSel[outCcCode])ciInCcSel[outCcCode]=[];
-  if(!ciInCcSel[outCcCode].some(x=>x.code===code))ciInCcSel[outCcCode].push({code,name:'Manual entry',type:'partial'});
   if(inp)inp.value='';
-  renderCiCcTray(outCcCode);
+  setOneCc(code,'Manual entry');
 }
 
 function renderCiCcTray(outCcCode){
@@ -4960,6 +5002,18 @@ function renderCiReview(){
 
 function submitCostIn(){
   const u=currentUser();
+  // Balance gate: the single One-side cost centre must absorb the entire Many side,
+  // so its total must equal the Many total in every year (compared at $m, 2dp).
+  const FYK=['fy25','fy26','fy27','fy28','fy29'],FYL=['FY25','FY26','FY27','FY28','FY29'];
+  const manyT=fyTotals(Object.values(submittedBC?.ccData||{}).flat());
+  const oneT=fyTotals(ciData);
+  const m=v=>Math.round((v||0)/1e4)/100;
+  const off=FYK.filter(fk=>m(manyT[fk])!==m(oneT[fk]));
+  if(off.length){
+    const lines=off.map((fk,i)=>`${FYL[FYK.indexOf(fk)]}:  ${manyLabel()} ${fmtCostM(manyT[fk])}  vs  ${oneLabel()} ${fmtCostM(oneT[fk])}`).join('\n');
+    alert(`This transfer doesn't balance yet.\n\nThe ${oneLabel()} cost centre must equal the ${manyLabel()} total in every year:\n\n${lines}\n\nAdjust the values so each year matches, then submit.`);
+    return;
+  }
   const key=`${u.id}::${ciActiveCcCode||'all'}`;
   ciResponses[key]={
     ccCode:ciActiveCcCode,
