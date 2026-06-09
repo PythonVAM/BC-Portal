@@ -5338,7 +5338,7 @@ function buildStep7(){
   if(archived.length){
     const combo={many:{fy25:0,fy26:0,fy27:0,fy28:0,fy29:0},one:{fy25:0,fy26:0,fy27:0,fy28:0,fy29:0}};
     const add=t=>{FYK5.forEach(fk=>{combo.many[fk]+=t.many[fk];combo.one[fk]+=t.one[fk];});};
-    const oneCcOf=inst=>((Object.values(inst.costInPersons||{}).flat()[0])||{}).code||'—';
+    const oneCcOf=inst=>{const r=Object.values(inst.ciResponses||{})[0];return (r&&(r.ciData||[])[0]&&r.ciData[0].cc)||'—';};
     const rowsHTML=archived.map(inst=>{const t=instCostTotals(inst.ccData,inst.ciResponses);add(t);
       return `<div class="rv-row"><span class="rv-lbl">Transfer ${inst.no} <span class="badge badge-approved" style="font-size:9px;">balanced</span></span><span style="font-size:11px;color:#555;">${manyLabel()} ${fmtM(t.many.fy26)} → ${oneLabel()} <span class="cc-badge-out">${oneCcOf(inst)}</span> · FY26</span></div>`;}).join('');
     const at=instCostTotals(submittedBC.ccData,ciResponses);add(at);

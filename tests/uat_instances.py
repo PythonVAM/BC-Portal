@@ -45,13 +45,14 @@ with sync_playwright() as p:
       return {balanced:activeInstanceBalanced(), instNo:submittedBC.instanceNo, archived:submittedBC.archivedInstances.length,
               banner:/Transfers in this boundary change — 2 total/.test(s.innerText),
               combined:/Combined \\(FY26\\)/.test(s.innerText),
+              archivedOneCc:/Cost In 5130/.test(s.innerText),  // archived transfer's One CC resolves
               canSubmit:/Submit all to Group/.test(s.innerText)};})()""")
     print('after instance 2:', inst2)
 
     ok = (inst1['balanced'] and inst1['instNo']==1 and inst1['archived']==0 and inst1['hasAddBtn']
           and afterAdd['screen']=='screen-step1' and afterAdd['instNo']==2 and afterAdd['archived']==1 and afterAdd['ccDataEmpty']
           and blocked and any('must be completed and balanced' in d for d in dialogs)
-          and inst2['balanced'] and inst2['archived']==1 and inst2['banner'] and inst2['combined'] and inst2['canSubmit']
+          and inst2['balanced'] and inst2['archived']==1 and inst2['banner'] and inst2['combined'] and inst2['archivedOneCc'] and inst2['canSubmit']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
