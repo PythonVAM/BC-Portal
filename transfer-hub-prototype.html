@@ -613,8 +613,15 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
   </div>
   <div class="field"><label>BC name</label><input type="text" id="inp-bcname" placeholder="Give this boundary change a short, descriptive name..."/></div>
   <div class="field"><label>BC description</label><textarea id="inp-bcdesc" placeholder="Describe the purpose and context of this boundary change..."></textarea></div>
-  <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Cost Out Contributor(s)</div>
-  <div style="font-size:12px;color:#666;margin-bottom:12px;">As the Boundary Change Lead you delegate the Cost Out entry. Search and add one or more Cost Out Contributors below — they will be notified when you save.</div>
+  <div class="field"><label>Which side has many cost centres?</label>
+    <div class="method-toggle" style="margin-top:4px;">
+      <button type="button" class="method-btn active" id="dir-btn-out" onclick="setBcManySide('out')">Cost Out (many)</button>
+      <button type="button" class="method-btn" id="dir-btn-in" onclick="setBcManySide('in')">Cost In (many)</button>
+    </div>
+    <div class="input-hint">Pick the side that involves many cost centres — it's collected first, by the contributors you add below. The other side is then a single cost centre, entered afterwards.</div>
+  </div>
+  <div style="font-size:13px;font-weight:500;margin-bottom:6px;" id="step1-contrib-heading">Cost Out Contributor(s)</div>
+  <div style="font-size:12px;color:#666;margin-bottom:12px;" id="step1-contrib-intro">As the Boundary Change Lead you delegate the Cost Out entry. Search and add one or more Cost Out Contributors below — they will be notified when you save.</div>
   <div class="contrib-panel">
     <div class="contrib-list" id="contrib-out-list"></div>
     <div id="contrib-empty-state" style="font-size:12px;color:#999;font-style:italic;margin-bottom:12px;display:none;">No contributors added yet.</div>
@@ -625,7 +632,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
       </div>
     </div>
   </div>
-  <div class="btn-row"><button class="btn btn-secondary" onclick="go('dashboard')">Cancel</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" onclick="step1Next()">Save &amp; notify Cost Out Contributor(s) →</button></div>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('dashboard')">Cancel</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" id="step1-save-btn" onclick="step1Next()">Save &amp; notify Cost Out Contributor(s) →</button></div>
 </div></div>
 
 <!-- STEP 2: Cost centres -->
@@ -1000,16 +1007,30 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
      ci-step4 → Review & submit
 */
 
-// Cost Out Contributor breadcrumb (4 steps — no Lead's 'Details' step)
-const SL=['Cost centres','Cost out — select','Cost out — detail','FTEs out','Review & submit'];
+/* ── Direction model (Many → One) ──
+   The Lead picks which side has many CCs at setup (`bcManySide`); once a BC exists
+   that choice is frozen on `submittedBC.manySide`. The Many side reuses the Cost
+   Out screens (relabelled); the One side reuses the Cost In screens (relabelled). */
+function bcMany(){return (submittedBC&&submittedBC.manySide)||bcManySide||'out';}
+function dirName(side){return side==='in'?'Cost In':'Cost Out';}
+function manyWord(){return bcMany()==='in'?'in':'out';}
+function oneWord(){return bcMany()==='in'?'out':'in';}
+function manyLabel(){return dirName(bcMany());}
+function oneLabel(){return dirName(bcMany()==='in'?'out':'in');}
+
+// Many-side Contributor breadcrumb (4 steps — no Lead's 'Details' step)
 const AM={step2:0,step3:1,step3b:2,step4:3,step5:4};
-function si(id){const a=AM[id]??-1;return'<div class="step-indicator">'+SL.map((l,i)=>{const d=i<a,ac=i===a;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
+function si(id){
+  const a=AM[id]??-1;
+  const w=bcMany()==='in'?'Cost in':'Cost out',f=bcMany()==='in'?'FTEs in':'FTEs out';
+  const SL=['Cost centres',`${w} — select`,`${w} — detail`,f,'Review & submit'];
+  return'<div class="step-indicator">'+SL.map((l,i)=>{const d=i<a,ac=i===a;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
 
 // SET BC Lead breadcrumb (3 steps, spanning step1 → step6 → step7)
-const SL_LEAD=['Set up BC','Review Cost Out · Assign Cost In','Review · Submit to Group'];
 const AM_LEAD={step1:0,step6:1,step7:2};
 function siLead(id){
   const a=AM_LEAD[id]??-1;
+  const SL_LEAD=['Set up BC',`Review ${manyLabel()} · Assign ${oneLabel()}`,'Review · Submit to Group'];
   return'<div class="step-indicator">'+SL_LEAD.map((l,i)=>{
     const d=i<a,ac=i===a;
     return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<SL_LEAD.length-1?'<div class="step-connector"></div>':'');
@@ -1076,6 +1097,10 @@ const PEOPLE=[
   {id:'ld', first:'Lucia',   last:'Diaz',      dept:'Retail Division',  initials:'LD'},
 ];
 let contribs=[];
+// Which side of the boundary change has MANY cost centres — chosen by the Lead at
+// setup. The Many side is collected first (via the Cost Out screens, relabelled);
+// the other side becomes a single-CC "One" side. Default keeps legacy behaviour.
+let bcManySide='out';
 const CURRENT_USER={...PEOPLE[0],isCurrentUser:true};
 function renderContribs(){
   const list=document.getElementById('contrib-out-list');
@@ -4224,8 +4249,10 @@ function renderCiCcTray(outCcCode){
 }
 
 /* ── Cost In Step 2: data entry ── */
-const CI_SL=['Review request','Cost in','FTEs in','Submit'];
-function ciSi(step){return'<div class="step-indicator">'+CI_SL.map((l,i)=>{const d=i<step,ac=i===step;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<CI_SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
+function ciSi(step){
+  const w=oneWord()==='in'?'Cost in':'Cost out',f=oneWord()==='in'?'FTEs in':'FTEs out';
+  const CI_SL=['Review request',w,f,'Submit'];
+  return'<div class="step-indicator">'+CI_SL.map((l,i)=>{const d=i<step,ac=i===step;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<CI_SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
 
 function getTotalCiCcCount(){
   return Object.values(ciInCcSel).reduce((s,arr)=>s+arr.length,0);
@@ -5422,6 +5449,10 @@ function go(id){
   if(id==='ci-step2')renderCiStep2();
   if(id==='ci-step3')renderCiStep3();
   if(id==='ci-step4')renderCiReview();
+  // On the setup screen, sync the direction toggle + its labels to the current pick.
+  if(id==='step1')setBcManySide(bcManySide);
+  // Relabel screen titles / Many-side microcopy for the chosen direction.
+  applyDirLabels();
   // After any screen change, recompute sticky offsets so the screen-action
   // sits flush against the bottom of the screen-head (no scroll-through gap).
   syncStickyOffsets();
@@ -5510,12 +5541,59 @@ function submitToLead(){
   go('confirmation');
   skipConfirmationSetup=false;
 }
+// Lead picks the Many side at setup; relabel the step-1 contributor section to match.
+function setBcManySide(side){
+  bcManySide=(side==='in')?'in':'out';
+  const ob=document.getElementById('dir-btn-out'),ib=document.getElementById('dir-btn-in');
+  if(ob)ob.classList.toggle('active',bcManySide==='out');
+  if(ib)ib.classList.toggle('active',bcManySide==='in');
+  const lbl=dirName(bcManySide);
+  const h=document.getElementById('step1-contrib-heading');if(h)h.textContent=`${lbl} Contributor(s)`;
+  const intro=document.getElementById('step1-contrib-intro');if(intro)intro.textContent=`As the Boundary Change Lead you delegate the ${lbl} entry. Search and add one or more ${lbl} Contributors below — they will be notified when you save.`;
+  const b=document.getElementById('step1-save-btn');if(b)b.textContent=`Save & notify ${lbl} Contributor(s) →`;
+}
+
+/* Relabel the static screen titles for the chosen direction. The Many side reuses
+   the Cost Out screens (step2–step5) and the One side reuses the Cost In screens;
+   when the Lead chose Cost In as the Many side we swap the labels. Runs at the end
+   of go() after each screen's own render. Only the small, specific phrase set below
+   is touched, and only within single-direction screen containers, so dynamic data
+   rows (and mixed-direction Lead/aggregate views, handled elsewhere) are untouched. */
+function applyDirLabels(){
+  const M=manyLabel(),O=oneLabel(),mw=manyWord(),ow=oneWord();
+  const setT=(sel,txt)=>{const e=document.querySelector(sel);if(e)e.textContent=txt;};
+  // Many-side screen titles (the Cost Out screens, relabelled)
+  setT('#screen-step2 .card-title',`${M} task — Cost centres`);
+  setT('#screen-step3 .card-title',`${M} task — Select cost to transfer`);
+  setT('#screen-step3b .card-title',`${M} task — Enter transfer detail`);
+  setT('#screen-step4 .card-title',`${M} task — FTEs ${mw}`);
+  setT('#screen-step5 .card-title',`${M} task — Review & submit`);
+  // Lead review/assign title
+  setT('#screen-step6 .card-title',`Boundary change — Review ${M} · Assign ${O}`);
+  // One-side screen titles (the Cost In screens, relabelled)
+  setT('#screen-ci-step1 .card-title',`${O} — Boundary change request`);
+  setT('#screen-ci-step2 .card-title',`${O} — values`);
+  setT('#screen-ci-step3 .card-title',`${O} — FTEs ${ow}`);
+  setT('#screen-ci-step4 .card-title',`${O} — Review & submit`);
+  // Body microcopy on the single-direction Many screens: swap a small, specific set
+  // of labels when Cost In is the Many side (the HTML is authored for Cost Out).
+  if(bcMany()==='in'){
+    const pairs=[['Cost Out','Cost In'],['Cost out','Cost in'],['cost out','cost in'],['FTEs Out','FTEs In'],['FTEs out','FTEs in']];
+    ['screen-step2','screen-step3','screen-step3b','screen-step4','screen-step5'].forEach(sid=>{
+      const root=document.getElementById(sid);if(!root)return;
+      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+      const nodes=[];for(let n=walker.nextNode();n;n=walker.nextNode())nodes.push(n);
+      nodes.forEach(n=>{let t=n.nodeValue;pairs.forEach(([a,c])=>{if(t.includes(a))t=t.split(a).join(c);});if(t!==n.nodeValue)n.nodeValue=t;});
+    });
+  }
+}
+
 function step1Next(){
-  // Under the new model, the Boundary Change Lead never enters Cost Out data themselves.
+  // Under the new model, the Boundary Change Lead never enters values themselves.
   // Step 1 is the only step for the Lead in the creation flow: capture BC details,
-  // name the Cost Out Contributor(s), then save and notify them.
+  // pick the Many side, name its Contributor(s), then save and notify them.
   if(!contribs.length){
-    alert('Please add at least one Cost Out Contributor before saving.');
+    alert(`Please add at least one ${manyLabel()} Contributor before saving.`);
     return;
   }
   saveAndNotifyCoPersons();
@@ -5530,6 +5608,7 @@ function saveAndNotifyCoPersons(){
     bcLeadId:currentUser().id,
     contributors:[...contribs],
     ccData:{},fteData:[],cc2Sel:[],costInPersons:{},coSubmissions:{},
+    manySide:bcManySide,
     submittedAt:new Date().toLocaleString('en-GB'),
     status:'awaiting-co',
   };
@@ -5540,7 +5619,7 @@ function saveAndNotifyCoPersons(){
   if(titleEl)titleEl.textContent='Boundary change saved';
   if(msgEl){
     const names=contribs.map(p=>`${p.first} ${p.last}`).join(', ');
-    msgEl.textContent=`Saved and ${names} notified. They can now enter the Cost Out values.`;
+    msgEl.textContent=`Saved and ${names} notified. They can now enter the ${manyLabel()} values.`;
   }
   if(refEl)refEl.textContent=submittedBC.ref;
   if(timeEl)timeEl.textContent=submittedBC.submittedAt;
