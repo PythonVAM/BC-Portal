@@ -864,26 +864,35 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
   <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('step4')">← Back</button><button class="btn btn-secondary">Save as draft</button></div>
 </div></div>
 
-<!-- STEP 6: BC Lead — Assign Cost In -->
+<!-- STEP 6: BC Lead — Cost (mirrors the receiver's Cost screen) -->
 <div class="screen" id="screen-step6"><div class="card">
   <div class="screen-head">
-    <div class="card-title">Boundary change — Review Cost Out · Assign Cost In</div>
+    <div class="card-title">Cost</div>
     <div id="si-step6"></div>
   </div>
   <div id="step6-content"></div>
-  <div class="submit-box" id="step6-submit-box"><div class="submit-box-text" id="step6-submit-text">Assign Cost In persons above, then proceed to review.</div><button class="btn-submit" id="step6-submit-btn" onclick="step6Proceed()">Proceed to review →</button></div>
-  <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('dashboard')">← Dashboard</button><button class="btn btn-secondary">Save as draft</button></div>
+  <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('dashboard')">← Dashboard</button><button class="btn btn-primary" onclick="go('step6b')">FTEs →</button></div>
 </div></div>
 
-<!-- STEP 7: BC Lead — Review -->
+<!-- STEP 6b: BC Lead — FTEs (mirrors the receiver's FTEs screen) -->
+<div class="screen" id="screen-step6b"><div class="card">
+  <div class="screen-head">
+    <div class="card-title">FTEs</div>
+    <div id="si-step6b"></div>
+  </div>
+  <div id="step6b-content"></div>
+  <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('step6')">← Cost</button><button class="btn btn-primary" onclick="go('step7')">Summary →</button></div>
+</div></div>
+
+<!-- STEP 7: BC Lead — Summary (mirrors the receiver's Summary; ends in assign / submit / add) -->
 <div class="screen" id="screen-step7"><div class="card">
   <div class="screen-head">
-    <div class="card-title" id="step7-title">Boundary change — Review</div>
+    <div class="card-title" id="step7-title">Summary</div>
     <div id="si-step7"></div>
   </div>
   <div id="step7-content"></div>
   <div class="submit-box"><div class="submit-box-text">Review the summary above, then submit to Group.</div><button class="btn-submit" onclick="go('confirmation')">Submit to Group</button></div>
-  <div class="btn-row" id="step7-btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('step6')">← Back</button><button class="btn btn-secondary">Save as draft</button></div>
+  <div class="btn-row" id="step7-btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('step6b')">← Back</button><button class="btn btn-secondary">Save as draft</button></div>
 </div></div>
 
 <!-- APPROVAL -->
@@ -3125,110 +3134,27 @@ function renderRvUvFtes(){
   el.innerHTML=html;
 }
 
-/* ── Section B: by cost centre — full row detail ── */
-function renderRvByCC(){
-  const wrap=document.getElementById('rv-by-cc-wrap');
-  if(!wrap)return;
-  const ccs=getAllCostOut();
-  const FYS=['fy25','fy26','fy27','fy28','fy29'];
-  const FYL=['FY25','FY26','FY27','FY28','FY29'];
-  const exp25=s6Exp.fy25, exp26=s6Exp.fy26;
-
-  const contributors=submittedBC?.contributors||[];
-  const coSubmissions=submittedBC?.coSubmissions||{};
-  const isAwaitingCo=submittedBC?.status==='awaiting-co';
-
-  // Helpers: format & FY column rendering used by both Cost out and FTE tables
-  function fyHeaderCells(){
-    const cells=[];
-    const fy25Cols=exp25?13:1, fy26Cols=exp26?13:1;
-    cells.push(`<th class="rv-th-fy" colspan="${fy25Cols}" onclick="toggleS6Fy('fy25')" style="cursor:pointer;">FY25 ${exp25?'▼':'▶'}</th>`);
-    cells.push(`<th class="rv-th-fy" colspan="${fy26Cols}" onclick="toggleS6Fy('fy26')" style="cursor:pointer;">FY26 ${exp26?'▼':'▶'}</th>`);
-    cells.push(`<th class="rv-th-future">FY27</th>`);
-    cells.push(`<th class="rv-th-future">FY28</th>`);
-    cells.push(`<th class="rv-th-future">FY29</th>`);
-    return cells.join('');
-  }
-  function fySubheaderCells(){
-    // Returns the second header row (Total + monthly breakdown) when any FY expanded
-    if(!exp25&&!exp26)return '';
-    const cells=[];
-    if(exp25){cells.push('<th class="rv-th-mo-total">Total</th>');MO.forEach(m=>cells.push(`<th class="rv-th-mo">${m}</th>`));}
-    if(exp26){cells.push('<th class="rv-th-mo-total">Total</th>');MO.forEach(m=>cells.push(`<th class="rv-th-mo">${m}</th>`));}
-    return cells.join('');
-  }
-  function fyColCount(){
-    return (exp25?13:1)+(exp26?13:1)+3;
-  }
-  function dataCellsForRow(row,formatter,extraClass){
-    // Returns the FY data cells (total + optional monthly) for a row.
-    // formatter(value) returns the cell innerHTML (with sign formatting).
-    extraClass=extraClass||'';
-    const cells=[];
-    const fy25Tot=rowTotal(row.fy25||[]);
-    if(exp25){
-      cells.push(`<td class="rv-td-total ${extraClass}">${formatter(fy25Tot)}</td>`);
-      MO.forEach((_,mi)=>cells.push(`<td class="${extraClass}">${formatter((row.fy25||[])[mi]||0)}</td>`));
-    } else cells.push(`<td class="rv-td-total ${extraClass}">${formatter(fy25Tot)}</td>`);
-    const fy26Tot=rowTotal(row.fy26||[]);
-    if(exp26){
-      cells.push(`<td class="rv-td-total ${extraClass}">${formatter(fy26Tot)}</td>`);
-      MO.forEach((_,mi)=>cells.push(`<td class="${extraClass}">${formatter((row.fy26||[])[mi]||0)}</td>`));
-    } else cells.push(`<td class="rv-td-total ${extraClass}">${formatter(fy26Tot)}</td>`);
-    cells.push(`<td class="rv-td-future">${formatter(row.fy27||0)}</td>`);
-    cells.push(`<td class="rv-td-future">${formatter(row.fy28||0)}</td>`);
-    cells.push(`<td class="rv-td-future">${formatter(row.fy29||0)}</td>`);
-    return cells.join('');
-  }
-
-  // Build the output. In the Many→One model the One side is a SINGLE cost centre
-  // handled by ONE contributor, so step 6 no longer shows a block (and picker) per
-  // CC. Instead: contributor status chips, a combined read-only Many-side reference
-  // (all CCs in one flat table), and ONE Cost In Contributor picker (capped at 1).
-  const hasSub=exp25||exp26;
-  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-
-  // Cost / FTE review tables use the shared summary component (By cost centre /
-  // Detail toggle + per-column filters), scoped to the Lead and all the BC's CCs.
-  const costCodes=ccs.map(c=>c.code).filter(code=>(submittedBC?.ccData?.[code]||[]).length);
-  const fteCodes=[...new Set((submittedBC?.fteData||[]).map(r=>r.cc))];
-
-  // Contributor status chips (who has submitted the Many side).
-  const chips=contributors.map(p=>{const done=!!coSubmissions[p.id];
-    return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:12px;margin:0 6px 6px 0;background:${done?'#EAF3DE':'#f0efe9'};color:${done?'#27500A':'#888'};"><span style="width:6px;height:6px;border-radius:50%;background:${done?'#5C9A1B':'#bbb'};"></span>${p.first} ${p.last} · ${done?'submitted':'awaiting'}</span>`;}).join('');
-
-  // ONE Cost In Contributor picker (single person for the whole One side).
+// One-side Cost In Contributor picker (a SINGLE person for the whole One side),
+// shown on the Lead's Summary screen (step 7). Returns the label + panel HTML.
+function onePersonPickerHTML(isAwaitingCo){
+  if(isAwaitingCo)
+    return `<div class="rv-ci-label">Cost In Contributor</div><div class="rv-ci-panel"><div style="font-size:12px;color:#888;font-style:italic;">Assignable once all Cost Out submissions are received.</div></div>`;
   const assigned=getOnePersonAssigned();
-  let pickerHTML;
-  if(isAwaitingCo){
-    pickerHTML=`<div class="rv-ci-label">Cost In Contributor</div><div class="rv-ci-panel"><div style="font-size:12px;color:#888;font-style:italic;">Assignable once all Cost Out submissions are received.</div></div>`;
-  } else {
-    pickerHTML=`<div class="rv-ci-label">Cost In Contributor — the single person who enters the offsetting side (one cost centre)</div>
+  return `<div class="rv-ci-label">Cost In Contributor — the single person who enters the offsetting side (one cost centre)</div>
       <div class="rv-ci-panel">
         ${assigned
           ?`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EEEDFE;color:#3C3489;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${assigned.initials}</div><div><div style="font-size:12px;">${assigned.first} ${assigned.last}</div><div style="font-size:11px;color:#666;">${assigned.dept}</div></div></div><button class="rv-ci-remove" onclick="clearOnePerson()">×</button></div>`
           :`<div style="position:relative;"><input class="person-search" id="rv-one-person-search" placeholder="Search by name to assign the Cost In Contributor…" autocomplete="off" style="font-size:12px;"/><div class="person-dropdown" id="rv-one-person-dd"></div></div>`}
       </div>`;
-  }
-
-  wrap.innerHTML=`
-    <div style="margin-bottom:12px;">${chips||'<span class="rv-none" style="font-size:12px;">No contributors.</span>'}</div>
-    <div id="s6-agg-cost"></div>
-    <div id="s6-agg-fte"></div>
-    ${pickerHTML}`;
-  // Render the shared Cost / FTE summary component into the two containers.
-  renderCiCcAggregate('cost','s6-agg-cost',{scope:'cost-lead',ccs:costCodes});
-  renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead',ccs:fteCodes});
-
-  // Wire the single person picker (search box only shown when none assigned yet).
-  if(!isAwaitingCo&&!assigned){
-    const inp=document.getElementById('rv-one-person-search');
-    const dd=document.getElementById('rv-one-person-dd');
-    if(inp&&dd){
-      inp.addEventListener('focus',()=>renderOnePersonDropdown(inp.value));
-      inp.addEventListener('input',()=>renderOnePersonDropdown(inp.value));
-      inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
-    }
+}
+// Wire the single person picker's search box (only present when none assigned yet).
+function wireOnePersonPicker(){
+  const inp=document.getElementById('rv-one-person-search');
+  const dd=document.getElementById('rv-one-person-dd');
+  if(inp&&dd){
+    inp.addEventListener('focus',()=>renderOnePersonDropdown(inp.value));
+    inp.addEventListener('input',()=>renderOnePersonDropdown(inp.value));
+    inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
   }
 }
 
@@ -3239,9 +3165,18 @@ function getOnePersonAssigned(){for(const arr of Object.values(costInPersons||{}
 function setOnePerson(pid){
   const p=PEOPLE.find(x=>x.id===pid);if(!p)return;
   costInPersons={};getAllCostOut().forEach(cc=>{costInPersons[cc.code]=[{...p}];});
-  buildStep6();applyDirLabels();
+  rebuildActiveLeadScreen();
 }
-function clearOnePerson(){costInPersons={};buildStep6();applyDirLabels();}
+function clearOnePerson(){costInPersons={};rebuildActiveLeadScreen();}
+// Re-render whichever Lead review screen (Cost / FTEs / Summary) is currently
+// active — used after a person assignment changes (picker lives on the Summary).
+function rebuildActiveLeadScreen(){
+  const id=document.querySelector('.screen.active')?.id;
+  if(id==='screen-step7')buildStep7();
+  else if(id==='screen-step6b')buildStep6b();
+  else buildStep6();
+  applyDirLabels();
+}
 function renderOnePersonDropdown(q){
   const dd=document.getElementById('rv-one-person-dd');if(!dd)return;
   // Lead cannot be a Cost In Contributor; only show users with persona role 'BC Contributor'.
@@ -3522,7 +3457,7 @@ function renderDashboard(){
       <div class="card">
         <div class="section-header-row"><span style="font-size:15px;font-weight:500;">My boundary changes</span>${isLeadUser(u)?`<button class="btn btn-primary" onclick="go('step1')">+ New request</button>`:''}</div>
         ${hasSubmitted?`<div class="table-wrap"><table><thead><tr><th>Reference</th><th>BC name</th><th>FY26 Cost ($m)</th><th>FY26 FTEs</th><th>Status</th></tr></thead><tbody>
-          <tr class="clickable" onclick="${submittedBC?.status==='submitted-to-group'?'openLeadView(\'step7\')':submittedBC?.status==='ci-submitted'?'openLeadView(\'step7\')':submittedBC?.status==='co-submitted'?'openLeadView(\'step6\')':submittedBC?.status==='awaiting-co'?'openLeadView(\'step6\')':'openLeadView(\'step5\')'}">
+          <tr class="clickable" onclick="${submittedBC?.status==='submitted-to-group'?'openLeadView(\'step7\')':submittedBC?.status==='ci-submitted'?'openLeadView(\'step6\')':submittedBC?.status==='co-submitted'?'openLeadView(\'step6\')':submittedBC?.status==='awaiting-co'?'openLeadView(\'step6\')':'openLeadView(\'step5\')'}">
             <td>${bc.ref}</td>
             <td>${bc.bcName||'—'}</td>
             <td>${bc.ccData?fmtM(Object.values(bc.ccData).reduce((s,rows)=>s+rows.reduce((rs,r)=>rs+rowTotal(r.fy26),0),0)):'—'}</td>
@@ -3671,6 +3606,7 @@ function toggleCoView(scope){
   if(coViewExpanded.has(scope))coViewExpanded.delete(scope);else coViewExpanded.add(scope);
   const id=document.querySelector('.screen.active')?.id||'';
   if(id==='screen-step6')buildStep6();
+  else if(id==='screen-step6b')buildStep6b();
   else if(id==='screen-step7')buildStep7();
   else if(id==='screen-ci-step1')renderCiCostScreen();
   else if(id==='screen-ci-step2')renderCiFteScreen();
@@ -3943,7 +3879,8 @@ function renderCiCcAggregate(mode,elId,opts){
 function _aggMode(scope){return scope.indexOf('cost')===0?'cost':'fte';}
 function _aggCcs(scope){return scope.endsWith('-lead')?getAllCostOut().map(c=>c.code):[...getMyAssignedCcCodes()];}
 function _aggRerender(scope){
-  if(scope.endsWith('-lead'))buildStep6();
+  if(scope==='cost-lead')buildStep6();
+  else if(scope==='fte-lead')buildStep6b();
   else if(scope==='cost')renderCiCostScreen();
   else renderCiFteScreen();
   applyDirLabels();
@@ -4110,12 +4047,14 @@ function submitCostIn(){
   go('ci-confirmation');
 }
 
-/* ── Step 6: BC Lead — Assign Cost In ── */
+/* ── Step 6: BC Lead — Cost (first of the 3-screen review, mirroring the receiver) ──
+   Shows the BC context + contributor status chips, then the Many-side Cost summary
+   via the shared component (By SET Area / By cost centre / Detail). FTEs live on
+   step 6b; the person picker / submit actions live on the Summary (step 7). */
 function buildStep6(){
   const el=document.getElementById('step6-content');
   if(!el)return;
   const ccs=getAllCostOut();
-  const u=currentUser();
 
   const isAwaitingCo=submittedBC?.status==='awaiting-co';
   const contributors=submittedBC?.contributors||[];
@@ -4135,6 +4074,13 @@ function buildStep6(){
     ?`<div class="rv-row"><span class="rv-lbl">Cost In Contributor(s)</span><span>${ciPersonsList.map(p=>`${p.first} ${p.last} · ${p.dept}`).join('; ')}</span></div>`
     :'';
 
+  // Contributor status chips (who has submitted the Many side).
+  const chips=contributors.map(p=>{const done=!!coSubmissions[p.id];
+    return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:12px;margin:0 6px 6px 0;background:${done?'#EAF3DE':'#f0efe9'};color:${done?'#27500A':'#888'};"><span style="width:6px;height:6px;border-radius:50%;background:${done?'#5C9A1B':'#bbb'};"></span>${p.first} ${p.last} · ${done?'submitted':'awaiting'}</span>`;}).join('');
+
+  // Cost review table uses the shared summary component, scoped to all the BC's CCs.
+  const costCodes=ccs.map(c=>c.code).filter(code=>(submittedBC?.ccData?.[code]||[]).length);
+
   el.innerHTML=`
     <div class="rv-section" style="margin-bottom:14px;">
       <div class="rv-section-hdr"><div class="rv-section-title">Boundary change details ${statusPill}</div></div>
@@ -4147,29 +4093,21 @@ function buildStep6(){
       </div>
     </div>
     <div class="rv-divider"></div>
-    <div style="font-size:13px;font-weight:500;margin-bottom:4px;">${isAwaitingCo?'Cost Out submissions':'Review Cost Out · Assign Cost In Contributor(s)'}</div>
-    <p style="font-size:12px;color:#666;margin-bottom:12px;">${isAwaitingCo?'Cost Out submissions appear below grouped by Contributor. Assigning Cost In Contributor(s) will be available once all submissions are received.':'For each Cost Out cost centre, specify who should provide the Cost In response.'}</p>
-    <div id="rv-by-cc-wrap"></div>`;
+    <p style="font-size:13px;color:#666;margin:10px 0 12px;">${isAwaitingCo?'Cost Out submissions so far.':'Review the cost being transferred.'} Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail. Continue to <strong>FTEs</strong>, then the <strong>Summary</strong>.</p>
+    <div style="margin-bottom:12px;">${chips||'<span class="rv-none" style="font-size:12px;">No contributors.</span>'}</div>
+    <div id="s6-agg-cost"></div>`;
+  renderCiCcAggregate('cost','s6-agg-cost',{scope:'cost-lead',ccs:costCodes});
+}
 
-  // Adjust the submit area: hide "Proceed to review" path when awaiting-co
-  const submitBox=document.getElementById('step6-submit-box');
-  const submitText=document.getElementById('step6-submit-text');
-  const submitBtn=document.getElementById('step6-submit-btn');
-  if(submitBox&&submitText&&submitBtn){
-    if(isAwaitingCo){
-      submitText.textContent=`Waiting for ${totalCount-submittedCount} more Cost Out submission${totalCount-submittedCount===1?'':'s'} before you can proceed.`;
-      submitBtn.style.display='none';
-      submitBox.style.background='#fafaf7';
-      submitBox.style.borderColor='#e0ded8';
-    } else {
-      submitText.textContent='Assign Cost In Contributor(s) above, then proceed to review.';
-      submitBtn.style.display='';
-      submitBox.style.background='';
-      submitBox.style.borderColor='';
-    }
-  }
-
-  renderRvByCC();
+/* ── Step 6b: BC Lead — FTEs (second review screen, mirroring the receiver) ── */
+function buildStep6b(){
+  const el=document.getElementById('step6b-content');
+  if(!el)return;
+  const fteCodes=[...new Set((submittedBC?.fteData||[]).map(r=>r.cc))];
+  el.innerHTML=`
+    <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred. Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <div id="s6-agg-fte"></div>`;
+  renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead',ccs:fteCodes});
 }
 
 /* ── Step 7: BC Lead — Review ── */
@@ -4468,7 +4406,15 @@ function buildStep7(){
       </div>
       <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${fteAggRows}</tbody></table></div>
       ${byAreaGate('s7area:fte',fteAreaDetail())}
-    </div>`;
+    </div>
+    ${(()=>{const st=submittedBC?.status;
+      // Assign phase (before the One side has responded): the Summary ends with the
+      // single Cost In Contributor picker. Once Cost In is in (ci-submitted) or the BC
+      // is locked, the picker is gone and the submit/add actions take over.
+      if(st==='ci-submitted'||st==='submitted-to-group')return '';
+      return `<div class="rv-divider" style="margin-top:16px;"></div>
+        <p style="font-size:12px;color:#666;margin:10px 0 10px;">Assign the single Cost In Contributor who will enter the offsetting (One) side, then notify them.</p>
+        ${onePersonPickerHTML(st==='awaiting-co')}`;})()}`;
 
   // ── Submit button logic ──
   const submitBox=el.parentElement?.querySelector('.submit-box');
@@ -4479,14 +4425,14 @@ function buildStep7(){
     const status=submittedBC?.status;
     if(status==='submitted-to-group'){
       // Locked — read-only view for everyone
-      if(titleEl)titleEl.textContent='Boundary change — Submitted (read only)';
+      if(titleEl)titleEl.textContent='Summary (read only)';
       submitBox.innerHTML=`<div class="submit-box-text" style="color:#27500A;"><strong>✓ Submitted to Group</strong> · <span style="font-size:11px;color:#666;">${submittedBC.submittedToGroupAt||''}</span><br><span style="font-size:11px;color:#666;">This boundary change is locked. All contributors see a read-only view.</span></div>`;
       submitBox.style.borderColor='#A3CC72';
       submitBox.style.background='#EAF3DE';
       if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'dashboard\')">← Back to dashboard</button>';
     } else if(status==='ci-submitted'){
-      if(titleEl)titleEl.textContent='Boundary change — Review';
-      if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'step6\')">← Back</button><button class="btn btn-secondary">Save as draft</button>';
+      if(titleEl)titleEl.textContent='Summary';
+      if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'step6b\')">← FTEs</button><button class="btn btn-secondary">Save as draft</button>';
       // Cost In received — balance check required
       let isBalanced=true;
       let imbalanceReason=[];
@@ -4510,13 +4456,32 @@ function buildStep7(){
         submitBox.style.background='#FAEEDA';
       }
     } else {
-      if(titleEl)titleEl.textContent='Boundary change — Review';
-      if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'step6\')">← Back</button><button class="btn btn-secondary">Save as draft</button>';
-      // Cost Out received — just sending to Cost In persons, no balance check
-      submitBox.innerHTML=`<div class="submit-box-text">Review the summary above, then submit to Cost In persons.</div><button class="btn-submit" onclick="go('confirmation')">Submit to Cost In person(s)</button>`;
-      submitBox.style.borderColor='';submitBox.style.background='';
+      // Assign phase — co-submitted (all CO in) or awaiting-co (still collecting).
+      if(titleEl)titleEl.textContent='Summary';
+      if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'step6b\')">← FTEs</button><button class="btn btn-secondary">Save as draft</button>';
+      const contributors=submittedBC?.contributors||[];
+      const submittedCount=Object.keys(submittedBC?.coSubmissions||{}).length;
+      const remaining=contributors.length-submittedCount;
+      if(status==='awaiting-co'){
+        submitBox.innerHTML=`<div class="submit-box-text">Waiting for ${remaining} more Cost Out submission${remaining===1?'':'s'} before you can notify the Cost In Contributor.</div>`;
+        submitBox.style.background='#fafaf7';submitBox.style.borderColor='#e0ded8';
+      } else {
+        const assigned=getOnePersonAssigned();
+        submitBox.innerHTML=`<div class="submit-box-text">${assigned?'Notify the Cost In Contributor to enter the offsetting side.':'Assign the Cost In Contributor above to enable submission.'}</div><button class="btn-submit"${assigned?'':' disabled style="opacity:0.5;cursor:not-allowed;"'} onclick="submitToCiPersons()">Submit to Cost In person</button>`;
+        submitBox.style.borderColor='';submitBox.style.background='';
+      }
     }
   }
+  // Wire the single person picker (only present, with a search box, in the assign phase).
+  wireOnePersonPicker();
+}
+
+// Persist the One-side Cost In Contributor assignment back to the BC, then send it
+// on to that person (confirmation screen). Used by the Lead's Summary in the assign
+// phase (mirrors the old step6Proceed → submit flow, now on one screen).
+function submitToCiPersons(){
+  if(submittedBC)submittedBC.costInPersons=JSON.parse(JSON.stringify(costInPersons||{}));
+  go('confirmation');
 }
 const SET_AREAS={
   '1000':{name:'Corporate Centre',codes:['1']},
@@ -4548,6 +4513,7 @@ function toggleS6Fy(fy){
   const isActive=id=>document.getElementById('screen-'+id)?.classList.contains('active');
   if(isActive('step5'))buildReview();
   if(isActive('step6'))buildStep6();
+  if(isActive('step6b'))buildStep6b();
   if(isActive('step7'))buildStep7();
   if(isActive('ci-step1'))renderCiCostScreen();
   if(isActive('ci-step2'))renderCiFteScreen();
@@ -4556,7 +4522,7 @@ function toggleS6Fy(fy){
 }
 
 
-const NAV={dashboard:0,step1:1,step2:1,step3:1,step4:1,step5:1,step6:1,step7:1,approval:2,confirmation:2,'ci-step1':0,'ci-step2':0,'ci-step3':0,'ci-confirmation':0};
+const NAV={dashboard:0,step1:1,step2:1,step3:1,step4:1,step5:1,step6:1,step6b:1,step7:1,approval:2,confirmation:2,'ci-step1':0,'ci-step2':0,'ci-step3':0,'ci-confirmation':0};
 function go(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   const scr=document.getElementById('screen-'+id);
@@ -4566,9 +4532,11 @@ function go(id){
   if(NAV[id]!==undefined&&btns[NAV[id]])btns[NAV[id]].classList.add('active');
   const siEl=document.getElementById('si-'+id);
   if(siEl){
-    // step1, step6, step7 are the SET BC Lead's screens — use the 3-step Lead breadcrumb
-    // step2..step5 are the Cost Out Contributor's screens — use the 4-step Contributor breadcrumb
-    if(id==='step1'||id==='step6'||id==='step7') siEl.innerHTML=siLead(id);
+    // step1 is the Lead's set-up screen — keep the high-level Lead breadcrumb.
+    // step6 / step6b / step7 are the Lead's 3-screen review — mirror the receiver's
+    // Cost / FTEs / Summary breadcrumb. step2..step5 are the Contributor's screens.
+    if(id==='step1') siEl.innerHTML=siLead(id);
+    else if(id==='step6'||id==='step6b'||id==='step7') siEl.innerHTML=ciSi(id==='step6'?0:id==='step6b'?1:2);
     else siEl.innerHTML=si(id);
   }
   ['ci-step1','ci-step2','ci-step3'].forEach((sid,i)=>{const el=document.getElementById(`ci-si-${sid}`);if(el)el.innerHTML=ciSi(i);});
@@ -4580,6 +4548,7 @@ function go(id){
   if(id==='step4'){materialiseCcDataFromDetail();initFteData();renderFteTable();}
   if(id==='step5'){materialiseCcDataFromDetail();buildReview();}
   if(id==='step6')buildStep6();
+  if(id==='step6b')buildStep6b();
   if(id==='step7')buildStep7();
   if(id==='confirmation'&&!skipConfirmationSetup){
     // Under the simplified rule, the only path into the confirmation screen
@@ -4742,9 +4711,10 @@ function applyDirLabels(){
   setT('#screen-step3b .card-title',`${M} task — Enter transfer detail`);
   setT('#screen-step4 .card-title',`${M} task — FTEs ${mw}`);
   setT('#screen-step5 .card-title',`${M} task — Review & submit`);
-  setT('#screen-step6 .card-title',`Boundary change — Review ${M} · Assign ${O}`);
-  // The receiver (One-side) screens use neutral titles (Cost / FTEs / Summary) set
-  // by their own renderers, so they're not retitled here.
+  // The Lead's review screens (step6 / step6b / step7) and the receiver (One-side)
+  // screens use neutral titles (Cost / FTEs / Summary) set by their own markup /
+  // renderers, so they're not retitled here. Directional wording inside them is
+  // swapped via the active-screen dirSwapNodes pass below.
   const want=bcMany()==='in'?'in':'out';
   // Static Many screens: their direction microcopy lives in non-regenerated HTML.
   ['screen-step2','screen-step3','screen-step3b','screen-step4'].forEach(sid=>{

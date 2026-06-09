@@ -24,7 +24,7 @@ with sync_playwright() as p:
       go('step5'); submitToLead();
       switchUser('jd'); openLeadView('step6');
       submittedBC.costInPersons={}; Object.keys(submittedBC.ccData).forEach(cc=>{submittedBC.costInPersons[cc]=[PEOPLE.find(p=>p.id==='lt')];});
-      renderRvByCC();
+      buildStep6();
     """); pg.wait_for_timeout(300)
 
     def toggles(screen):
@@ -37,15 +37,17 @@ with sync_playwright() as p:
                    nFte:fte.length, fteTotals:/FTEs out total/.test(s.innerText)}};
         }})()""")
 
-    # Step 6 now uses the shared Cost/FTE summary component (By SET Area / By cost
-    # centre / Detail toggle), not per-view collapsibles. Verify the toggle + that
-    # Detail shows the flat unified table (N/A cells).
+    # The Lead's review is now a 3-screen flow (Cost = step6, FTEs = step6b, Summary
+    # = step7), each using the shared Cost/FTE summary component (By SET Area / By cost
+    # centre / Detail toggle). Cost lives on step6; FTEs on step6b. Verify the toggle +
+    # that Detail shows the flat unified table (N/A cells).
     s6cost=pg.evaluate("[...document.querySelectorAll('#s6-agg-cost .method-btn')].map(x=>x.textContent.trim())")
-    s6fte=pg.evaluate("[...document.querySelectorAll('#s6-agg-fte .method-btn')].map(x=>x.textContent.trim())")
     pg.evaluate("setCiAggView('cost-lead','area')"); pg.wait_for_timeout(150)
     s6area=pg.evaluate("(document.querySelector('#s6-agg-cost .rv-table thead th')?.textContent||'').includes('SET Area')")
     pg.evaluate("setCiAggView('cost-lead','detail')"); pg.wait_for_timeout(150)
     s6det=pg.evaluate("!!document.querySelector('#s6-agg-cost .rv-table td.cod-na')")
+    pg.evaluate("go('step6b')"); pg.wait_for_timeout(150)
+    s6fte=pg.evaluate("[...document.querySelectorAll('#s6-agg-fte .method-btn')].map(x=>x.textContent.trim())")
     print('STEP6 cost toggle:', s6cost, 'fte toggle:', s6fte, 'area header:', s6area, 'detail N/A cells:', s6det)
 
     # Step 7 is now two blocks (Cost, FTEs), each with a collapsed "By SET Area"
