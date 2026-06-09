@@ -3835,6 +3835,7 @@ function toggleCoView(scope){
   else if(id==='screen-ci-step2')renderCiStep2();
   else if(id==='screen-ci-step3')renderCiStep3();
   else if(id==='screen-ci-step4')renderCiReview();
+  applyDirLabels();
 }
 // Sum a list of rows into per-FY totals (rows carry fy25/fy26 arrays + fy27..fy29).
 function fyTotals(rows){
@@ -4379,6 +4380,7 @@ function renderCiCcAggregate(mode,elId){
     <p style="font-size:12px;color:#666;margin:0 0 10px;">Click a ${outLabel} row to see its detail. Cost centres with more than one Cost In Contributor also show the combined ${inLabel} (everyone's, including your draft) and the Net, so you can see whether each balances. <strong>Expand the ${inLabel} row to see each contributor's split</strong> — your draft plus what every other contributor has submitted (Pending until they do). Other contributors' figures are shown for context only.</p>
     ${blocks}
   </div>`;
+  if(bcMany()==='in')dirSwapNodes(el);  // self-swap so labels stay correct across input re-renders
 }
 
 function renderCiStep2(){
@@ -4592,7 +4594,7 @@ function renderCiStep3Single(single,card){
 
 function allowCiEditFte(){
   const card=document.querySelector('#screen-ci-step3 .card');
-  if(card)renderCiStep3Multi(card);
+  if(card){renderCiStep3Multi(card);applyDirLabels();}
 }
 
 function renderCiStep3Multi(card){
@@ -5398,6 +5400,7 @@ function toggleS6Fy(fy){
   if(isActive('ci-step2'))renderCiStep2();
   if(isActive('ci-step3'))renderCiStep3();
   if(isActive('ci-step4'))renderCiReview();
+  applyDirLabels();
 }
 
 
@@ -5553,38 +5556,58 @@ function setBcManySide(side){
   const b=document.getElementById('step1-save-btn');if(b)b.textContent=`Save & notify ${lbl} Contributor(s) →`;
 }
 
-/* Relabel the static screen titles for the chosen direction. The Many side reuses
-   the Cost Out screens (step2–step5) and the One side reuses the Cost In screens;
-   when the Lead chose Cost In as the Many side we swap the labels. Runs at the end
-   of go() after each screen's own render. Only the small, specific phrase set below
-   is touched, and only within single-direction screen containers, so dynamic data
-   rows (and mixed-direction Lead/aggregate views, handled elsewhere) are untouched. */
+/* Bidirectional label swap (Cost Out ↔ Cost In, FTEs Out ↔ FTEs In) over the text
+   nodes inside `root`, optionally skipping any subtree matching `skipSel`. Applied
+   exactly once to freshly-authored ('out'-oriented) content turns it into the
+   'in'-oriented labelling. Uses a NUL placeholder so the two directions don't
+   clobber each other. The phrase set is deliberately narrow so prose like
+   "transferred in full" / "out of" is never touched. */
+function dirSwapNodes(root,skipSel){
+  if(!root)return;
+  const pairs=[['Cost Out','Cost In'],['Cost out','Cost in'],['cost out','cost in'],['FTEs Out','FTEs In'],['FTEs out','FTEs in']];
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+    if(skipSel&&n.parentElement&&n.parentElement.closest(skipSel))return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  const nodes=[];for(let n=walker.nextNode();n;n=walker.nextNode())nodes.push(n);
+  nodes.forEach(n=>{
+    let t=n.nodeValue;
+    if(t.indexOf('Cost')<0&&t.indexOf('cost')<0&&t.indexOf('FTE')<0)return;
+    pairs.forEach(([a,c])=>{if(t.includes(a)||t.includes(c))t=t.split(a).join('\u0000').split(c).join(a).split('\u0000').join(c);});
+    if(t!==n.nodeValue)n.nodeValue=t;
+  });
+}
+
+/* Relabel the chosen direction. Titles are SET (idempotent). Bodies are swapped:
+   the static Many screens (step2-4) are swapped once per direction (guarded by a
+   data-dir marker, since their content isn't regenerated); the active dynamic
+   screen is swapped after its fresh render (skipping the CI aggregate, which swaps
+   itself in renderCiCcAggregate so it stays correct across input re-renders). */
 function applyDirLabels(){
   const M=manyLabel(),O=oneLabel(),mw=manyWord(),ow=oneWord();
   const setT=(sel,txt)=>{const e=document.querySelector(sel);if(e)e.textContent=txt;};
-  // Many-side screen titles (the Cost Out screens, relabelled)
   setT('#screen-step2 .card-title',`${M} task — Cost centres`);
   setT('#screen-step3 .card-title',`${M} task — Select cost to transfer`);
   setT('#screen-step3b .card-title',`${M} task — Enter transfer detail`);
   setT('#screen-step4 .card-title',`${M} task — FTEs ${mw}`);
   setT('#screen-step5 .card-title',`${M} task — Review & submit`);
-  // Lead review/assign title
   setT('#screen-step6 .card-title',`Boundary change — Review ${M} · Assign ${O}`);
-  // One-side screen titles (the Cost In screens, relabelled)
   setT('#screen-ci-step1 .card-title',`${O} — Boundary change request`);
   setT('#screen-ci-step2 .card-title',`${O} — values`);
   setT('#screen-ci-step3 .card-title',`${O} — FTEs ${ow}`);
   setT('#screen-ci-step4 .card-title',`${O} — Review & submit`);
-  // Body microcopy on the single-direction Many screens: swap a small, specific set
-  // of labels when Cost In is the Many side (the HTML is authored for Cost Out).
-  if(bcMany()==='in'){
-    const pairs=[['Cost Out','Cost In'],['Cost out','Cost in'],['cost out','cost in'],['FTEs Out','FTEs In'],['FTEs out','FTEs in']];
-    ['screen-step2','screen-step3','screen-step3b','screen-step4','screen-step5'].forEach(sid=>{
-      const root=document.getElementById(sid);if(!root)return;
-      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-      const nodes=[];for(let n=walker.nextNode();n;n=walker.nextNode())nodes.push(n);
-      nodes.forEach(n=>{let t=n.nodeValue;pairs.forEach(([a,c])=>{if(t.includes(a))t=t.split(a).join(c);});if(t!==n.nodeValue)n.nodeValue=t;});
-    });
+  const want=bcMany()==='in'?'in':'out';
+  // Static Many screens: their direction microcopy lives in non-regenerated HTML.
+  ['screen-step2','screen-step3','screen-step3b','screen-step4'].forEach(sid=>{
+    const root=document.getElementById(sid);if(!root)return;
+    if((root.dataset.dir||'out')===want)return;
+    dirSwapNodes(root,'.card-title');root.dataset.dir=want;
+  });
+  // Active dynamic screen (step5/6/7/ci-*): freshly rendered as 'out', swap once.
+  if(want==='in'){
+    const act=document.querySelector('.screen.active');
+    if(act&&!['screen-step2','screen-step3','screen-step3b','screen-step4'].includes(act.id))
+      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"]');
   }
 }
 
