@@ -37,15 +37,14 @@ with sync_playwright() as p:
                    nFte:fte.length, fteTotals:/FTEs out total/.test(s.innerText)}};
         }})()""")
 
-    s6=toggles('step6'); print('STEP6:', s6)
-    # Step 6 now shows ONE combined Cost Out view (not per-CC blocks). Expand it ->
-    # the full flat table with N/A cells appears.
-    pg.evaluate("""(()=>{const g=[...document.querySelectorAll('#screen-step6 [onclick^="toggleCoView"]')].find(x=>/Cost out/.test(x.textContent)); g.click();})()"""); pg.wait_for_timeout(150)
-    s6exp=pg.evaluate("""(()=>{const s=document.getElementById('screen-step6');
-      const g=[...s.querySelectorAll('[onclick^="toggleCoView"]')].find(x=>/Cost out/.test(x.textContent));
-      return {glyph:g.textContent.trim().slice(0,8),
-              hasRows:!!s.querySelector('.rv-table-wrap table.rv-table td.cod-na')};})()""")
-    print('STEP6 expanded first:', s6exp)
+    # Step 6 now uses the shared Cost/FTE summary component (By cost centre / Detail
+    # toggle), not per-view collapsibles. Verify the toggle + that Detail shows the
+    # flat unified table (N/A cells).
+    s6cost=pg.evaluate("[...document.querySelectorAll('#s6-agg-cost .method-btn')].map(x=>x.textContent.trim())")
+    s6fte=pg.evaluate("[...document.querySelectorAll('#s6-agg-fte .method-btn')].map(x=>x.textContent.trim())")
+    pg.evaluate("setCiAggView('cost-lead','detail')"); pg.wait_for_timeout(150)
+    s6det=pg.evaluate("!!document.querySelector('#s6-agg-cost .rv-table td.cod-na')")
+    print('STEP6 cost toggle:', s6cost, 'fte toggle:', s6fte, 'detail N/A cells:', s6det)
 
     # Step 7 is now two blocks (Cost, FTEs), each with a collapsed "By SET Area"
     # gate that reveals the per-area collapsible Cost Out / FTEs Out views.
@@ -68,14 +67,12 @@ with sync_playwright() as p:
     pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200)
     c2=pg.evaluate("[...document.querySelectorAll('#screen-ci-step2 .method-btn')].map(x=>x.textContent.trim())"); print('CI2 toggle:', c2)
 
-    ok = (s6['n']>=2 and s6['collapsed'] and s6['totals']
-          and s6exp['glyph'].startswith('▼') and s6exp['hasRows']
+    ok = (s6cost==['By cost centre','Detail'] and s6fte==['By cost centre','Detail'] and s6det
           # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
           # per-area Cost Out / FTEs Out views with per-year totals.
           and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
           and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
           and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
-          and s6['nFte']>=1 and s6['fteTotals']
           # Receiver Cost (ci-step1) + FTEs (ci-step2): CC-level/Detail-level toggle.
           and c1==['By cost centre','Detail']
           and c2==['By cost centre','Detail']

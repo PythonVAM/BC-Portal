@@ -3188,35 +3188,10 @@ function renderRvByCC(){
   const hasSub=exp25||exp26;
   const deptOrder={'R&D':0,'SMM':1,'G&A':2};
 
-  // Combined Cost Out reference (all submitted CCs, one flat table — not per block).
-  const allCo=[];ccs.forEach(cc=>{(ccData[cc.code]||[]).forEach(r=>allCo.push({...r,cc:cc.code}));});
-  allCo.sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;return da!==db?da-db:a.cc.localeCompare(b.cc);});
-  let coRef='<span class="rv-none" style="font-size:12px;">No Cost Out submitted yet.</span>';
-  if(allCo.length){
-    const tbody=allCo.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(r,true,'out')}${dataCellsForRow(r,v=>fmtCostM(v||0))}</tr>`).join('');
-    const full=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    coRef=coViewWrap('s6co:all','Cost out — all cost centres',fyTotals(allCo),full);
-  }
-  // Combined FTE reference (all CCs, one flat table with a Cost centre column).
-  const allFte=fteData.slice().sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;return da!==db?da-db:(a.cc||'').localeCompare(b.cc||'');});
-  let fteRef='<span class="rv-none" style="font-size:12px;">No FTEs submitted.</span>';
-  if(allFte.length){
-    const fteThead=`<tr>
-      <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-      <th class="rv-th-left" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
-      <th class="rv-th-left" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
-      <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-      <th class="rv-th-left" style="min-width:80px;"${hasSub?' rowspan="2"':''}>Worker type</th>
-      ${fyHeaderCells()}
-    </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-    const fteTbody=allFte.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>
-      <td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${r.cc}</span></td>
-      <td class="rv-td-left">${r.loc||'—'}</td><td class="rv-td-left">${r.city||'—'}</td>
-      <td class="rv-td-left">${r.azW||'—'}</td><td class="rv-td-left">${r.wt||'—'}</td>
-      ${dataCellsForRow(r,v=>fmtFte(v||0))}</tr>`).join('');
-    const full=`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`;
-    fteRef=coViewWrap('s6fte:all','FTEs out — all cost centres',fyTotals(allFte),full,fmtFte,'FTEs out total');
-  }
+  // Cost / FTE review tables use the shared summary component (By cost centre /
+  // Detail toggle + per-column filters), scoped to the Lead and all the BC's CCs.
+  const costCodes=ccs.map(c=>c.code).filter(code=>(submittedBC?.ccData?.[code]||[]).length);
+  const fteCodes=[...new Set((submittedBC?.fteData||[]).map(r=>r.cc))];
 
   // Contributor status chips (who has submitted the Many side).
   const chips=contributors.map(p=>{const done=!!coSubmissions[p.id];
@@ -3238,9 +3213,12 @@ function renderRvByCC(){
 
   wrap.innerHTML=`
     <div style="margin-bottom:12px;">${chips||'<span class="rv-none" style="font-size:12px;">No contributors.</span>'}</div>
-    <div style="margin-bottom:12px;">${coRef}</div>
-    <div style="margin-bottom:16px;">${fteRef}</div>
+    <div id="s6-agg-cost"></div>
+    <div id="s6-agg-fte"></div>
     ${pickerHTML}`;
+  // Render the shared Cost / FTE summary component into the two containers.
+  renderCiCcAggregate('cost','s6-agg-cost',{scope:'cost-lead',ccs:costCodes});
+  renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead',ccs:fteCodes});
 
   // Wire the single person picker (search box only shown when none assigned yet).
   if(!isAwaitingCo&&!assigned){
@@ -3632,6 +3610,9 @@ function openLeadView(targetStep){
   // Restore BC name/desc
   const nm=document.getElementById('inp-bcname');if(nm)nm.value=submittedBC.bcName||'';
   const dc=document.getElementById('inp-bcdesc');if(dc)dc.value=submittedBC.bcDesc||'';
+  // Reset the Lead step-6 Cost/FTE summary view + filters for a clean review.
+  ciAggView['cost-lead']='cc';ciAggView['fte-lead']='cc';
+  ciDetailFilters['cost-lead']={};ciDetailFilters['fte-lead']={};ciDetailFilterOpen=null;
   renderCc2Tray();
   go(targetStep);
 }
@@ -3727,7 +3708,7 @@ function openCiFlow(){
   // chosen, so no per-row seeding here — just reset selection state.
   ciData=[];ciFteData=[];ciSel.clear();ciFteSel.clear();
   ciInCcSel={};ciCcPaths={};
-  ciAggView={cost:'cc',fte:'cc'};ciDetailFilters={cost:{},fte:{}};ciDetailFilterOpen=null;
+  ciAggView['cost']='cc';ciAggView['fte']='cc';ciDetailFilters['cost']={};ciDetailFilters['fte']={};ciDetailFilterOpen=null;
   const assigned=getCiIncoming().map(x=>x.ccCode);
   ciActiveCcCode=assigned[0]||null;
   go('ci-step1');
@@ -3850,12 +3831,14 @@ function ciSi(step){
    centre showing its FY totals, each row expandable to the full detail, plus a
    grand-total row. FY25/FY26 headers are month-expandable (toggleS6Fy / s6Exp), like
    every other read-only table. */
-function renderCiCcAggregate(mode,elId){
+function renderCiCcAggregate(mode,elId,opts){
+  opts=opts||{};
+  const scope=opts.scope||mode;            // state namespace (e.g. 'cost', 'cost-lead')
   const el=document.getElementById(elId||(mode==='cost'?'ci-cc-agg-cost':'ci-cc-agg-fte'));
   if(!el)return;
   if(!submittedBC){el.innerHTML='';return;}
   const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-  const ccs=[...getMyAssignedCcCodes()].sort((a,b)=>{const da=deptOrder[gca(a)?.bcDept]??9,db=deptOrder[gca(b)?.bcDept]??9;return da!==db?da-db:a.localeCompare(b);});
+  const ccs=(opts.ccs?opts.ccs.slice():[...getMyAssignedCcCodes()]).sort((a,b)=>{const da=deptOrder[gca(a)?.bcDept]??9,db=deptOrder[gca(b)?.bcDept]??9;return da!==db?da-db:a.localeCompare(b);});
   if(!ccs.length){el.innerHTML='';return;}
   const fmtv=mode==='cost'?fmtCostM:fmtFte;
   const ccName=cc=>(submittedBC.cc2Sel||[]).find(c=>c.code===cc)?.name||'';
@@ -3864,7 +3847,7 @@ function renderCiCcAggregate(mode,elId){
   // so fyDataCells can month-expand the totals.
   const aggRow=rows=>{const r={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};(rows||[]).forEach(x=>{(x.fy25||[]).forEach((v,i)=>r.fy25[i]+=Number(v)||0);(x.fy26||[]).forEach((v,i)=>r.fy26[i]+=Number(v)||0);r.fy27+=Number(x.fy27)||0;r.fy28+=Number(x.fy28)||0;r.fy29+=Number(x.fy29)||0;});return r;};
   const hasSub=fyHasSubRow();
-  const view=(ciAggView&&ciAggView[mode])||'cc';
+  const view=(ciAggView&&ciAggView[scope])||'cc';
   const allRows=[];ccs.forEach(cc=>outRows(cc).forEach(r=>allRows.push({...r,cc})));
   const grand=aggRow(allRows);
 
@@ -3880,15 +3863,16 @@ function renderCiCcAggregate(mode,elId){
     // with a per-column filter row + filter controls.
     const deptOrder2={'R&D':0,'SMM':1,'G&A':2};
     allRows.sort((a,b)=>{const da=deptOrder2[gca(a.cc)?.bcDept]??9,db=deptOrder2[gca(b.cc)?.bcDept]??9;return da!==db?da-db:a.cc.localeCompare(b.cc);});
-    const spec=ciFilterColSpec(mode), f=ciDetailFilters[mode]||{};
+    const spec=ciFilterColSpec(mode), f=ciDetailFilters[scope]||{};
     const match=r=>spec.every(c=>!f[c.k]||f[c.k].has(c.g(r)));
     const filtered=allRows.filter(match);
     const gtot=aggRow(filtered);
     const idN=spec.length;
     const fyCols=(s6Exp.fy25?13:1)+(s6Exp.fy26?13:1)+3;
+    const openKey=(ciDetailFilterOpen&&ciDetailFilterOpen.startsWith(scope+'::'))?ciDetailFilterOpen.slice((scope+'::').length):null;
     // filter row (one control per identity column; FY columns share one blank cell)
-    const fbtn=(c,i)=>{const active=!!f[c.k];const lbl=active?`${f[c.k].size} selected`:'All';const open=ciDetailFilterOpen===c.k;
-      return `<td class="rv-td-left${i===0?' rv-sticky rv-sticky-0':''}" style="background:#eef4fb;padding:4px 6px;"><button onclick="ciFilterOpenToggle('${mode}','${c.k}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;border:1px solid ${active||open?'#0C447C':'#b9d3ee'};background:#fff;border-radius:6px;padding:3px 8px;color:#345;cursor:pointer;${active?'box-shadow:0 0 0 2px #d6e6f8;':''}"><span style="color:${active?'#0C447C':'#889'};font-weight:${active?'600':'400'};">${lbl}</span><span style="color:#7aa3cf;">▾</span></button></td>`;};
+    const fbtn=(c,i)=>{const active=!!f[c.k];const lbl=active?`${f[c.k].size} selected`:'All';const open=openKey===c.k;
+      return `<td class="rv-td-left${i===0?' rv-sticky rv-sticky-0':''}" style="background:#eef4fb;padding:4px 6px;"><button onclick="ciFilterOpenToggle('${scope}','${c.k}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;border:1px solid ${active||open?'#0C447C':'#b9d3ee'};background:#fff;border-radius:6px;padding:3px 8px;color:#345;cursor:pointer;${active?'box-shadow:0 0 0 2px #d6e6f8;':''}"><span style="color:${active?'#0C447C':'#889'};font-weight:${active?'600':'400'};">${lbl}</span><span style="color:#7aa3cf;">▾</span></button></td>`;};
     const filterRow=`<tr>${spec.map(fbtn).join('')}<td colspan="${fyCols}" style="background:#eef4fb;"></td></tr>`;
     let dataRows;
     if(mode==='cost') dataRows=filtered.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(r,true,'out')}${fyDataCells(r,fmtCostM)}</tr>`).join('');
@@ -3900,22 +3884,22 @@ function renderCiCcAggregate(mode,elId){
           <th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:90px;">Cost centre</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
-    const emptyRow=`<tr><td colspan="${idN+fyCols}" style="text-align:center;color:#888;padding:14px;">No rows match the filters. <a onclick="ciFilterClearAll('${mode}')" style="color:#0C447C;cursor:pointer;">Clear filters</a></td></tr>`;
+    const emptyRow=`<tr><td colspan="${idN+fyCols}" style="text-align:center;color:#888;padding:14px;">No rows match the filters. <a onclick="ciFilterClearAll('${scope}')" style="color:#0C447C;cursor:pointer;">Clear filters</a></td></tr>`;
     table=`<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${filterRow}${dataRows||emptyRow}${totalRow}</tbody></table></div>`;
     // controls: active-filter chips bar + (if a column is open) its value checklist panel
     const activeCols=spec.filter(c=>f[c.k]);
-    const chips=activeCols.map(c=>`<span style="background:#E6F1FB;border:0.5px solid #B5D4F4;border-radius:12px;padding:2px 10px;color:#0C447C;font-size:11px;">${c.l}: ${f[c.k].size} <span onclick="ciFilterClearCol('${mode}','${c.k}')" style="cursor:pointer;font-weight:600;">✕</span></span>`).join('');
+    const chips=activeCols.map(c=>`<span style="background:#E6F1FB;border:0.5px solid #B5D4F4;border-radius:12px;padding:2px 10px;color:#0C447C;font-size:11px;">${c.l}: ${f[c.k].size} <span onclick="ciFilterClearCol('${scope}','${c.k}')" style="cursor:pointer;font-weight:600;">✕</span></span>`).join('');
     let panel='';
-    if(ciDetailFilterOpen){
-      const c=spec.find(x=>x.k===ciDetailFilterOpen);
+    if(openKey){
+      const c=spec.find(x=>x.k===openKey);
       if(c){
         const vals=[...new Set(allRows.map(c.g))].sort((a,b)=>String(a).localeCompare(String(b)));
         const sel=f[c.k];
-        const items=vals.map(v=>{const sv=String(v).replace(/"/g,'&quot;');return `<label data-val="${sv}" style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;font-size:12px;"><input type="checkbox" ${(!sel||sel.has(v))?'checked':''} data-v="${sv}" onchange="ciFilterToggleVal('${mode}','${c.k}',this.dataset.v)"> ${v}</label>`;}).join('');
+        const items=vals.map(v=>{const sv=String(v).replace(/"/g,'&quot;');return `<label data-val="${sv}" style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;font-size:12px;"><input type="checkbox" ${(!sel||sel.has(v))?'checked':''} data-v="${sv}" onchange="ciFilterToggleVal('${scope}','${c.k}',this.dataset.v)"> ${v}</label>`;}).join('');
         panel=`<div class="ci-fltpanel" style="border:1px solid #b9d3ee;border-radius:8px;background:#fff;margin:0 0 10px;max-width:300px;box-shadow:0 4px 14px rgba(20,50,90,.12);">
           <div style="padding:8px 10px;border-bottom:1px solid #eef;display:flex;align-items:center;gap:8px;"><strong style="font-size:12px;color:#0C447C;">Filter: ${c.l}</strong><input placeholder="Search…" oninput="ciFilterSearchList(this)" style="margin-left:auto;width:120px;border:1px solid #dde7f2;border-radius:5px;padding:3px 6px;font-size:11px;"></div>
           <div style="max-height:220px;overflow:auto;padding:4px 0;">${items}</div>
-          <div style="display:flex;justify-content:space-between;padding:8px 10px;border-top:1px solid #eef;"><button onclick="ciFilterClearCol('${mode}','${c.k}')" style="font-size:11px;color:#0C447C;background:none;border:none;cursor:pointer;">Clear</button><button onclick="ciFilterOpenToggle('${mode}','${c.k}')" style="font-size:11px;background:#0C447C;color:#fff;border:none;border-radius:5px;padding:3px 14px;cursor:pointer;">Done</button></div></div>`;
+          <div style="display:flex;justify-content:space-between;padding:8px 10px;border-top:1px solid #eef;"><button onclick="ciFilterClearCol('${scope}','${c.k}')" style="font-size:11px;color:#0C447C;background:none;border:none;cursor:pointer;">Clear</button><button onclick="ciFilterOpenToggle('${scope}','${c.k}')" style="font-size:11px;background:#0C447C;color:#fff;border:none;border-radius:5px;padding:3px 14px;cursor:pointer;">Done</button></div></div>`;
       }
     }
     detailControls=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;font-size:12px;color:#666;">
@@ -3929,8 +3913,8 @@ function renderCiCcAggregate(mode,elId){
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${title} <span class="unit-pill">${unit}</span>
       <span class="method-toggle" style="margin-left:auto;margin-bottom:0;">
-        <button class="method-btn ${view==='cc'?'active':''}" onclick="setCiAggView('${mode}','cc')">By cost centre</button>
-        <button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${mode}','detail')">Detail</button>
+        <button class="method-btn ${view==='cc'?'active':''}" onclick="setCiAggView('${scope}','cc')">By cost centre</button>
+        <button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${scope}','detail')">Detail</button>
       </span>
     </div>
     <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='cc'?'Totals by cost centre. Switch to <strong>Detail</strong> for the full line-level breakdown.':'Full line-level detail across all cost centres — use the per-column filters to narrow it.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
@@ -3939,19 +3923,32 @@ function renderCiCcAggregate(mode,elId){
   </div>`;
   if(bcMany()==='in')dirSwapNodes(el);  // self-swap so labels stay correct across re-renders
 }
-// CC-level vs Detail-level view of the receiver's Cost / FTE summary tables.
-function setCiAggView(mode,level){
-  ciAggView[mode]=level;
-  ciDetailFilterOpen=null;  // close any open filter panel when switching view
-  if(mode==='cost')renderCiCostScreen();else renderCiFteScreen();
+/* The Cost/FTE summary component (renderCiCcAggregate) is shared by the receiver
+   screens and the Lead's step-6 review, distinguished by `scope`:
+     'cost' / 'fte'            → receiver Cost / FTEs screens (CCs routed to them)
+     'cost-lead' / 'fte-lead'  → Lead step-6 review (all the BC's cost centres)
+   View level (ciAggView) and per-column filters (ciDetailFilters) are namespaced by
+   scope; the open filter panel is keyed "scope::colKey". */
+function _aggMode(scope){return scope.indexOf('cost')===0?'cost':'fte';}
+function _aggCcs(scope){return scope.endsWith('-lead')?getAllCostOut().map(c=>c.code):[...getMyAssignedCcCodes()];}
+function _aggRerender(scope){
+  if(scope.endsWith('-lead'))buildStep6();
+  else if(scope==='cost')renderCiCostScreen();
+  else renderCiFteScreen();
   applyDirLabels();
 }
+// CC-level vs Detail-level view of a Cost/FTE summary (by scope).
+function setCiAggView(scope,level){
+  ciAggView[scope]=level;
+  ciDetailFilterOpen=null;  // close any open filter panel when switching view
+  _aggRerender(scope);
+}
 
-/* ── Detail-view per-column filters (receiver Cost / FTE tables) ──
-   ciDetailFilters[mode][colKey] = Set of SELECTED (shown) values; absence = no filter
-   (all shown). A row matches if every filtered column's value is in its set. */
-let ciDetailFilters={cost:{},fte:{}};
-let ciDetailFilterOpen=null;            // colKey whose checklist panel is open
+/* ── Detail-view per-column filters ──
+   ciDetailFilters[scope][colKey] = Set of SELECTED (shown) values; absence = no
+   filter (all shown). A row matches if every filtered column's value is in its set. */
+let ciDetailFilters={};
+let ciDetailFilterOpen=null;            // "scope::colKey" of the open checklist panel
 // Column specs per mode: {k:key, l:label, g:row->displayed value} — g() must mirror
 // what the Detail table renders (incl. 'N/A' for non-applicable Project/Product/UV).
 function ciFilterColSpec(mode){
@@ -3971,24 +3968,24 @@ function ciFilterColSpec(mode){
     {k:'wt',l:'Worker type',g:r=>r.wt||'—'},
   ];
 }
-function ciFilterDistinct(mode,k){
+function ciFilterDistinct(scope,k){
+  const mode=_aggMode(scope);
   const spec=ciFilterColSpec(mode).find(c=>c.k===k);if(!spec)return [];
-  const rows=[];[...getMyAssignedCcCodes()].forEach(cc=>{
+  const rows=[];_aggCcs(scope).forEach(cc=>{
     (mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc)).forEach(r=>rows.push({...r,cc}));
   });
   return [...new Set(rows.map(spec.g))];
 }
-function _ciRerender(mode){ if(mode==='cost')renderCiCostScreen();else renderCiFteScreen(); applyDirLabels(); }
-function ciFilterOpenToggle(mode,k){ ciDetailFilterOpen=(ciDetailFilterOpen===k)?null:k; _ciRerender(mode); }
-function ciFilterToggleVal(mode,k,val){
-  const f=ciDetailFilters[mode]; const all=ciFilterDistinct(mode,k);
+function ciFilterOpenToggle(scope,k){const key=scope+'::'+k; ciDetailFilterOpen=(ciDetailFilterOpen===key)?null:key; _aggRerender(scope); }
+function ciFilterToggleVal(scope,k,val){
+  const f=ciDetailFilters[scope]||(ciDetailFilters[scope]={}); const all=ciFilterDistinct(scope,k);
   if(!f[k])f[k]=new Set(all);          // first touch starts from "all selected"
   if(f[k].has(val))f[k].delete(val);else f[k].add(val);
   if(f[k].size===all.length)delete f[k]; // back to no-filter when everything is selected
-  _ciRerender(mode);
+  _aggRerender(scope);
 }
-function ciFilterClearCol(mode,k){ delete ciDetailFilters[mode][k]; _ciRerender(mode); }
-function ciFilterClearAll(mode){ ciDetailFilters[mode]={}; ciDetailFilterOpen=null; _ciRerender(mode); }
+function ciFilterClearCol(scope,k){ if(ciDetailFilters[scope])delete ciDetailFilters[scope][k]; _aggRerender(scope); }
+function ciFilterClearAll(scope){ ciDetailFilters[scope]={}; ciDetailFilterOpen=null; _aggRerender(scope); }
 // Live client-side search within an open checklist panel (no full re-render → keeps focus).
 function ciFilterSearchList(input){
   const q=input.value.toLowerCase();
@@ -4748,7 +4745,7 @@ function applyDirLabels(){
   if(want==='in'){
     const act=document.querySelector('.screen.active');
     if(act&&!['screen-step2','screen-step3','screen-step3b','screen-step4'].includes(act.id))
-      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"]');
+      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"],[id^="s6-agg"]');
   }
 }
 
