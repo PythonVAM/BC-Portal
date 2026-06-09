@@ -1449,9 +1449,9 @@ function rowTotal(arr){return arr.reduce((s,v)=>s+(isNaN(Number(v))?0:Number(v))
    Cost centre + Dept columns (omit them where the CC is already in a block header). */
 function roUniIdHead(showCc,hasSub){
   const rs=hasSub?' rowspan="2"':'';
-  // MU (Management Unit, the second org layer) and Curr (the CC's currency) are
-  // CC-level identity columns shown alongside Cost centre · Dept.
-  return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:120px;"${rs}>Cost centre</th><th class="rv-th-left" style="min-width:46px;"${rs}>Dept</th><th class="rv-th-left" style="min-width:130px;"${rs}>MU</th><th class="rv-th-left" style="min-width:46px;"${rs}>Curr</th>`:'')
+  // MU (Management Unit, the second org layer) comes first, then Cost centre · Dept,
+  // then Curr (the CC's currency). All four are CC-level identity columns.
+  return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${rs}>MU</th><th class="rv-th-left" style="min-width:120px;"${rs}>Cost centre</th><th class="rv-th-left" style="min-width:46px;"${rs}>Dept</th><th class="rv-th-left" style="min-width:46px;"${rs}>Curr</th>`:'')
     +`<th class="rv-th-left" style="min-width:150px;"${rs}>GL account</th><th class="rv-th-left" style="min-width:130px;"${rs}>Product</th><th class="rv-th-left" style="min-width:140px;"${rs}>Project</th><th class="rv-th-left" style="min-width:56px;"${rs}>UV</th>`;
 }
 function roUniIdCells(row,showCc,ccBadge){
@@ -1464,7 +1464,7 @@ function roUniIdCells(row,showCc,ccBadge){
     :ccBadge==='in'?`<span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${cc}</span>`
     :cc;
   const mu=ccMU(cc);
-  const ccCells=showCc?`<td class="rv-td-left rv-sticky rv-sticky-0">${ccInner}</td><td class="rv-td-left">${deptChipFor(cc)}</td><td class="rv-td-left">${mu.code} ${mu.name}</td><td class="rv-td-left">${gca(cc).cur||'—'}</td>`:'';
+  const ccCells=showCc?`<td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccInner}</td><td class="rv-td-left">${deptChipFor(cc)}</td><td class="rv-td-left">${gca(cc).cur||'—'}</td>`:'';
   const gl=`<td class="rv-td-left">${row.gln||row.gl||'—'}</td>`;
   const prod=isSmm?`<td class="rv-td-left">${row.productName||row.prod||'—'}</td>`:na;
   const proj=isRnd?`<td class="rv-td-left">${row.projectName||row.prod||'—'}</td>`:na;
@@ -3566,7 +3566,7 @@ function openLeadView(targetStep){
   const nm=document.getElementById('inp-bcname');if(nm)nm.value=submittedBC.bcName||'';
   const dc=document.getElementById('inp-bcdesc');if(dc)dc.value=submittedBC.bcDesc||'';
   // Reset the Lead step-6 Cost/FTE summary view + filters for a clean review.
-  ciAggView['cost-lead']='cc';ciAggView['fte-lead']='cc';
+  ciAggView['cost-lead']='cc';ciAggView['fte-lead']='cc';aggCur='usd';
   ciDetailFilters['cost-lead']={};ciDetailFilters['fte-lead']={};ciDetailFilterOpen=null;
   renderCc2Tray();
   go(targetStep);
@@ -3664,7 +3664,7 @@ function openCiFlow(){
   // chosen, so no per-row seeding here — just reset selection state.
   ciData=[];ciFteData=[];ciSel.clear();ciFteSel.clear();
   ciInCcSel={};ciCcPaths={};
-  ciAggView['cost']='cc';ciAggView['fte']='cc';ciDetailFilters['cost']={};ciDetailFilters['fte']={};ciDetailFilterOpen=null;
+  ciAggView['cost']='cc';ciAggView['fte']='cc';aggCur='usd';ciDetailFilters['cost']={};ciDetailFilters['fte']={};ciDetailFilterOpen=null;
   const assigned=getCiIncoming().map(x=>x.ccCode);
   ciActiveCcCode=assigned[0]||null;
   go('ci-step1');
@@ -3682,6 +3682,8 @@ let ciInCcSel={};
 let ciCcPaths={};
 // Receiver Cost/FTE summary view level: 'cc' (totals per cost centre) or 'detail'.
 let ciAggView={cost:'cc',fte:'cc'};
+// USD/Local currency view for the shared Cost summary component (cost mode only).
+let aggCur='usd';
 
 
 // Collapse/expand the hints & tips banner. Identified by a prefix ('co', 'ci', etc.)
@@ -3798,7 +3800,14 @@ function renderCiCcAggregate(mode,elId,opts){
   if(!ccs.length){el.innerHTML='';return;}
   const fmtv=mode==='cost'?fmtCostM:fmtFte;
   const ccName=cc=>(submittedBC.cc2Sel||[]).find(c=>c.code===cc)?.name||'';
-  const outRows=cc=>mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc);
+  // USD/Local currency toggle (cost only). When Local, each CC's stored-USD values
+  // are converted to that CC's currency (per-CC, then aggregated — cross-CC totals
+  // are a mixed-currency sum, matching the step-7 Local view).
+  const isLocalCur=mode==='cost'&&aggCur==='local';
+  const cvt=(v,cur)=>Math.round((v||0)/(FX[cur]||1));
+  const rawRows=cc=>mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc);
+  const outRows=cc=>{const rows=rawRows(cc);if(!isLocalCur)return rows;const cur=gca(cc).cur||'USD';
+    return rows.map(r=>({...r,fy25:(r.fy25||[]).map(v=>cvt(v,cur)),fy26:(r.fy26||[]).map(v=>cvt(v,cur)),fy27:cvt(r.fy27,cur),fy28:cvt(r.fy28,cur),fy29:cvt(r.fy29,cur)}));};
   // Aggregate a set of rows into a single row-like object (monthly arrays + scalars)
   // so fyDataCells can month-expand the totals.
   const aggRow=rows=>{const r={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};(rows||[]).forEach(x=>{(x.fy25||[]).forEach((v,i)=>r.fy25[i]+=Number(v)||0);(x.fy26||[]).forEach((v,i)=>r.fy26[i]+=Number(v)||0);r.fy27+=Number(x.fy27)||0;r.fy28+=Number(x.fy28)||0;r.fy29+=Number(x.fy29)||0;});return r;};
@@ -3819,10 +3828,14 @@ function renderCiCcAggregate(mode,elId,opts){
     const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0">Total — all SET areas</td>${fyDataCells(grand,fmtv)}</tr>`;
     table=`<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${rows}${totalRow}</tbody></table></div>`;
   } else if(view==='cc'){
-    // CC level: one row per cost centre + a grand-total row.
-    const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:240px;">Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
-    const rows=ccs.map(cc=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>${fyDataCells(aggRow(outRows(cc)),fmtv)}</tr>`).join('');
-    const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0">Total — all cost centres</td>${fyDataCells(grand,fmtv)}</tr>`;
+    // CC level: one row per cost centre + a grand-total row. MU (first) and — for
+    // cost — Curr are shown as their own identity columns alongside Cost centre.
+    const idCols=mode==='cost'?3:2;
+    const currHead=mode==='cost'?`<th class="rv-th-left"${hasSub?' rowspan="2"':''} style="min-width:46px;">Curr</th>`:'';
+    const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:130px;">MU</th><th class="rv-th-left"${hasSub?' rowspan="2"':''} style="min-width:200px;">Cost centre</th>${currHead}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    const rows=ccs.map(cc=>{const m=ccMU(cc);const currCell=mode==='cost'?`<td class="rv-td-left">${gca(cc).cur||'—'}</td>`:'';
+      return `<tr><td class="rv-td-left rv-sticky rv-sticky-0">${m.code} ${m.name}</td><td class="rv-td-left"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>${currCell}${fyDataCells(aggRow(outRows(cc)),fmtv)}</tr>`;}).join('');
+    const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0" colspan="${idCols}">Total — all cost centres</td>${fyDataCells(grand,fmtv)}</tr>`;
     table=`<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${rows}${totalRow}</tbody></table></div>`;
   } else {
     // Detail level: one flat unified table across all cost centres (columns line up),
@@ -3842,13 +3855,13 @@ function renderCiCcAggregate(mode,elId,opts){
     const filterRow=`<tr>${spec.map(fbtn).join('')}<td colspan="${fyCols}" style="background:#eef4fb;"></td></tr>`;
     let dataRows;
     if(mode==='cost') dataRows=filtered.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(r,true,'out')}${fyDataCells(r,fmtCostM)}</tr>`).join('');
-    else dataRows=filtered.map((r,gi)=>{const m=ccMU(r.cc);return `<tr ${gi%2===1?'style="background:#fafaf8;"':''}><td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${r.cc}</span></td><td class="rv-td-left">${m.code} ${m.name}</td><td class="rv-td-left">${r.loc||'—'}</td><td class="rv-td-left">${r.city||'—'}</td><td class="rv-td-left">${r.azW||'—'}</td><td class="rv-td-left">${r.wt||'—'}</td>${fyDataCells(r,fmtFte)}</tr>`;}).join('');
+    else dataRows=filtered.map((r,gi)=>{const m=ccMU(r.cc);return `<tr ${gi%2===1?'style="background:#fafaf8;"':''}><td class="rv-td-left rv-sticky rv-sticky-0">${m.code} ${m.name}</td><td class="rv-td-left"><span class="cc-badge-out">${r.cc}</span></td><td class="rv-td-left">${r.loc||'—'}</td><td class="rv-td-left">${r.city||'—'}</td><td class="rv-td-left">${r.azW||'—'}</td><td class="rv-td-left">${r.wt||'—'}</td>${fyDataCells(r,fmtFte)}</tr>`;}).join('');
     const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0" colspan="${idN}">Total — ${filtered.length<allRows.length?'filtered':'all'} cost centres</td>${fyDataCells(gtot,fmtv)}</tr>`;
     const thead = mode==='cost'
       ? `<thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`
       : `<thead><tr>
-          <th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:90px;">Cost centre</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''} style="min-width:130px;">MU</th>
+          <th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:130px;">MU</th>
+          <th class="rv-th-left"${hasSub?' rowspan="2"':''} style="min-width:90px;">Cost centre</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
     const emptyRow=`<tr><td colspan="${idN+fyCols}" style="text-align:center;color:#888;padding:14px;">No rows match the filters. <a onclick="ciFilterClearAll('${scope}')" style="color:#0C447C;cursor:pointer;">Clear filters</a></td></tr>`;
@@ -3875,15 +3888,21 @@ function renderCiCcAggregate(mode,elId,opts){
       </div>${panel}`;
   }
 
-  const unit=mode==='cost'?'USD ($m)':'FTEs (headcount)';
+  const unit=mode==='cost'?(isLocalCur?'Local Currency (m)':'USD ($m)'):'FTEs (headcount)';
   const title=mode==='cost'?'Cost out by cost centre':'FTEs out by cost centre';
+  // USD/Local currency toggle (cost only — FTEs are headcount).
+  const curToggle=mode==='cost'?`<span class="method-toggle" style="margin-bottom:0;">
+        <button class="method-btn ${!isLocalCur?'active':''}" onclick="setAggCur('${scope}','usd')">USD</button>
+        <button class="method-btn ${isLocalCur?'active':''}" onclick="setAggCur('${scope}','local')">Local</button>
+      </span>`:'';
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${title} <span class="unit-pill">${unit}</span>
-      <span class="method-toggle" style="margin-left:auto;margin-bottom:0;">
+      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;">${curToggle}
+      <span class="method-toggle" style="margin-bottom:0;">
         <button class="method-btn ${view==='area'?'active':''}" onclick="setCiAggView('${scope}','area')">By SET Area</button>
         <button class="method-btn ${view==='cc'?'active':''}" onclick="setCiAggView('${scope}','cc')">By cost centre</button>
         <button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${scope}','detail')">Detail</button>
-      </span>
+      </span></span>
     </div>
     <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='area'?'Totals by SET area. Switch to <strong>By cost centre</strong> or <strong>Detail</strong> for finer breakdowns.':view==='cc'?'Totals by cost centre. Switch to <strong>By SET Area</strong> for a coarser view or <strong>Detail</strong> for the full line-level breakdown.':'Full line-level detail across all cost centres — use the per-column filters to narrow it.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
     ${detailControls}
@@ -3912,6 +3931,11 @@ function setCiAggView(scope,level){
   ciDetailFilterOpen=null;  // close any open filter panel when switching view
   _aggRerender(scope);
 }
+// USD/Local currency toggle for the shared Cost summary component.
+function setAggCur(scope,c){
+  aggCur=c;
+  _aggRerender(scope);
+}
 
 /* ── Detail-view per-column filters ──
    ciDetailFilters[scope][colKey] = Set of SELECTED (shown) values; absence = no
@@ -3922,9 +3946,9 @@ let ciDetailFilterOpen=null;            // "scope::colKey" of the open checklist
 // what the Detail table renders (incl. 'N/A' for non-applicable Project/Product/UV).
 function ciFilterColSpec(mode){
   if(mode==='cost')return [
+    {k:'mu',l:'MU',g:r=>{const m=ccMU(r.cc);return `${m.code} ${m.name}`;}},
     {k:'cc',l:'Cost centre',g:r=>r.cc},
     {k:'dept',l:'Dept',g:r=>gca(r.cc)?.bcDept||'—'},
-    {k:'mu',l:'MU',g:r=>{const m=ccMU(r.cc);return `${m.code} ${m.name}`;}},
     {k:'curr',l:'Curr',g:r=>gca(r.cc)?.cur||'—'},
     {k:'gl',l:'GL account',g:r=>r.gln||r.gl||'—'},
     {k:'prod',l:'Product',g:r=>{const rnd=!!(r.project||r.projectName||r.uv);return (!rnd&&(r.product||r.productName))?(r.productName||r.prod||'—'):'N/A';}},
@@ -3932,8 +3956,8 @@ function ciFilterColSpec(mode){
     {k:'uv',l:'UV',g:r=>{const rnd=!!(r.project||r.projectName||r.uv);return rnd?(r.uv||'—'):'N/A';}},
   ];
   return [
-    {k:'cc',l:'Cost centre',g:r=>r.cc},
     {k:'mu',l:'MU',g:r=>{const m=ccMU(r.cc);return `${m.code} ${m.name}`;}},
+    {k:'cc',l:'Cost centre',g:r=>r.cc},
     {k:'loc',l:'Location',g:r=>r.loc||'—'},
     {k:'city',l:'City',g:r=>r.city||'—'},
     {k:'azW',l:'AZ Workforce',g:r=>r.azW||'—'},
@@ -4267,9 +4291,9 @@ function buildStep7(){
   function fteOutSection(area){
     const fteTbody=area.fteRows.map(({cc,row},gi)=>{const mu=ccMU(cc.code);
       return`<tr${gi%2===1?' style="background:#fafaf8;"':''}>
+        <td class="rv-td-left">${mu.code} ${mu.name}</td>
         <td class="rv-td-left"><span class="cc-badge-out">${cc.code}</span></td>
         <td class="rv-td-left">${deptChipFor(cc.code)}</td>
-        <td class="rv-td-left">${mu.code} ${mu.name}</td>
         <td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td>
         <td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>
         ${fyDataCells(row,fmtFte)}
@@ -4278,9 +4302,9 @@ function buildStep7(){
     if(!area.fteRows.length)return '';
     const fteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
         <tr>
+          <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
           <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
           <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
-          <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
@@ -4305,9 +4329,9 @@ function buildStep7(){
   function ciFteInSection(area){
     const ciFteTbody=area.ciFteRows.map(({ccCode,row,person},gi)=>{const mu=ccMU(ccCode);
       return`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>
+        <td class="rv-td-left">${mu.code} ${mu.name}</td>
         <td class="rv-td-left"><span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${ccCode}</span></td>
         <td class="rv-td-left">${deptChipFor(ccCode)}</td>
-        <td class="rv-td-left">${mu.code} ${mu.name}</td>
         <td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td>
         <td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>
         ${fyDataCells(row,fmtFte)}
@@ -4316,9 +4340,9 @@ function buildStep7(){
     if(!area.ciFteRows.length)return '';
     const ciFteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
         <tr>
+          <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
           <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
           <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
-          <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
           <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>

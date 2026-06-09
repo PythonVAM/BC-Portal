@@ -71,14 +71,14 @@ with sync_playwright() as p:
     pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200)
     c2=pg.evaluate("[...document.querySelectorAll('#screen-ci-step2 .method-btn')].map(x=>x.textContent.trim())"); print('CI2 toggle:', c2)
 
-    ok = (s6cost==['By SET Area','By cost centre','Detail'] and s6fte==['By SET Area','By cost centre','Detail'] and s6area and s6det
+    ok = (s6cost==['USD','Local','By SET Area','By cost centre','Detail'] and s6fte==['By SET Area','By cost centre','Detail'] and s6area and s6det
           # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
           # per-area Cost Out / FTEs Out views with per-year totals.
           and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
           and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
           and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
           # Receiver Cost (ci-step1) + FTEs (ci-step2): SET Area / CC / Detail toggle.
-          and c1==['By SET Area','By cost centre','Detail']
+          and c1==['USD','Local','By SET Area','By cost centre','Detail']
           and c2==['By SET Area','By cost centre','Detail']
           and not errs)
     print('PASS' if ok else 'FAIL')
