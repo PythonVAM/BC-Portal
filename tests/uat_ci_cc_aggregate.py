@@ -48,11 +48,11 @@ with sync_playwright() as p:
     print('month cols (detail, fy25 expanded):', monthCols)
 
     ok = (cost and cost['tables']==1 and cost['ccRows']==['5110','7300RND-CC-041']
-          and cost['toggleBtns']==['By SET Area','By cost centre','Detail'] and cost['fyClickable'] and cost['hasTotal']
+          and cost['toggleBtns']==['USD','Local','By SET Area','By cost centre','Detail'] and cost['fyClickable'] and cost['hasTotal']
           and cost['title'].startswith('Cost out by cost centre')
-          and cost['headers']==['Cost centre','FY25','FY26','FY27','FY28','FY29']  # cc-level columns
+          and cost['headers']==['MU','Cost centre','Curr','FY25','FY26','FY27','FY28','FY29']  # cc-level columns
           # detail level: one table, line-level columns, N/A cells, month-expandable
-          and costDetail['tables']==1 and costDetail['headers']==['Cost centre','Dept','MU','Curr','GL account','Product','Project','UV']
+          and costDetail['tables']==1 and costDetail['headers']==['MU','Cost centre','Dept','Curr','GL account','Product','Project','UV']
           and costDetail['naCells']>0 and monthCols>=12
           and fte and fte['tables']==1 and fte['ccRows']==['5110','7300RND-CC-041'] and fte['hasTotal']
           and fte['title'].startswith('FTEs out by cost centre')
