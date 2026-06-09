@@ -43,7 +43,7 @@ with sync_playwright() as p:
     print('after Late off:',filtered,eff)
     print('cleared:',cleared)
 
-    ok = (ccFlt==0 and detFlt==6
+    ok = (ccFlt==0 and detFlt==8
           and init==['13','13']
           and panel and panel['title']=='Filter: UV' and panel['hasSearch'] and 'Late' in panel['opts']
           and filtered==['9','13'] and eff['noLate'] and eff['chip'] and eff['totalFiltered']

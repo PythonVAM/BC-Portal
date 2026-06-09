@@ -148,14 +148,15 @@ The **hints banner** and the **profile-panel** intentionally scroll away with co
 
 Every **cost** table — entry screens and read-only context tables alike — uses **one flat table with a fixed column set**, matching the Cost Out Detail screen. There is **no dept sub-grouping and no collapse**; rows are sorted **Dept (R&D → SMM → G&A) → Cost Centre** and every row is shown.
 
-**Unified columns:** `(Cost centre · Dept ·) GL account · Product · Project · UV` + the FY columns. The Cost centre + Dept columns are included on multi-CC tables (`roUniIdHead(true,hasSub)`) and omitted where the CC is already in a block/section header (`roUniIdHead(false,hasSub)`). Columns a row's shape doesn't use render as a greyed **N/A** (`.cod-na`):
+**Unified columns:** `(Cost centre · Dept · MU · Curr ·) GL account · Product · Project · UV` + the FY columns. **MU** (Management Unit — the second org layer, `ccMU(cc)` → e.g. `7300 Oncology R&D`, `1100 Finance`) and **Curr** (the CC's currency, `gca(cc).cur`) are CC-level identity columns shown alongside Cost centre + Dept on multi-CC tables (`roUniIdHead(true,hasSub)`); they're omitted with Cost centre + Dept where the CC is already in a block/section header (`roUniIdHead(false,hasSub)`). Columns a row's shape doesn't use render as a greyed **N/A** (`.cod-na`):
 - R&D-shape rows (`gl+project+uv`) fill Project + UV; Product = N/A.
 - SMM-shape rows (`gl+product`) fill Product; Project + UV = N/A.
 - GL-only rows: Product + Project + UV all = N/A.
 
 **Helpers** (defined together near the top of the `<script>`):
-- `roUniIdHead(showCc, hasSub)` — the fixed identity `<th>`s (adds `rowspan="2"` when a FY is month-expanded).
-- `roUniIdCells(row, showCc)` — the fixed identity `<td>`s with N/A fill.
+- `roUniIdHead(showCc, hasSub)` — the fixed identity `<th>`s (Cost centre · Dept · MU · Curr · GL · Product · Project · UV; adds `rowspan="2"` when a FY is month-expanded).
+- `roUniIdCells(row, showCc)` — the fixed identity `<td>`s with N/A fill (MU via `ccMU`, Curr via `gca(cc).cur`).
+- `ccMU(ccCode)` — walks `ccTree` to the **second-layer** node (the SET area is layer 1), returning `{code,name}`; cached in `_ccMuCache`. FTE detail tables show **MU** but not Curr (headcount has no currency).
 - `fmtCostM(v)` — cost value in **$m** (2dp), negatives in red parentheses.
 
 **Where applied:** Lead review Cost/FTEs (`buildStep6`/`buildStep6b` → `renderCiCcAggregate`), CI step 1 (`renderCiByCc`), CI step 2 (`renderCiCcAggregate` per-CC summary, `renderCiTable`, `renderCiCoTable`, single-CC auto-populated view), CI step 3 (`renderCiCcAggregate` FTE summary — flat, FTEs not $m), CI per-CC review (`renderCiReview`), and step 7 (`coOutSection` / `ciInSection`, plus the aggregate Cost/FTE/Net matrix).
