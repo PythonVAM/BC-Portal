@@ -915,7 +915,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
 <!-- COST IN: Step 1 — Review what was submitted -->
 <div class="screen" id="screen-ci-step1"><div class="card">
   <div class="screen-head">
-    <div class="card-title">Cost In — Boundary change request</div>
+    <div class="card-title">Cost</div>
     <div id="ci-si-step1"></div>
   </div>
 
@@ -943,7 +943,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
 <!-- COST IN: Step 2 — Enter Cost In values -->
 <div class="screen" id="screen-ci-step2"><div class="card">
   <div class="screen-head">
-    <div class="card-title">Cost In — Cost in values</div>
+    <div class="card-title">FTEs</div>
     <div id="ci-si-step2"></div>
   </div>
   <!-- Content rendered dynamically by renderCiStep2 -->
@@ -952,7 +952,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
 <!-- COST IN: Step 3 — Enter FTEs In -->
 <div class="screen" id="screen-ci-step3"><div class="card">
   <div class="screen-head">
-    <div class="card-title">Cost In — FTEs in</div>
+    <div class="card-title">Summary</div>
     <div id="ci-si-step3"></div>
   </div>
   <!-- Content rendered dynamically by renderCiStep3 -->
@@ -3742,10 +3742,9 @@ function toggleCoView(scope){
   const id=document.querySelector('.screen.active')?.id||'';
   if(id==='screen-step6')buildStep6();
   else if(id==='screen-step7')buildStep7();
-  else if(id==='screen-ci-step1')renderCiBcSummary();
-  else if(id==='screen-ci-step2')renderCiStep2();
-  else if(id==='screen-ci-step3')renderCiStep3();
-  else if(id==='screen-ci-step4')renderCiReview();
+  else if(id==='screen-ci-step1')renderCiCostScreen();
+  else if(id==='screen-ci-step2')renderCiFteScreen();
+  else if(id==='screen-ci-step3')renderCiSummaryScreen();
   applyDirLabels();
 }
 // Sum a list of rows into per-FY totals (rows carry fy25/fy26 arrays + fy27..fy29).
@@ -3775,23 +3774,12 @@ function coViewWrap(scope,label,totals,fullHTML,fmtv,totalsLabel){
 function openCiFlow(){
   // If BC is locked, show read-only review
   if(submittedBC&&submittedBC.status==='submitted-to-group'){go('step7');return;}
+  // Read-only receiver flow: the One side auto-mirrors the Many side when the CC is
+  // chosen, so no per-row seeding here — just reset selection state.
   ciData=[];ciFteData=[];ciSel.clear();ciFteSel.clear();
   ciInCcSel={};ciCcPaths={};
-  // Pre-populate ci rows from all submitted CCs assigned to this user
-  const u=currentUser();
-  const assignedCcs=getCiIncoming().map(x=>x.ccCode);
-  assignedCcs.forEach(ccCode=>{
-    ciActiveCcCode=ciActiveCcCode||ccCode; // keep for backward compat
-    const coRows=(submittedBC.ccData[ccCode]||[]);
-    coRows.forEach(r=>ciData.push({gl:r.gl,gln:r.gln,prod:r.prod,cc:ccCode,
-      bcDept:r.bcDept,product:r.product,productName:r.productName,isNonBrand:r.isNonBrand,
-      taCode:r.taCode,taName:r.taName,project:r.project,projectName:r.projectName,uv:r.uv,
-      fy26:Array(12).fill(0),fy25:Array(12).fill(0),fy27:0,fy28:0,fy29:0}));
-    const fteLocs=getFteSimLocs(ccCode);
-    fteLocs.forEach(({loc,city,country})=>ciFteData.push({
-      cc:ccCode,loc,city,country,azW:'Employee - Regular',wt:'Lab',
-      fy26:Array(12).fill(0),fy25:Array(12).fill(0),fy27:0,fy28:0,fy29:0}));
-  });
+  const assigned=getCiIncoming().map(x=>x.ccCode);
+  ciActiveCcCode=assigned[0]||null;
   go('ci-step1');
 }
 
@@ -4169,9 +4157,9 @@ function setOneCc(code,name){
       ciInCcSel[src]=[{code,name,type}];
     });
   }
-  // Selection changed → drop any seeded entry data so it re-mirrors next render.
+  // Selection changed → drop any seeded entry data so it re-mirrors at submit.
   ciData=[];ciFteData=[];
-  renderCiByCc();
+  renderCiSummaryScreen();applyDirLabels();
 }
 function toggleCiInCc(outCcCode,code,name,e){
   if(e)e.stopPropagation();
@@ -4204,8 +4192,7 @@ function renderCiCcTray(outCcCode){
 
 /* ── Cost In Step 2: data entry ── */
 function ciSi(step){
-  const w=oneWord()==='in'?'Cost in':'Cost out',f=oneWord()==='in'?'FTEs in':'FTEs out';
-  const CI_SL=['Review request',w,f,'Submit'];
+  const CI_SL=['Cost','FTEs','Summary'];
   return'<div class="step-indicator">'+CI_SL.map((l,i)=>{const d=i<step,ac=i===step;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<CI_SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
 
 function getTotalCiCcCount(){
@@ -4231,38 +4218,25 @@ function getSingleCiCc(){
   return entries[0];
 }
 
-/* Per-cost-centre summary shown at the top of the Cost In screens. Every assigned
-   CC gets a compact matrix whose Cost Out / FTEs Out row is CLICKABLE — expanding it
-   reveals that CC's full flat detail inline (replacing the old separate Cost Out
-   summary block). CCs with MORE THAN ONE Cost In Contributor additionally show a
-   "… In (all)" row (this user's live draft + others' submitted values) and a Net
-   row, mirroring the Lead's Step 7 aggregate, so the contributor can see whether
-   each shared CC balances. Detail expansion state lives in `coViewExpanded`. */
+/* One-side summary: ONE flat table per mode (cost / FTEs) with a row per (Many) cost
+   centre showing its FY totals, each row expandable to the full detail, plus a
+   grand-total row. FY25/FY26 headers are month-expandable (toggleS6Fy / s6Exp), like
+   every other read-only table. */
 function renderCiCcAggregate(mode,elId){
   const el=document.getElementById(elId||(mode==='cost'?'ci-cc-agg-cost':'ci-cc-agg-fte'));
   if(!el)return;
   if(!submittedBC){el.innerHTML='';return;}
-  const u=currentUser();
   const deptOrder={'R&D':0,'SMM':1,'G&A':2};
   const ccs=[...getMyAssignedCcCodes()].sort((a,b)=>{const da=deptOrder[gca(a)?.bcDept]??9,db=deptOrder[gca(b)?.bcDept]??9;return da!==db?da-db:a.localeCompare(b);});
   if(!ccs.length){el.innerHTML='';return;}
-  const FYK=['fy25','fy26','fy27','fy28','fy29'],FYL=['FY25','FY26','FY27','FY28','FY29'];
   const fmtv=mode==='cost'?fmtCostM:fmtFte;
   const ccName=cc=>(submittedBC.cc2Sel||[]).find(c=>c.code===cc)?.name||'';
-  const sumRows=rows=>{const t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};(rows||[]).forEach(r=>{t.fy25+=rowTotal(r.fy25||[]);t.fy26+=rowTotal(r.fy26||[]);t.fy27+=Number(r.fy27)||0;t.fy28+=Number(r.fy28)||0;t.fy29+=Number(r.fy29)||0;});return t;};
   const outRows=cc=>mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc);
-  const coFor=cc=>sumRows(outRows(cc));
-  const ciFor=cc=>{
-    const t=sumRows((mode==='cost'?ciData:ciFteData).filter(r=>r.sourceCc===cc)); // this user's draft
-    Object.values(ciResponses).forEach(resp=>{
-      if(resp.person.id===u.id)return; // other contributors' submitted values
-      const o=sumRows(((mode==='cost'?resp.ciData:resp.ciFteData)||[]).filter(r=>r.sourceCc===cc));
-      FYK.forEach(fk=>t[fk]+=o[fk]);
-    });
-    return t;
-  };
+  // Aggregate a set of rows into a single row-like object (monthly arrays + scalars)
+  // so fyDataCells can month-expand the totals.
+  const aggRow=rows=>{const r={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};(rows||[]).forEach(x=>{(x.fy25||[]).forEach((v,i)=>r.fy25[i]+=Number(v)||0);(x.fy26||[]).forEach((v,i)=>r.fy26[i]+=Number(v)||0);r.fy27+=Number(x.fy27)||0;r.fy28+=Number(x.fy28)||0;r.fy29+=Number(x.fy29)||0;});return r;};
   const hasSub=fyHasSubRow();
-  // The full flat detail table for one CC's Cost Out (or FTEs Out), shown when expanded.
+  const colcount=1+(s6Exp.fy25?13:1)+(s6Exp.fy26?13:1)+3;
   const detailTable=cc=>{
     const rows=outRows(cc);
     if(!rows.length)return '<div style="font-size:11px;color:#888;margin:2px 0 6px;">No rows.</div>';
@@ -4271,32 +4245,97 @@ function renderCiCcAggregate(mode,elId){
     return `<div class="rv-table-wrap" style="margin:0 0 6px;"><table class="rv-table"><thead><tr>
       <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${rows.map(row=>`<tr><td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td><td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>${fyDataCells(row,fmtFte)}</tr>`).join('')}</tbody></table></div>`;
   };
-  // One flat table per mode: a row per cost centre showing its FY totals (the Many
-  // side the One contributor is consolidating), each row expandable to its full
-  // detail. Plus a grand-total row. (No per-CC blocks / Out-In-Net matrix — in the
-  // Many→One model the One side is a single CC handled by one contributor.)
-  const colspan=1+FYL.length;
-  const grand={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+  const grand={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
   const bodyRows=ccs.map(cc=>{
-    const co=coFor(cc);FYK.forEach(fk=>grand[fk]+=co[fk]);
+    const agg=aggRow(outRows(cc));
+    agg.fy25.forEach((v,i)=>grand.fy25[i]+=v);agg.fy26.forEach((v,i)=>grand.fy26[i]+=v);grand.fy27+=agg.fy27;grand.fy28+=agg.fy28;grand.fy29+=agg.fy29;
     const scope=(mode==='cost'?'ciagg-co:':'ciagg-fte:')+cc;
     const expanded=coViewExpanded.has(scope);
     const safe=scope.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const labelCell=`<td class="s6-td-label" onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">${expanded?'▼':'▶'} <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>`;
-    const sumr=`<tr class="s6-tr-out">${labelCell}${FYK.map(fk=>`<td>${fmtv(co[fk])}</td>`).join('')}</tr>`;
-    const detr=expanded?`<tr><td colspan="${colspan}" style="padding:4px 4px 8px;">${detailTable(cc)}</td></tr>`:'';
+    const labelCell=`<td class="rv-td-left rv-sticky rv-sticky-0" onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">${expanded?'▼':'▶'} <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>`;
+    const sumr=`<tr>${labelCell}${fyDataCells(agg,fmtv)}</tr>`;
+    const detr=expanded?`<tr><td colspan="${colcount}" style="padding:2px 4px 8px;">${detailTable(cc)}</td></tr>`:'';
     return sumr+detr;
   }).join('');
-  const totalRow=`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">Total — all cost centres</td>${FYK.map(fk=>`<td class="s6-td-net">${fmtv(grand[fk])}</td>`).join('')}</tr>`;
-  const head=`<thead><tr><th class="s6-th-label"></th>${FYL.map(l=>`<th class="s6-th-fy">${l}</th>`).join('')}</tr></thead>`;
+  const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0">Total — all cost centres</td>${fyDataCells(grand,fmtv)}</tr>`;
+  const thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:240px;">Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
   const unit=mode==='cost'?'USD ($m)':'FTEs (headcount)';
   const title=mode==='cost'?'Cost out by cost centre':'FTEs out by cost centre';
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:4px;display:flex;align-items:center;gap:8px;">${title} <span class="unit-pill">${unit}</span></div>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">Totals by cost centre — click a cost centre to expand its full detail.</p>
-    <div class="s6-table-wrap"><table class="s6-table">${head}<tbody>${bodyRows}${totalRow}</tbody></table></div>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">Totals by cost centre — click a cost centre to expand its detail. Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${bodyRows}${totalRow}</tbody></table></div>
   </div>`;
-  if(bcMany()==='in')dirSwapNodes(el);  // self-swap so labels stay correct across input re-renders
+  if(bcMany()==='in')dirSwapNodes(el);  // self-swap so labels stay correct across re-renders
+}
+
+// Mirror the entire Many side into the single chosen One CC (ciData/ciFteData), so
+// the One side balances by construction and step 7 / submission see the values.
+function seedOneSide(){
+  ciData=[];ciFteData=[];
+  const arr=v=>Array.isArray(v)?v.map(x=>Number(x)||0):Array(12).fill(0);
+  Object.entries(ciInCcSel).forEach(([outCcCode,inCcs])=>{
+    (submittedBC?.ccData?.[outCcCode]||[]).forEach(r=>inCcs.forEach(inCc=>ciData.push({
+      gl:r.gl,gln:r.gln,prod:r.prod,bcDept:r.bcDept,product:r.product,productName:r.productName,isNonBrand:r.isNonBrand,
+      taCode:r.taCode,taName:r.taName,project:r.project,projectName:r.projectName,uv:r.uv,
+      cc:inCc.code,ccName:inCc.name,sourceCc:outCcCode,
+      fy25:arr(r.fy25),fy26:arr(r.fy26),fy27:Number(r.fy27)||0,fy28:Number(r.fy28)||0,fy29:Number(r.fy29)||0})));
+    (submittedBC?.fteData||[]).filter(r=>r.cc===outCcCode).forEach(r=>inCcs.forEach(inCc=>ciFteData.push({
+      cc:inCc.code,loc:r.loc,city:r.city,country:r.country,azW:r.azW,wt:r.wt,sourceCc:outCcCode,
+      fy25:arr(r.fy25),fy26:arr(r.fy26),fy27:Number(r.fy27)||0,fy28:Number(r.fy28)||0,fy29:Number(r.fy29)||0})));
+  });
+}
+
+// Aggregate a set of rows into a single row-like object (monthly arrays + scalars).
+function aggRowsFy(rows){const r={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};(rows||[]).forEach(x=>{(x.fy25||[]).forEach((v,i)=>r.fy25[i]+=Number(v)||0);(x.fy26||[]).forEach((v,i)=>r.fy26[i]+=Number(v)||0);r.fy27+=Number(x.fy27)||0;r.fy28+=Number(x.fy28)||0;r.fy29+=Number(x.fy29)||0;});return r;}
+
+/* ── Receiver (One-side) flow — 3 read-only screens: Cost → FTEs → Summary ── */
+function renderCiCostScreen(){
+  const card=document.querySelector('#screen-ci-step1 .card');if(!card)return;
+  card.innerHTML=`
+    <div class="screen-head"><div class="card-title">Cost</div><div id="ci-si-step1"></div></div>
+    <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the cost being transferred, by cost centre. Click a cost centre to drill into its detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <div id="ci-cc-agg-cost"></div>
+    <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('dashboard')">← Dashboard</button><button class="btn btn-primary" onclick="go('ci-step2')">FTEs →</button></div>`;
+  const si=document.getElementById('ci-si-step1');if(si)si.innerHTML=ciSi(0);
+  renderCiCcAggregate('cost','ci-cc-agg-cost');
+}
+function renderCiFteScreen(){
+  const card=document.querySelector('#screen-ci-step2 .card');if(!card)return;
+  card.innerHTML=`
+    <div class="screen-head"><div class="card-title">FTEs</div><div id="ci-si-step2"></div></div>
+    <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred, by cost centre. Click a cost centre to drill into its detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <div id="ci-cc-agg-fte"></div>
+    <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('ci-step1')">← Cost</button><button class="btn btn-primary" onclick="go('ci-step3')">Summary →</button></div>`;
+  const si=document.getElementById('ci-si-step2');if(si)si.innerHTML=ciSi(1);
+  renderCiCcAggregate('fte','ci-cc-agg-fte');
+}
+function renderCiSummaryScreen(){
+  const card=document.querySelector('#screen-ci-step3 .card');if(!card)return;
+  const one=getOneCc();
+  const hasSub=fyHasSubRow();
+  const costAgg=aggRowsFy(Object.values(submittedBC?.ccData||{}).flat());
+  const fteAgg=aggRowsFy(submittedBC?.fteData||[]);
+  const totalsTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr><th class="rv-th-left rv-sticky rv-sticky-0"${hasSub?' rowspan="2"':''} style="min-width:160px;">Total transfer</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>
+    <tr><td class="rv-td-left rv-sticky rv-sticky-0">Total cost ($m)</td>${fyDataCells(costAgg,fmtCostM)}</tr>
+    <tr><td class="rv-td-left rv-sticky rv-sticky-0">Total FTEs</td>${fyDataCells(fteAgg,fmtFte)}</tr>
+  </tbody></table></div>`;
+  const picker=one
+    ?`<div class="rv-ci-row" style="max-width:480px;"><div class="rv-ci-person"><div class="hier-icon cc-chk" style="width:24px;height:24px;font-size:9px;">CC</div><div><div style="font-size:13px;display:flex;align-items:center;gap:6px;"><span class="cc-badge-out">${one.code}</span>${deptChipFor(one.code)}${one.name||''}</div></div></div><button class="rv-ci-remove" onclick="clrCiInCc()">×</button></div>`
+    :`<div class="method-toggle" style="margin-bottom:8px;"><button class="method-btn active" id="ci-cc-btn-hier-__one__" onclick="swCiCcMethod('__one__','hier')">Browse hierarchy</button><button class="method-btn" id="ci-cc-btn-manual-__one__" onclick="swCiCcMethod('__one__','manual')">Enter manually</button></div>
+      <div id="ci-cc-hier-wrap-__one__"><div class="hierarchy-panel"><div class="breadcrumb" id="ci-cc-bc-__one__"></div><ul class="hier-list" id="ci-cc-hl-__one__"></ul></div></div>
+      <div id="ci-cc-manual-wrap-__one__" style="display:none;"><div class="manual-add-row"><div class="field"><label>CC code</label><input type="text" id="ci-cc-mi-__one__" placeholder="e.g. 5110"/></div><button class="btn-add" onclick="addCiCcManual()">+ Add</button></div></div>`;
+  const submitDisabled=!one;
+  card.innerHTML=`
+    <div class="screen-head"><div class="card-title">Summary</div><div id="ci-si-step3"></div></div>
+    <p style="font-size:13px;color:#666;margin:10px 0 14px;">This is the total being transferred. Choose the single cost centre that receives it, then submit.</p>
+    <div style="margin-bottom:18px;">${totalsTable}</div>
+    <div class="rv-ci-label">Cost centre — the single CC for this transfer</div>
+    <div class="rv-ci-panel" style="margin-bottom:14px;">${picker}</div>
+    <div class="submit-box"><div class="submit-box-text">${one?'Ready to submit back to the Boundary Change Lead.':'Choose a cost centre above to enable submission.'}</div><button class="btn-submit"${submitDisabled?' disabled style="opacity:0.5;cursor:not-allowed;"':''} onclick="submitCostIn()">Submit response</button></div>
+    <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('ci-step2')">← FTEs</button></div>`;
+  const si=document.getElementById('ci-si-step3');if(si)si.innerHTML=ciSi(2);
+  if(!one){if(!ciCcPaths['__one__'])ciCcPaths['__one__']=[{name:'Organisation',node:ccTree}];renderOneCcHier();}
 }
 
 function renderCiStep2(){
@@ -4337,7 +4376,7 @@ function renderCiStep2Single(single,card){
   const coTbody=ciData.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
 
   card.innerHTML=`
-    <div class="card-title">Cost In — Cost in values</div>
+    <div class="card-title">FTEs</div>
     <div id="ci-si-step2"></div>
     <div id="ci-cc-agg-cost"></div>
     <div style="padding:10px 14px;background:#EAF3DE;border:0.5px solid #A3CC72;border-radius:8px;font-size:12px;color:#27500A;margin-bottom:16px;">
@@ -4416,7 +4455,7 @@ function renderCiStep2Multi(card){
   }
 
   card.innerHTML=`
-    <div class="card-title">Cost In — Cost in values</div>
+    <div class="card-title">FTEs</div>
     <div id="ci-si-step2"></div>
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Review the Cost Out summary below, then enter your Cost In values. The master data (cost centre, GL account, product) is fixed — you can only edit the numeric values.</p>
 
@@ -4481,7 +4520,7 @@ function renderCiStep3Single(single,card){
   }).join('');
 
   card.innerHTML=`
-    <div class="card-title">Cost In — FTEs in</div>
+    <div class="card-title">Summary</div>
     <div id="ci-si-step3"></div>
     <div id="ci-cc-agg-fte"></div>
     <div style="padding:10px 14px;background:#EAF3DE;border:0.5px solid #A3CC72;border-radius:8px;font-size:12px;color:#27500A;margin-bottom:16px;">
@@ -4536,7 +4575,7 @@ function renderCiStep3Multi(card){
   }
 
   card.innerHTML=`
-    <div class="card-title">Cost In — FTEs in</div>
+    <div class="card-title">Summary</div>
     <div id="ci-si-step3"></div>
     <p style="font-size:13px;color:#666;margin-bottom:14px;">Enter the FTE values for each cost centre. Master data (cost centre, location, workforce, worker type) is fixed — only the numeric values are editable.</p>
 
@@ -4876,6 +4915,8 @@ function renderCiReview(){
 
 function submitCostIn(){
   const u=currentUser();
+  if(!getOneCc()){alert('Please choose the cost centre that receives this transfer before submitting.');return;}
+  seedOneSide(); // mirror the whole Many side into the chosen One CC
   // Balance gate: the single One-side cost centre must absorb the entire Many side,
   // so its total must equal the Many total in every year (compared at $m, 2dp).
   const FYK=['fy25','fy26','fy27','fy28','fy29'],FYL=['FY25','FY26','FY27','FY28','FY29'];
@@ -5348,10 +5389,9 @@ function toggleS6Fy(fy){
   if(isActive('step5'))buildReview();
   if(isActive('step6'))buildStep6();
   if(isActive('step7'))buildStep7();
-  if(isActive('ci-step1'))renderCiBcSummary();
-  if(isActive('ci-step2'))renderCiStep2();
-  if(isActive('ci-step3'))renderCiStep3();
-  if(isActive('ci-step4'))renderCiReview();
+  if(isActive('ci-step1'))renderCiCostScreen();
+  if(isActive('ci-step2'))renderCiFteScreen();
+  if(isActive('ci-step3'))renderCiSummaryScreen();
   applyDirLabels();
 }
 
@@ -5400,10 +5440,9 @@ function go(id){
     }
     // No other path is expected. Don't silently rebuild submittedBC.
   }
-  if(id==='ci-step1')renderCiBcSummary();
-  if(id==='ci-step2')renderCiStep2();
-  if(id==='ci-step3')renderCiStep3();
-  if(id==='ci-step4')renderCiReview();
+  if(id==='ci-step1')renderCiCostScreen();
+  if(id==='ci-step2')renderCiFteScreen();
+  if(id==='ci-step3')renderCiSummaryScreen();
   // On the setup screen, sync the direction toggle + its labels to the current pick.
   if(id==='step1')setBcManySide(bcManySide);
   // Relabel screen titles / Many-side microcopy for the chosen direction.
@@ -5544,10 +5583,8 @@ function applyDirLabels(){
   setT('#screen-step4 .card-title',`${M} task — FTEs ${mw}`);
   setT('#screen-step5 .card-title',`${M} task — Review & submit`);
   setT('#screen-step6 .card-title',`Boundary change — Review ${M} · Assign ${O}`);
-  setT('#screen-ci-step1 .card-title',`${O} — Boundary change request`);
-  setT('#screen-ci-step2 .card-title',`${O} — values`);
-  setT('#screen-ci-step3 .card-title',`${O} — FTEs ${ow}`);
-  setT('#screen-ci-step4 .card-title',`${O} — Review & submit`);
+  // The receiver (One-side) screens use neutral titles (Cost / FTEs / Summary) set
+  // by their own renderers, so they're not retitled here.
   const want=bcMany()==='in'?'in':'out';
   // Static Many screens: their direction microcopy lives in non-regenerated HTML.
   ['screen-step2','screen-step3','screen-step3b','screen-step4'].forEach(sid=>{

@@ -21,16 +21,16 @@ with sync_playwright() as p:
       const co=submittedBC.ccData['7300RND-CC-041']||[];
       ciResponses={}; ciResponses['ds::7300RND-CC-041']={person:PEOPLE.find(p=>p.id==='ds'),ccCode:'7300RND-CC-041',
         ciData:co.map(r=>({sourceCc:'7300RND-CC-041',gl:r.gl,prod:r.prod,fy25:(r.fy25||[]).map(v=>Math.round((v||0)/2)),fy26:(r.fy26||[]).map(v=>Math.round((v||0)/2)),fy27:Math.round((r.fy27||0)/2),fy28:Math.round((r.fy28||0)/2),fy29:Math.round((r.fy29||0)/2)}))};
-      switchUser('lt'); openCiFlow(); toggleCiInCc('7300RND-CC-041','5130','Infra',{stopPropagation(){}}); go('ci-step2');
+      switchUser('lt'); openCiFlow(); go('ci-step1');
     """); pg.wait_for_timeout(400)
 
-    ci2=pg.evaluate("""(()=>{const s=document.getElementById('screen-ci-step2');const txt=s.innerText;
+    # Receiver Cost screen (ci-step1). The summary shows the Many side (= Cost In when
+    # In is the Many side), so its title reads "Cost in by cost centre".
+    ci2=pg.evaluate("""(()=>{const s=document.getElementById('screen-ci-step1');
       const agg=document.getElementById('ci-cc-agg-cost').innerText;
       return {title:s.querySelector('.card-title').textContent.trim(),
-              entryHdrCostOut:/Cost Out values/.test(txt), entryHdrCostIn:/Cost In values/.test(txt),
-              // The summary shows the Many side (= Cost In when In is the Many side).
               aggTitleCostIn:/Cost in by cost centre/i.test(agg)};})()""")
-    print('CI2 (IN):', ci2)
+    print('CI1 (IN):', ci2)
 
     pg.evaluate("switchUser('jd'); openLeadView('step6')"); pg.wait_for_timeout(300)
     s6title=pg.evaluate("document.querySelector('#screen-step6 .card-title').textContent.trim()")
@@ -40,8 +40,7 @@ with sync_playwright() as p:
     print('STEP7 labels (IN):', s7)
 
     ok = (
-        ci2['title']=='Cost Out — values'
-        and ci2['entryHdrCostOut'] and not ci2['entryHdrCostIn']
+        ci2['title']=='Cost'  # receiver screen uses a neutral title
         and ci2['aggTitleCostIn']
         and s6title=='Boundary change — Review Cost In · Assign Cost Out'
         and s7[:2]==['Cost In','Cost Out'] and 'FTEs In' in s7 and 'FTEs Out' in s7

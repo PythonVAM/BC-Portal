@@ -61,28 +61,23 @@ with sync_playwright() as p:
               fteAreas:fte.length, fteCollapsed:fte.every(x=>x.textContent.trim().startsWith('▶')), fteTotals:/FTEs out total/.test(s.innerText),
               twoMatrices:s.querySelectorAll('table.s6-table').length===2};})()""")
     print('STEP7 gates:', s7gates, '| areas:', s7)
+    # Receiver flow: ci-step1 = Cost summary (per-CC drilldown toggles), ci-step2 =
+    # FTEs summary (per-CC drilldown toggles), ci-step3 = Summary (no collapsibles).
     pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200); c1=toggles('ci-step1'); print('CI1:', c1)
     pg.evaluate("go('ci-step2')"); pg.wait_for_timeout(200); c2=toggles('ci-step2'); print('CI2:', c2)
-    pg.evaluate("go('ci-step3')"); pg.wait_for_timeout(200); c3=toggles('ci-step3'); print('CI3:', c3)
 
     ok = (s6['n']>=2 and s6['collapsed'] and s6['totals']
           and s6exp['glyph'].startswith('▼') and s6exp['hasRows']
-          and c1['n']>=2 and c1['collapsed'] and c1['totals']
-          # CI step 2: the Cost Out detail is now folded into the per-CC aggregate —
-          # each CC's "Cost Out" row is a collapsed toggleCoView trigger (no separate
-          # "Cost out total" summary block any more).
-          and c2['n']>=1 and c2['collapsed']
           # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
           # per-area Cost Out / FTEs Out views with per-year totals.
           and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
           and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
           and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
-          # FTE Out views collapsible with headcount totals on the per-CC screens
           and s6['nFte']>=1 and s6['fteTotals']
-          and c1['nFte']>=1 and c1['fteTotals']
-          # CI step 3: the FTE summary is one table with a collapsed toggleCoView
-          # trigger per cost centre (toggle labels are CC names, so they count under n).
-          and c3['n']>=1 and c3['collapsed']
+          # Receiver Cost (ci-step1) + FTEs (ci-step2): one drilldown table each, with
+          # a collapsed toggleCoView trigger per cost centre.
+          and c1['n']>=1 and c1['collapsed']
+          and c2['n']>=1 and c2['collapsed']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

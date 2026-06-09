@@ -26,12 +26,12 @@ with sync_playwright() as p:
         '7300RND-CC-041':[{...PEOPLE.find(p=>p.id==='lt')}],
         '5110':[{...PEOPLE.find(p=>p.id==='fa')}]
       };
-      switchUser('lt'); openCiFlow(); go('ci-step2');
+      switchUser('lt'); openCiFlow(); go('ci-step1');
     """); pg.wait_for_timeout(300)
 
     snap=pg.evaluate("""(()=>{const el=document.getElementById('ci-cc-agg-cost');
-      const ccs=[...el.querySelectorAll('.s6-tr-out .cc-badge-out')].map(x=>x.textContent.trim());
-      return {ccs, hasX:ccs.includes('7300RND-CC-041'), hasY:ccs.includes('5110'), tables:el.querySelectorAll('table.s6-table').length};})()""")
+      const ccs=[...el.querySelectorAll('.cc-badge-out')].map(x=>x.textContent.trim());
+      return {ccs, hasX:ccs.includes('7300RND-CC-041'), hasY:ccs.includes('5110'), tables:el.querySelectorAll('table.rv-table').length};})()""")
     print('lt summary:', snap)
 
     ok = (snap['tables']==1 and snap['hasX'] and not snap['hasY'] and snap['ccs']==['7300RND-CC-041'] and not errs)
