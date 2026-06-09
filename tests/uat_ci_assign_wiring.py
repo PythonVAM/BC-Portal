@@ -2,10 +2,11 @@ from pathlib import Path
 PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 
-# In the Many->One model, step 6 has a SINGLE Cost In Contributor picker (the One
-# side is one CC handled by one person). Assigning a person routes EVERY Many CC to
-# that person; the picker is capped at one (search box disappears once assigned, a
-# remove button clears it). Set-up: 3 Cost Out contributors submit several CCs.
+# In the Many->One model, the Lead's Summary screen (step 7) has a SINGLE Cost In
+# Contributor picker (the One side is one CC handled by one person). Assigning a
+# person routes EVERY Many CC to that person; the picker is capped at one (search box
+# disappears once assigned, a remove button clears it). Set-up: 3 Cost Out
+# contributors submit several CCs, then the Lead opens the Summary.
 with sync_playwright() as p:
     b=p.chromium.launch()
     pg=b.new_context(viewport={'width':1400,'height':1100}).new_page()
@@ -26,12 +27,12 @@ with sync_playwright() as p:
       doCo('om',[{code:'7300RND-CC-041',name:'A',type:'partial'},{code:'5110',name:'B',type:'full'}]);
       doCo('lt',[{code:'6200COM-CC-115',name:'C',type:'partial'},{code:'6200COM-CC-116',name:'D',type:'partial'}]);
       doCo('fa',[{code:'2110',name:'E',type:'full'}]);
-      switchUser('jd'); openLeadView('step6');
+      switchUser('jd'); openLeadView('step7');
     """); pg.wait_for_timeout(300)
 
     pre=pg.evaluate("""(()=>{
-      const blocks=document.querySelectorAll('#screen-step6 .rv-cc-block').length;  // no per-CC blocks now
-      const pickers=document.querySelectorAll('#screen-step6 input[id^="rv-ci-search-"]').length;  // no per-CC pickers
+      const blocks=document.querySelectorAll('#screen-step7 .rv-cc-block').length;  // no per-CC blocks now
+      const pickers=document.querySelectorAll('#screen-step7 input[id^="rv-ci-search-"]').length;  // no per-CC pickers
       const one=document.getElementById('rv-one-person-search');
       let ddWorks=false;
       if(one){one.dispatchEvent(new Event('focus')); const dd=document.getElementById('rv-one-person-dd'); ddWorks=!!(dd&&dd.style.display==='block');}

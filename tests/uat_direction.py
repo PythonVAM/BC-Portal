@@ -47,14 +47,14 @@ with sync_playwright() as p:
         out1['h']=='Cost Out Contributor(s)' and out1['outActive']
         and out_si[1]=='Cost out — select' and out_si[3]=='FTEs out'
         and out_t['step3']=='Cost Out task — Select cost to transfer'
-        and out_t['step6']=='Boundary change — Review Cost Out · Assign Cost In'
+        and out_t['step6']=='Cost'
         and out_t['ci1']=='Cost' and out_body  # receiver screens use neutral titles
         # IN: Many side = Cost In; One side = Cost Out
         and in1['h']=='Cost In Contributor(s)' and in1['inActive']
         and in_si[1]=='Cost in — select' and in_si[3]=='FTEs in'
         and in_t['step3']=='Cost In task — Select cost to transfer'
         and in_t['step4']=='Cost In task — FTEs in'
-        and in_t['step6']=='Boundary change — Review Cost In · Assign Cost Out'
+        and in_t['step6']=='Cost'
         and in_t['ci1']=='Cost' and in_t['ci3']=='Summary'  # neutral receiver titles
         and in_body['selIn'] and in_body['noOut'] and stored=='in'
         and not errs)

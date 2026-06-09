@@ -42,7 +42,7 @@ with sync_playwright() as p:
     ok = (
         ci2['title']=='Cost'  # receiver screen uses a neutral title
         and ci2['aggTitleCostIn']
-        and s6title=='Boundary change — Review Cost In · Assign Cost Out'
+        and s6title=='Cost'
         and s7[:2]==['Cost In','Cost Out'] and 'FTEs In' in s7 and 'FTEs Out' in s7
         and not errs)
     print('PASS' if ok else 'FAIL')
