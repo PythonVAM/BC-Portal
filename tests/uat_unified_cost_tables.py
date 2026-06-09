@@ -31,17 +31,17 @@ with sync_playwright() as p:
       switchUser('jd'); go('step6');
     """); pg.wait_for_timeout(400)
 
-    # Step 6 now shows ONE combined Cost Out view (collapsible, collapsed by default)
-    # across all CCs — expand it to inspect the underlying flat unified table.
-    pg.evaluate("""document.querySelectorAll('#rv-by-cc-wrap [onclick^="toggleCoView"]').forEach(t=>t.click())""")
+    # Step 6 Cost Out uses the shared summary component; switch to Detail to inspect
+    # the underlying flat unified table.
+    pg.evaluate("setCiAggView('cost-lead','detail')")
     pg.wait_for_timeout(200)
 
     # Lead step 6 Cost Out table should be FLAT (no dept collapse), unified columns
     # with a Cost centre + Dept column (multi-CC table), $m.
     state=pg.evaluate("""
       (() => {
-        const wrap=document.getElementById('rv-by-cc-wrap');
-        const tbl=wrap.querySelector('.rv-table');  // first = combined Cost Out table
+        const wrap=document.getElementById('s6-agg-cost');
+        const tbl=wrap.querySelector('.rv-table');
         const heads=Array.from(tbl.querySelectorAll('thead tr:first-child th'))
           .map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean);
         return {
