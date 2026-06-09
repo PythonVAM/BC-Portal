@@ -958,17 +958,6 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
   <!-- Content rendered dynamically by renderCiStep3 -->
 </div></div>
 
-<!-- COST IN: Step 4 — Review and submit -->
-<div class="screen" id="screen-ci-step4"><div class="card">
-  <div class="screen-head">
-    <div class="card-title">Cost In — Review &amp; submit</div>
-    <div id="ci-si-step4"></div>
-  </div>
-  <div id="ci-review-wrap"></div>
-  <div class="submit-box"><div class="submit-box-text">Confirm your Cost In values and submit back to the Boundary Change Lead.</div><button class="btn-submit" onclick="submitCostIn()">Submit Cost In response</button></div>
-  <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('ci-step3')">← Back</button></div>
-</div></div>
-
 <!-- COST IN: Confirmation -->
 <div class="screen" id="screen-ci-confirmation">
   <div class="card" style="max-width:520px;margin:0 auto;text-align:center;padding:32px 24px;">
@@ -1000,11 +989,10 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
      step4 → FTEs out
      step5 → Review & submit
 
-   Cost In Contributor (4 steps): screens ci-step1 → ci-step4
-     ci-step1 → Review request
-     ci-step2 → Cost in
-     ci-step3 → FTEs in
-     ci-step4 → Review & submit
+   Receiver / One-side Contributor (3 read-only steps): screens ci-step1 → ci-step3
+     ci-step1 → Cost (drill-down review)
+     ci-step2 → FTEs (drill-down review)
+     ci-step3 → Summary (totals + pick the One cost centre + submit)
 */
 
 /* ── Direction model (Many → One) ──
@@ -1201,7 +1189,6 @@ function uvChipFor(uv){
   return `<span class="uv-chip ${cls}">${uv}</span>`;
 }
 const locMeta={'GB-LON-001':{city:'London',country:'UK'},'GB-LON-002':{city:'London',country:'UK'},'GB-LON-003':{city:'London',country:'UK'},'GB-CAM-001':{city:'Cambridge',country:'UK'},'GB-CAM-002':{city:'Cambridge',country:'UK'},'GB-MAN-001':{city:'Manchester',country:'UK'},'GB-MAN-002':{city:'Manchester',country:'UK'},'US-NYC-001':{city:'New York',country:'US'},'US-NYC-002':{city:'New York',country:'US'},'US-BOS-001':{city:'Boston',country:'US'},'US-BOS-002':{city:'Boston',country:'US'},'US-SFO-001':{city:'San Francisco',country:'US'},'DE-MUC-001':{city:'Munich',country:'DE'},'DE-BER-001':{city:'Berlin',country:'DE'},'CH-BSL-001':{city:'Basel',country:'CH'},'JP-TYO-001':{city:'Tokyo',country:'JP'}};
-function glm(c){return locMeta[c]||{city:'—',country:'—'};}
 const ccTree={name:'Organisation',children:[{code:'1000',name:'Corporate Centre',children:[{code:'1100',name:'Finance',children:[{code:'1110',name:'FP&A',leaf:true},{code:'1120',name:'Financial Reporting',leaf:true},{code:'1130',name:'Treasury',leaf:true}]},{code:'1200',name:'HR & People',children:[{code:'1210',name:'Talent Acquisition',leaf:true},{code:'1220',name:'Learning & Development',leaf:true},{code:'1230',name:'HR Operations',leaf:true}]}]},{code:'2000',name:'Operations',children:[{code:'2100',name:'Supply Chain',children:[{code:'2110',name:'Procurement',leaf:true},{code:'2120',name:'Logistics',leaf:true},{code:'2130',name:'Demand Planning',leaf:true}]}]},{code:'5000',name:'Digital & Tech',children:[{code:'5100',name:'Engineering',children:[{code:'5110',name:'Platform Engineering',leaf:true},{code:'5120',name:'Data & Analytics',leaf:true},{code:'5130',name:'Infrastructure',leaf:true}]}]},{code:'7000',name:'R&D Division',children:[{code:'7300',name:'Oncology R&D',children:[{code:'7300RND-CC-041',name:'Clinical Trials',leaf:true},{code:'7300RND-CC-042',name:'Drug Discovery',leaf:true},{code:'7300RND-CC-043',name:'Regulatory Affairs',leaf:true}]},{code:'7400',name:'Immunology R&D',children:[{code:'7400RND-CC-051',name:'Pre-clinical Research',leaf:true},{code:'7400RND-CC-052',name:'Biomarkers',leaf:true},{code:'7400RND-CC-053',name:'Translational Medicine',leaf:true}]}]},{code:'6200',name:'Commercial',children:[{code:'6210',name:'Brand Marketing',children:[{code:'6200COM-CC-115',name:'Brand Marketing — Oncology',leaf:true},{code:'6200COM-CC-116',name:'Brand Marketing — Immunology',leaf:true}]},{code:'6220',name:'Commercial Operations',children:[{code:'6200COM-CC-122',name:'Sales Operations',leaf:true}]}]},{code:'8000',name:'Retail Division',children:[{code:'8100',name:'Retail Operations',children:[{code:'8110',name:'Store Operations',leaf:true},{code:'8120',name:'Merchandising',leaf:true},{code:'8130',name:'Retail Finance & Admin',leaf:true}]}]},{code:'9000',name:'Risk & Compliance',children:[{code:'9100',name:'Risk & Compliance',children:[{code:'9110',name:'Enterprise Risk',leaf:true},{code:'9120',name:'Regulatory Compliance',leaf:true},{code:'9130',name:'Internal Audit',leaf:true}]}]}]};
 const locTree={name:'All locations',children:[{name:'United Kingdom',code:'GB',children:[{name:'London',code:'GB-LON',children:[{code:'GB-LON-001',name:'Canary Wharf HQ',leaf:true},{code:'GB-LON-002',name:'Paddington Research Centre',leaf:true},{code:'GB-LON-003',name:'Southwark Operations Hub',leaf:true}]},{name:'Cambridge',code:'GB-CAM',children:[{code:'GB-CAM-001',name:'Cambridge Science Park',leaf:true},{code:'GB-CAM-002',name:"Addenbrooke's Site",leaf:true}]},{name:'Manchester',code:'GB-MAN',children:[{code:'GB-MAN-001',name:'Spinningfields Office',leaf:true},{code:'GB-MAN-002',name:'MediaCity Hub',leaf:true}]}]},{name:'United States',code:'US',children:[{name:'New York',code:'US-NYC',children:[{code:'US-NYC-001',name:'Midtown Manhattan Office',leaf:true},{code:'US-NYC-002',name:'Brooklyn R&D Lab',leaf:true}]},{name:'Boston',code:'US-BOS',children:[{code:'US-BOS-001',name:'Kendall Square Campus',leaf:true},{code:'US-BOS-002',name:'Longwood Medical Site',leaf:true}]},{name:'San Francisco',code:'US-SFO',children:[{code:'US-SFO-001',name:'Mission Bay Office',leaf:true}]}]},{name:'Germany',code:'DE',children:[{name:'Munich',code:'DE-MUC',children:[{code:'DE-MUC-001',name:'Schwabing Research Park',leaf:true}]},{name:'Berlin',code:'DE-BER',children:[{code:'DE-BER-001',name:'Mitte Innovation Hub',leaf:true}]}]},{name:'Switzerland',code:'CH',children:[{name:'Basel',code:'CH-BSL',children:[{code:'CH-BSL-001',name:'Basel Life Sciences Campus',leaf:true}]}]},{name:'Japan',code:'JP',children:[{name:'Tokyo',code:'JP-TYO',children:[{code:'JP-TYO-001',name:'Shinjuku Office',leaf:true}]}]}]};
 
@@ -1217,8 +1204,6 @@ const SIM={
   '1110':[{gl:'5110-STAFF',gln:'Salaries & wages',prod:'FP&A Core'},{gl:'5115-NI',gln:'Employer NI',prod:'FP&A Core'},{gl:'5120-PENS',gln:'Pension contributions',prod:'FP&A Core'}],
   '2110':[{gl:'5110-STAFF',gln:'Salaries & wages',prod:'Procurement Ops'},{gl:'5310-CONT',gln:'Contractor fees',prod:'Procurement Ops'},{gl:'6110-TRAV',gln:'Business travel',prod:'Procurement Ops'}],
 };
-function getSimRows(code){return SIM[code]||[{gl:'5110-STAFF',gln:'Salaries & wages',prod:'General'},{gl:'5115-NI',gln:'Employer NI',prod:'General'},{gl:'5120-PENS',gln:'Pension contributions',prod:'General'}];}
-function seedVal(code,gl,prod,fk,mo){const h=(code+gl+prod+fk+mo).split('').reduce((a,c)=>a+c.charCodeAt(0),0);const vals=[0,8000,11000,14000,18000,22000,25000,30000,12000,15000,19000,24000,28000];return vals[h%vals.length];}
 
 /* ─────────────────────────────────────────────────────────────────
    Cost Out "shape" — which extra dimensions a CC's cost splits by.
@@ -1496,19 +1481,6 @@ function fyDataCells(row,formatter){
 }
 // For aggregate-row scenarios where we have a precomputed FY value array
 // rather than a row with .fy25/.fy26 etc.
-function fyTotalCells(totals,formatter){
-  // totals = [fy25Total, fy26Total, fy27, fy28, fy29]
-  // For expanded years we only have the year total here (no months) — caller must use fyDataCells variant if month detail needed
-  const cells=[];
-  if(s6Exp.fy25){cells.push(`<td class="rv-td-total">${formatter(totals[0])}</td>`);MO.forEach(()=>cells.push(`<td>—</td>`));}
-  else cells.push(`<td class="rv-td-total">${formatter(totals[0])}</td>`);
-  if(s6Exp.fy26){cells.push(`<td class="rv-td-total">${formatter(totals[1])}</td>`);MO.forEach(()=>cells.push(`<td>—</td>`));}
-  else cells.push(`<td class="rv-td-total">${formatter(totals[1])}</td>`);
-  cells.push(`<td class="rv-td-future">${formatter(totals[2])}</td>`);
-  cells.push(`<td class="rv-td-future">${formatter(totals[3])}</td>`);
-  cells.push(`<td class="rv-td-future">${formatter(totals[4])}</td>`);
-  return cells.join('');
-}
 
 /* ── Row selection state (retained: reset paths call selectedRows.clear()) ── */
 let selectedRows=new Set();
@@ -1676,10 +1648,6 @@ function backFromFte(){
 }
 function toggleCoGl(glKey,checked){
   if(checked)coGlPicked.add(glKey);else coGlPicked.delete(glKey);
-  renderCoSelect();
-}
-function toggleCoGlAll(ccCode,checked){
-  glRollup(ccCode).forEach(g=>{if(checked)coGlPicked.add(g.glKey);else coGlPicked.delete(g.glKey);});
   renderCoSelect();
 }
 function toggleCoGlGroup(ccCodes,checked){
@@ -1957,13 +1925,6 @@ function updateCoDetailSummary(){
   const copyBtn=document.getElementById('cod-copy-btn');if(copyBtn)copyBtn.disabled=n===0;
   const remBtn=document.getElementById('cod-remove-btn');if(remBtn)remBtn.disabled=n===0;
   const lbl=document.getElementById('cod-sel-label');if(lbl)lbl.textContent=n>0?`${n} row${n===1?'':'s'} selected`:'';
-}
-function toggleCoDetailSel(rowKey,checked){
-  // Pure toggle (kept for backward compatibility / programmatic use)
-  if(checked)coDetailSel.add(rowKey);else coDetailSel.delete(rowKey);
-  updateCoDetailSummary();
-  const tr=document.querySelector(`tr[data-cod-row="${rowKey}"]`);
-  if(tr)tr.classList.toggle('cod-sel',checked);
 }
 // Click handler for the row's checkbox. Honours Shift-click for range select.
 function onCoDetailCheckboxClick(ev,rowKey,groupKey){
@@ -2410,12 +2371,6 @@ function parseCsvLine(line){
   result.push(cur);return result;
 }
 
-function showCsvFeedback(msg,type){
-  const el=document.getElementById('csv-feedback');
-  const styles={ok:'background:#EAF3DE;color:#27500A;border:0.5px solid #A3CC72;',warn:'background:#FAEEDA;color:#633806;border:0.5px solid #E0A060;',error:'background:#FCEBEB;color:#501313;border:0.5px solid #E08080;'};
-  el.style.cssText=styles[type]||styles.ok;el.textContent=msg;el.style.display='block';
-  setTimeout(()=>{el.style.display='none';},5000);
-}
 
 
 /* ── Step 2: flat CC picker with Full/Partial radio ── */
@@ -3389,7 +3344,6 @@ const USER_PROFILES={
 };
 
 function isLeadUser(u){return u&&u.personaRole==='SET BC Lead';}
-function isContribUser(u){return u&&u.personaRole==='BC Contributor';}
 
 let currentUserId='jd';
 function currentUser(){return USER_PROFILES[currentUserId];}
@@ -3520,11 +3474,6 @@ function switchUser(id){
 }
 
 /* ── Dynamic dashboard ── */
-function isLeadOnly(){
-  // Under the simplified rule, the Boundary Change Lead is NEVER a Cost Out or Cost In Contributor.
-  // The Lead is always "lead-only" — they orchestrate but never enter contributor data.
-  return true;
-}
 
 function getCostOutTasks(){
   // Returns BCs where the current user is listed as a Cost Out contributor
@@ -3796,16 +3745,6 @@ let ciCcPaths={};
 // Receiver Cost/FTE summary view level: 'cc' (totals per cost centre) or 'detail'.
 let ciAggView={cost:'cc',fte:'cc'};
 
-function setCiCurrency(c){
-  ciRvCurrency=c;
-  document.getElementById('ci-usd-btn').classList.toggle('active',c==='usd');
-  document.getElementById('ci-local-btn').classList.toggle('active',c==='local');
-  renderCiCoTable();renderCiByCc();
-}
-function toggleCiSection(s){
-  if(s==='a'){ciSectionA=!ciSectionA;document.getElementById('ci-section-a-body').style.display=ciSectionA?'block':'none';document.getElementById('ci-chev-a').classList.toggle('collapsed',!ciSectionA);}
-  else{ciSectionB=!ciSectionB;document.getElementById('ci-section-b-body').style.display=ciSectionB?'block':'none';document.getElementById('ci-chev-b').classList.toggle('collapsed',!ciSectionB);}
-}
 
 // Collapse/expand the hints & tips banner. Identified by a prefix ('co', 'ci', etc.)
 // — each entry screen can have its own. Default is expanded on first visit.
@@ -3825,255 +3764,6 @@ function toggleHintsBanner(prefix){
   if(!body||!chev)return;
   const collapsed=body.classList.toggle('collapsed');
   chev.classList.toggle('collapsed',collapsed);
-}
-function toggleCiCoRows(){
-  ciCoExpanded=!ciCoExpanded;
-  const btn=document.getElementById('ci-co-expand-btn');
-  if(btn){btn.classList.toggle('active',ciCoExpanded);btn.textContent=ciCoExpanded?'▼ Hide rows':'▶ Show rows';}
-  renderCiCoTable();
-}
-function toggleCiFteRows(){
-  ciFteExpanded=!ciFteExpanded;
-  const btn=document.getElementById('ci-fte-expand-btn');
-  if(btn){btn.classList.toggle('active',ciFteExpanded);btn.textContent=ciFteExpanded?'▼ Hide rows':'▶ Show rows';}
-  renderCiFteSummaryTable();
-}
-
-function renderCiBcSummary(){
-  if(!submittedBC){return;}
-  const bc=submittedBC;
-  // Fill header details
-  document.getElementById('ci-rv-ref').textContent=bc.ref;
-  document.getElementById('ci-rv-bcname').textContent=bc.bcName||'—';
-  document.getElementById('ci-rv-from').textContent=`${bc.submittedBy.first} ${bc.submittedBy.last} · ${bc.submittedBy.deptName}`;
-  // Only show the CCs assigned to the current Cost In Contributor — not the whole BC
-  const myCcs=getMyAssignedCcCodes();
-  const myCcList=(bc.cc2Sel||[]).filter(c=>myCcs.has(c.code));
-  const ccBadges=myCcList.map(c=>`<span class="cc-badge-out" style="margin-right:4px;">${c.code}</span>`).join('');
-  document.getElementById('ci-rv-ccs').innerHTML=ccBadges||'<span class="rv-none">No cost centres assigned to you</span>';
-  // Cost Out Contributor(s): only those whose submission covered a CC routed to me.
-  // De-dupe by person id (a contributor may cover multiple of my CCs).
-  const myCcSet=myCcs;
-  const coContribsMap={};
-  Object.values(bc.coSubmissions||{}).forEach(sub=>{
-    if(!sub.person)return;
-    const submittedCcs=(sub.cc2Sel||[]).map(c=>c.code);
-    const intersects=submittedCcs.some(code=>myCcSet.has(code));
-    if(intersects)coContribsMap[sub.person.id]=sub.person;
-  });
-  const coContribsList=Object.values(coContribsMap);
-  const coEl=document.getElementById('ci-rv-co-contribs');
-  if(coEl){
-    coEl.textContent=coContribsList.length
-      ?coContribsList.map(p=>`${p.first} ${p.last} · ${p.dept||p.deptName||''}`).join('; ')
-      :'—';
-  }
-  // Init CI CC sel for each assigned CC if needed
-  myCcList.forEach(cc=>{
-    if(!ciInCcSel[cc.code])ciInCcSel[cc.code]=[];
-    if(!ciCcPaths[cc.code])ciCcPaths[cc.code]=[{name:'Organisation',node:ccTree}];
-  });
-  // Section A (Cost Out & FTEs Out summary) is for the BC Lead only; the Cost In
-  // Contributor sees just the per-CC detail with the Cost In CC picker below.
-  renderCiByCc();
-}
-
-function renderCiCoTable(){
-  const el=document.getElementById('ci-costout-table');
-  if(!el)return; // Section A is hidden for Cost In Contributors — no element to render into
-  if(!submittedBC){el.innerHTML='<span class="rv-none">No data</span>';return;}
-  const bc=submittedBC;
-  // Only consider the CCs assigned to this Cost In Contributor
-  const myCcs=getMyAssignedCcCodes();
-  const allCcs=(bc.cc2Sel||[]).filter(c=>myCcs.has(c.code));
-  if(!allCcs.length){el.innerHTML='<span class="rv-none">No cost centres assigned to you</span>';return;}
-  let allRows=[];
-  allCcs.forEach(cc=>{(bc.ccData[cc.code]||[]).forEach(row=>allRows.push({cc,row}));});
-  const hasSub=fyHasSubRow();
-
-  if(!ciCoExpanded){
-    // Aggregate row across all CO rows
-    const repCur=gca(allCcs[0]?.code||'').cur||'USD';
-    const sym=ciRvCurrency==='local'?currSymbol(repCur):'$';
-    const synth={fy25:new Array(12).fill(0),fy26:new Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-    allCcs.forEach(cc=>{
-      (bc.ccData[cc.code]||[]).forEach(row=>{
-        (row.fy25||[]).forEach((v,mi)=>{synth.fy25[mi]+=Number(v)||0;});
-        (row.fy26||[]).forEach((v,mi)=>{synth.fy26[mi]+=Number(v)||0;});
-        synth.fy27+=Number(row.fy27)||0;
-        synth.fy28+=Number(row.fy28)||0;
-        synth.fy29+=Number(row.fy29)||0;
-      });
-    });
-    if(ciRvCurrency==='local'){
-      const rate=FX[repCur]||1;
-      synth.fy25=synth.fy25.map(v=>Math.round(v/rate));
-      synth.fy26=synth.fy26.map(v=>Math.round(v/rate));
-      synth.fy27=Math.round(synth.fy27/rate);
-      synth.fy28=Math.round(synth.fy28/rate);
-      synth.fy29=Math.round(synth.fy29/rate);
-    }
-    const fmtCost=(v)=>fmtCostM(v);
-    el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-      <tr>${fyHeaderCells()}</tr>
-      ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-    </thead><tbody><tr>${fyDataCells(synth,fmtCost)}</tr></tbody></table></div>`;
-    return;
-  }
-  const thead=`<tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-  allRows.sort((a,b)=>{const da=deptOrder[gca(a.cc.code)?.bcDept]??9,db=deptOrder[gca(b.cc.code)?.bcDept]??9;if(da!==db)return da-db;return a.cc.code.localeCompare(b.cc.code);});
-  const tbody=allRows.map(({cc,row})=>{
-    const cur=gca(cc.code).cur||'USD';
-    const conv={fy25:(row.fy25||[]).map(v=>toLocal(Number(v)||0,cur)),fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)};
-    return`<tr>${roUniIdCells({...row,cc:cc.code},true)}${fyDataCells(conv,fmtCostM)}</tr>`;
-  }).join('');
-  el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
-}
-
-function renderCiFteSummaryTable(){
-  const el=document.getElementById('ci-ftes-table');
-  if(!el)return; // Section A is hidden for Cost In Contributors — no element to render into
-  if(!submittedBC){el.innerHTML='<span class="rv-none">No data</span>';return;}
-  const bc=submittedBC;
-  // Only consider FTE rows belonging to CCs assigned to this Cost In Contributor
-  const myCcs=getMyAssignedCcCodes();
-  const fteRows=(bc.fteData||[]).filter(r=>myCcs.has(r.cc));
-  const hasSub=fyHasSubRow();
-  if(!ciFteExpanded){
-    const synth={fy25:new Array(12).fill(0),fy26:new Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-    fteRows.forEach(row=>{
-      (row.fy25||[]).forEach((v,mi)=>{synth.fy25[mi]+=Number(v)||0;});
-      (row.fy26||[]).forEach((v,mi)=>{synth.fy26[mi]+=Number(v)||0;});
-      synth.fy27+=Number(row.fy27)||0;
-      synth.fy28+=Number(row.fy28)||0;
-      synth.fy29+=Number(row.fy29)||0;
-    });
-el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-      <tr>${fyHeaderCells()}</tr>
-      ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-    </thead><tbody><tr>${fyDataCells(synth,fmtFte)}</tr></tbody></table></div>`;
-    return;
-  }
-  const thead=`<tr>
-    <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-    <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
-    <th class="rv-th-left" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
-    <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
-    <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-    <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>
-    ${fyHeaderCells()}
-  </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-const tbody=fteRows.map(row=>{
-    return`<tr>
-      <td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${row.cc||'—'}</span></td>
-      <td class="rv-td-left rv-sticky rv-sticky-1">${row.loc||'—'}</td>
-      <td class="rv-td-left">${row.city||'—'}</td>
-      <td class="rv-td-left">${row.country||'—'}</td>
-      <td class="rv-td-left">${row.azW||'—'}</td>
-      <td class="rv-td-left">${row.wt||'—'}</td>
-      ${fyDataCells(row,fmtFte)}
-    </tr>`;
-  }).join('');
-  el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
-}
-
-function renderCiByCc(){
-  const wrap=document.getElementById('ci-by-cc-wrap');
-  if(!submittedBC||!wrap)return;
-  const bc=submittedBC;
-  // Only show the CCs assigned to this Cost In Contributor
-  const myCcs=getMyAssignedCcCodes();
-  const allCcs=(bc.cc2Sel||[]).filter(c=>myCcs.has(c.code));
-  if(!allCcs.length){wrap.innerHTML='<span class="rv-none">No cost centres assigned to you for this Boundary Change.</span>';return;}
-  const hasSub=fyHasSubRow();
-
-  const blocksHTML=allCcs.map(cc=>{
-    const attr=gca(cc.code);const cur=attr.cur||'USD';const sym=ciRvCurrency==='local'?currSymbol(cur):'$';
-    const isFull=cc.type==='full';
-    const coRows=bc.ccData[cc.code]||[];
-    const fteRows=(bc.fteData||[]).filter(r=>r.cc===cc.code);
-    const fmtCost=(v)=>fmtCostM(v);
-    // CO source rows (read-only reference) — one flat unified table; values pre-converted to local.
-    const coConv=coRows.map(row=>({...row,
-      fy25:(row.fy25||[]).map(v=>toLocal(Number(v)||0,cur)),
-      fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),
-      fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)}));
-    const coTableHTML=coConv.length
-      ?coViewWrap(`ci1co:${cc.code}`,'Cost out rows',fyTotals(coConv),`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coConv.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCost)}</tr>`).join('')}</tbody></table></div>`)
-      :'<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;">Cost out rows</div><span class="rv-none" style="font-size:12px;">No cost out rows.</span>';
-    const fteThead=`<tr>
-      <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
-      <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>
-      ${fyHeaderCells()}
-    </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-    const fteTbody=fteRows.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>
-      <td class="rv-td-left rv-sticky rv-sticky-0">${row.loc||'—'}</td>
-      <td class="rv-td-left rv-sticky rv-sticky-1">${row.city||'—'}</td>
-      <td class="rv-td-left">${row.country||'—'}</td>
-      <td class="rv-td-left">${row.azW||'—'}</td>
-      <td class="rv-td-left">${row.wt||'—'}</td>
-      ${fyDataCells(row,fmtFte)}
-    </tr>`).join('');
-
-    // Cost In CC picker for this block
-    const inheritedType=cc.type||'partial';
-    const typeBadgeRO=inheritedType==='full'
-      ?'<span class="full-badge" style="margin-left:4px;">Full CC</span>'
-      :'<span class="partial-badge" style="margin-left:4px;">Partial</span>';
-    const ciSel=ciInCcSel[cc.code]||[];
-    const ciSelHTML=ciSel.length
-      ?ciSel.map(c=>`<div class="generic-tag"><span class="cc-badge-out">${c.code}</span>${deptChipFor(c.code)}<span class="tag-name">${c.name}</span>${typeBadgeRO}<button class="tag-remove" onclick="removeCiInCc('${cc.code}','${c.code}')">×</button></div>`).join('')
-      :'';
-
-    return`<div class="rv-cc-block">
-      <div class="rv-cc-block-hdr">
-        <div class="rv-cc-block-title">
-          <span class="cc-badge-out">${cc.code}</span>${deptChipFor(cc.code)}${cc.name}
-          <span style="font-size:11px;color:#888;font-weight:400;">${attr.dept} · ${cur}</span>
-          ${isFull?'<span class="full-badge">Full CC</span>':'<span class="partial-badge">Partial</span>'}
-        </div>
-      </div>
-      <div class="rv-cc-block-body">
-        ${coTableHTML}
-        ${fteRows.length?coViewWrap(`ci1fte:${cc.code}`,'FTEs out rows',fyTotals(fteRows),`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`,fmtFte,'FTEs out total'):'<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out rows</div><span class="rv-none" style="font-size:12px;">No FTE rows.</span>'}
-      </div>
-    </div>`;
-  }).join('');
-
-  // The One side is a SINGLE cost centre that absorbs the entire Many side — one
-  // picker (capped at 1), not a picker per Many CC.
-  const one=getOneCc();
-  const verb=oneWord()==='in'?'receives':'transfers out';
-  const oneTag=one
-    ?`<div class="generic-tag"><span class="cc-badge-out">${one.code}</span>${deptChipFor(one.code)}<span class="tag-name">${one.name}</span><button class="tag-remove" onclick="clrCiInCc()">×</button></div>`
-    :'<span class="sel-empty">Pick one cost centre.</span>';
-  const pickerHTML=`<div class="rv-cc-block" style="border-color:#B5D4F4;">
-    <div class="rv-cc-block-hdr"><div class="rv-cc-block-title">${oneLabel()} cost centre — the single CC that ${verb} the whole transfer</div></div>
-    <div class="rv-cc-block-body">
-      <p style="font-size:12px;color:#666;margin:0 0 10px;">The whole transfer above lands in one cost centre. Pick exactly one — its values are then auto-populated to mirror the total, ready for you to review and adjust.</p>
-      <div class="rv-ci-panel">
-        <div class="method-toggle" style="margin-bottom:10px;">
-          <button class="method-btn active" id="ci-cc-btn-hier-__one__" onclick="swCiCcMethod('__one__','hier')">Browse hierarchy</button>
-          <button class="method-btn" id="ci-cc-btn-manual-__one__" onclick="swCiCcMethod('__one__','manual')">Enter manually</button>
-        </div>
-        <div id="ci-cc-hier-wrap-__one__"><div class="hierarchy-panel"><div class="breadcrumb" id="ci-cc-bc-__one__"></div><ul class="hier-list" id="ci-cc-hl-__one__"></ul></div></div>
-        <div id="ci-cc-manual-wrap-__one__" style="display:none;"><div class="manual-add-row"><div class="field"><label>CC code</label><input type="text" id="ci-cc-mi-__one__" placeholder="e.g. 5110"/></div><button class="btn-add" onclick="addCiCcManual()">+ Add</button></div></div>
-        <div class="sel-tray" style="margin-top:8px;">
-          <div class="sel-tray-header"><span>${one?'1 cost centre selected':'No cost centre selected'}</span></div>
-          <div>${oneTag}</div>
-        </div>
-      </div>
-    </div>
-  </div>`;
-  wrap.innerHTML=blocksHTML+pickerHTML;
-
-  // Wire the single One-CC hierarchy picker.
-  if(!ciCcPaths['__one__'])ciCcPaths['__one__']=[{name:'Organisation',node:ccTree}];
-  renderOneCcHier();
 }
 
 // Hierarchy browser for the single One-side CC (selection marked from getOneCc()).
@@ -4112,35 +3802,8 @@ function swCiCcMethod(ccCode,m){
   document.getElementById(`ci-cc-btn-manual-${ccCode}`).classList.toggle('active',m==='manual');
 }
 
-function renderCiCcHier(outCcCode){
-  const paths=ciCcPaths[outCcCode];if(!paths)return;
-  const cur=paths[paths.length-1].node;
-  const inheritedType=(submittedBC?.cc2Sel||[]).find(x=>x.code===outCcCode)?.type||'partial';
-  const bcEl=document.getElementById(`ci-cc-bc-${outCcCode}`);
-  if(bcEl)bcEl.innerHTML=paths.map((p,i)=>i<paths.length-1?`<span class="bc-link" onclick="navCiCcHier('${outCcCode}',${i})">${p.name}</span><span class="sep"> › </span>`:`<span class="current">${p.name}</span>`).join('');
-  const list=document.getElementById(`ci-cc-hl-${outCcCode}`);if(!list)return;
-  list.innerHTML='';
-  (cur.children||[]).forEach(child=>{
-    const li=document.createElement('li');
-    const sel=ciInCcSel[outCcCode]||[];
-    const s=child.leaf&&sel.some(x=>x.code===child.code);
-    li.className='hier-item'+(child.leaf?' leaf-item':'')+(s?' sel-row':'');
-    if(child.leaf){
-      li.innerHTML=`
-        <div class="hier-item-left" style="cursor:pointer;" onclick="toggleCiInCc('${outCcCode}','${child.code}','${child.name}',event)">
-          <div class="hier-icon ${s?'cc-chk':'cc'}">CC</div>
-          <div><div style="font-size:12px;display:flex;align-items:center;gap:6px;">${child.name} ${deptChipFor(child.code)}</div><div class="hier-code">${child.code}</div></div>
-        </div>
-        <div class="hier-checkbox ${s?'checked':''}" onclick="toggleCiInCc('${outCcCode}','${child.code}','${child.name}',event)"></div>`;
-    } else {
-      li.innerHTML=`<div class="hier-item-left"><div class="hier-icon folder">▶</div><div><div style="font-size:12px;">${child.name}</div>${child.code?`<div class="hier-code">${child.code}</div>`:''}</div></div><span class="hier-arrow">›</span>`;
-      li.onclick=()=>{ciCcPaths[outCcCode].push({name:child.name,node:child});renderCiCcHier(outCcCode);};
-    }
-    list.appendChild(li);
-  });
-}
 
-function navCiCcHier(outCcCode,i){ciCcPaths[outCcCode]=ciCcPaths[outCcCode].slice(0,i+1);if(outCcCode==='__one__')renderOneCcHier();else renderCiCcHier(outCcCode);}
+function navCiCcHier(outCcCode,i){ciCcPaths[outCcCode]=ciCcPaths[outCcCode].slice(0,i+1);renderOneCcHier();}
 
 // The One side is exactly ONE cost centre that absorbs the entire Many side. The
 // chosen CC is mirrored against every Many CC assigned to the contributor, so it
@@ -4167,7 +3830,6 @@ function toggleCiInCc(outCcCode,code,name,e){
   if(e)e.stopPropagation();
   setOneCc(code,name);
 }
-function removeCiInCc(outCcCode,code){const o=getOneCc();if(o)setOneCc(o.code,o.name);/* toggles off */}
 function clrCiInCc(){const o=getOneCc();if(o)setOneCc(o.code,o.name);}
 function addCiCcManual(){
   const inp=document.getElementById('ci-cc-mi-__one__');const code=inp?.value.trim();
@@ -4176,49 +3838,12 @@ function addCiCcManual(){
   setOneCc(code,'Manual entry');
 }
 
-function renderCiCcTray(outCcCode){
-  const sel=ciInCcSel[outCcCode]||[];
-  const inheritedType=(submittedBC?.cc2Sel||[]).find(x=>x.code===outCcCode)?.type||'partial';
-  const typeBadge=inheritedType==='full'
-    ?'<span class="full-badge" style="margin-left:4px;">Full CC</span>'
-    :'<span class="partial-badge" style="margin-left:4px;">Partial</span>';
-  const cnt=document.getElementById(`ci-cc-cnt-${outCcCode}`);
-  const tags=document.getElementById(`ci-cc-tags-${outCcCode}`);
-  const hdr=cnt?.parentElement;
-  if(cnt)cnt.textContent=sel.length?`${sel.length} cost centre${sel.length!==1?'s':''} selected`:'No cost centres selected';
-  if(hdr){let clr=hdr.querySelector('.sel-tray-clear');if(!clr&&sel.length){clr=document.createElement('button');clr.className='sel-tray-clear';clr.textContent='Remove all';clr.onclick=()=>clrCiInCc(outCcCode);hdr.appendChild(clr);}else if(clr&&!sel.length){clr.remove();}}
-  if(tags)tags.innerHTML=sel.length
-    ?sel.map(c=>`<div class="generic-tag"><span class="cc-badge-out">${c.code}</span>${deptChipFor(c.code)}<span class="tag-name">${c.name}</span>${typeBadge}<button class="tag-remove" onclick="removeCiInCc('${outCcCode}','${c.code}')">×</button></div>`).join('')
-    :'<span class="sel-empty">Cost centres you select will appear here.</span>';
-}
 
 /* ── Cost In Step 2: data entry ── */
 function ciSi(step){
   const CI_SL=['Cost','FTEs','Summary'];
   return'<div class="step-indicator">'+CI_SL.map((l,i)=>{const d=i<step,ac=i===step;return`<div class="step ${d?'done':ac?'active':'inactive'}"><div class="step-num">${d?'✓':i+1}</div><span class="step-label">${l}</span></div>`+(i<CI_SL.length-1?'<div class="step-connector"></div>':'');}).join('')+'</div>';}
 
-function getTotalCiCcCount(){
-  return Object.values(ciInCcSel).reduce((s,arr)=>s+arr.length,0);
-}
-
-function getSingleCiCc(){
-  // Returns the single {outCcCode, inCc} ONLY if:
-  //  - exactly one CI CC is selected for the current user, AND
-  //  - this is the only Cost In person assigned to the entire BC
-  // Otherwise returns null so the editable multi-CC view is used.
-  const entries=[];
-  Object.entries(ciInCcSel).forEach(([outCcCode,arr])=>arr.forEach(inCc=>entries.push({outCcCode,inCc})));
-  if(entries.length!==1)return null;
-
-  // Check the BC overall: are there other Cost In persons assigned?
-  const u=currentUser();
-  const allPersons=Object.values(submittedBC?.costInPersons||{}).flat();
-  const uniqueIds=new Set(allPersons.map(p=>p.id));
-  uniqueIds.add(u.id); // include the current user
-  if(uniqueIds.size>1)return null;
-
-  return entries[0];
-}
 
 /* One-side summary: ONE flat table per mode (cost / FTEs) with a row per (Many) cost
    centre showing its FY totals, each row expandable to the full detail, plus a
@@ -4358,580 +3983,6 @@ function renderCiSummaryScreen(){
   if(!one){if(!ciCcPaths['__one__'])ciCcPaths['__one__']=[{name:'Organisation',node:ccTree}];renderOneCcHier();}
 }
 
-function renderCiStep2(){
-  const single=getSingleCiCc();
-  const card=document.querySelector('#screen-ci-step2 .card');
-  if(!card)return;
-
-  if(single){
-    // Single CI CC — show mirrored Section B layout with negated values, read-only
-    renderCiStep2Single(single,card);
-  } else {
-    // Multiple CI CCs — show editable entry table (existing behaviour)
-    renderCiStep2Multi(card);
-  }
-}
-
-function renderCiStep2Single(single,card){
-  const {outCcCode,inCc}=single;
-  const bc=submittedBC;
-  const coRows=bc.ccData[outCcCode]||[];
-  const fteRows=(bc.fteData||[]).filter(r=>r.cc===outCcCode);
-  const attr=gca(outCcCode);
-  const inAttr=gca(inCc.code);
-  const cur=attr.cur||'USD';
-
-  // Cost In mirrors Cost Out with the SAME (positive) signage.
-  // Net balance later computes Cost Out − Cost In.
-  const mirrorRow=r=>{
-    const m={...r};
-    ['fy25','fy26'].forEach(fk=>{m[fk]=[...(r[fk]||[])].map(v=>Number(v)||0);});
-    ['fy27','fy28','fy29'].forEach(fk=>{m[fk]=Number(r[fk])||0;});
-    return m;
-  };
-  ciData=coRows.map(r=>({...mirrorRow(r),cc:inCc.code,sourceCc:outCcCode}));
-
-  const hasSub=fyHasSubRow();
-  const coThead=`<tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-  const coTbody=ciData.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('');
-
-  card.innerHTML=`
-    <div class="card-title">FTEs</div>
-    <div id="ci-si-step2"></div>
-    <div id="ci-cc-agg-cost"></div>
-    <div style="padding:10px 14px;background:#EAF3DE;border:0.5px solid #A3CC72;border-radius:8px;font-size:12px;color:#27500A;margin-bottom:16px;">
-      One Cost In cost centre selected — values are auto-populated from the Cost Out data with reversed signs.
-    </div>
-    <div class="rv-section">
-      <div class="rv-section-hdr">
-        <div class="rv-section-title">
-          Cost In — <span class="cc-badge-out">${inCc.code}</span> ${deptChipFor(inCc.code)} ${inCc.name}
-          <span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;">${inAttr.dept||'—'}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:11px;color:#666;">← mirrors Cost Out <span class="cc-badge-out">${outCcCode}</span></span>
-          <span class="unit-pill">USD ($m)</span>
-        </div>
-      </div>
-      <div class="rv-table-wrap"><table class="rv-table"><thead>${coThead}</thead><tbody>${coTbody}</tbody></table></div>
-    </div>
-    <div class="btn-row" style="margin-top:14px;">
-      <button class="btn btn-secondary" onclick="go('ci-step1')">← Back</button>
-      <button class="btn btn-secondary" onclick="allowCiEdit()">Edit values</button>
-      <button class="btn btn-primary" onclick="go('ci-step3')">FTEs in →</button>
-    </div>`;
-  const siEl=document.getElementById('ci-si-step2');if(siEl)siEl.innerHTML=ciSi(1);
-  // Preload ciFteData so step 3 single view can use it (mirror, positive)
-  ciFteData=fteRows.map(r=>({...mirrorRow(r),cc:inCc.code,sourceCc:outCcCode}));
-  renderCiCcAggregate('cost');
-}
-
-function allowCiEdit(){
-  const card=document.querySelector('#screen-ci-step2 .card');
-  if(card)renderCiStep2Multi(card);
-}
-
-function renderCiStep2Multi(card){
-  // Fingerprint the current CI CC selection — rebuild data when it changes
-  const fp=JSON.stringify(Object.entries(ciInCcSel).map(([k,arr])=>[k,arr.map(x=>x.code).sort()]).sort());
-  if(ciData._fp!==fp||!ciData.length){
-    ciData=[];ciData._fp=fp;
-    Object.entries(ciInCcSel).forEach(([outCcCode,inCcs])=>{
-      const coRows=(submittedBC?.ccData?.[outCcCode])||[];
-      inCcs.forEach(inCc=>{
-        coRows.forEach(r=>{
-          const fy25=Array.isArray(r.fy25)?r.fy25.map(v=>Number(v)||0):Array(12).fill(0);
-          const fy26=Array.isArray(r.fy26)?r.fy26.map(v=>Number(v)||0):Array(12).fill(0);
-          ciData.push({
-            gl:r.gl,gln:r.gln,prod:r.prod,
-            bcDept:r.bcDept,product:r.product,productName:r.productName,isNonBrand:r.isNonBrand,
-            taCode:r.taCode,taName:r.taName,project:r.project,projectName:r.projectName,uv:r.uv,
-            cc:inCc.code,ccName:inCc.name,
-            sourceCc:outCcCode,
-            fy25,fy26,
-            fy27:Number(r.fy27)||0,fy28:Number(r.fy28)||0,fy29:Number(r.fy29)||0,
-          });
-        });
-      });
-    });
-  }
-  if(ciFteData._fp!==fp||!ciFteData.length){
-    ciFteData=[];ciFteData._fp=fp;
-    Object.entries(ciInCcSel).forEach(([outCcCode,inCcs])=>{
-      const fteRows=(submittedBC?.fteData||[]).filter(r=>r.cc===outCcCode);
-      inCcs.forEach(inCc=>{
-        fteRows.forEach(r=>{
-          const fy25=Array.isArray(r.fy25)?r.fy25.map(v=>Number(v)||0):Array(12).fill(0);
-          const fy26=Array.isArray(r.fy26)?r.fy26.map(v=>Number(v)||0):Array(12).fill(0);
-          ciFteData.push({
-            cc:inCc.code,loc:r.loc,city:r.city,country:r.country,azW:r.azW,wt:r.wt,
-            sourceCc:outCcCode,
-            fy25,fy26,
-            fy27:Number(r.fy27)||0,fy28:Number(r.fy28)||0,fy29:Number(r.fy29)||0,
-          });
-        });
-      });
-    });
-  }
-
-  card.innerHTML=`
-    <div class="card-title">FTEs</div>
-    <div id="ci-si-step2"></div>
-    <p style="font-size:13px;color:#666;margin-bottom:14px;">Review the Cost Out summary below, then enter your Cost In values. The master data (cost centre, GL account, product) is fixed — you can only edit the numeric values.</p>
-
-    <div id="ci-cc-agg-cost"></div>
-
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <span style="font-size:13px;font-weight:500;">Cost In values</span>
-      <span class="unit-pill" style="margin-left:auto;">USD ($m)</span>
-    </div>
-    <div class="toggle-bar">
-      <div style="margin-left:auto;display:flex;gap:8px;">
-        <button class="toggle-btn" onclick="downloadCiCsv()">⬇ Download CSV</button>
-        <label class="toggle-btn" style="cursor:pointer;margin:0;">⬆ Upload CSV<input type="file" id="ci-csv-upload" accept=".csv" style="display:none;" onchange="uploadCiCsv(event)"/></label>
-      </div>
-    </div>
-    <div id="ci-csv-feedback" style="display:none;font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div>
-    <div id="ci-table-wrap"></div>
-
-    <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="go('ci-step1')">← Back</button><button class="btn btn-primary" onclick="go('ci-step3')">FTEs in →</button></div>`;
-  const siEl=document.getElementById('ci-si-step2');if(siEl)siEl.innerHTML=ciSi(1);
-  renderCiCcAggregate('cost');
-  renderCiTable();
-}
-
-/* ── CI Step 3: FTEs In ── */
-function renderCiStep3(){
-  const card=document.querySelector('#screen-ci-step3 .card');
-  if(!card)return;
-  const single=getSingleCiCc();
-  if(single){
-    renderCiStep3Single(single,card);
-  } else {
-    renderCiStep3Multi(card);
-  }
-}
-
-function renderCiStep3Single(single,card){
-  const {outCcCode,inCc}=single;
-  const bc=submittedBC;
-  const inAttr=gca(inCc.code);
-
-  const hasSub=fyHasSubRow();
-  const fmtFteCi=(v)=>{const neg=v<0;const disp=fmtFte(Math.abs(v));return neg?'<span style="color:#A32D2D;">('+disp+')</span>':disp;};
-
-  const fteThead=`<tr>
-    <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
-    <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
-    <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
-    <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-    <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>
-    ${fyHeaderCells()}
-  </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-  const fteTbody=ciFteData.map((row,gi)=>{
-    return`<tr${gi%2===1?' style="background:#fafaf8;"':''}>
-      <td class="rv-td-left rv-sticky rv-sticky-0">${row.loc||'—'}</td>
-      <td class="rv-td-left rv-sticky rv-sticky-1">${row.city||'—'}</td>
-      <td class="rv-td-left">${row.country||'—'}</td>
-      <td class="rv-td-left">${row.azW||'—'}</td>
-      <td class="rv-td-left">${row.wt||'—'}</td>
-      ${fyDataCells(row,fmtFteCi)}
-    </tr>`;
-  }).join('');
-
-  card.innerHTML=`
-    <div class="card-title">Summary</div>
-    <div id="ci-si-step3"></div>
-    <div id="ci-cc-agg-fte"></div>
-    <div style="padding:10px 14px;background:#EAF3DE;border:0.5px solid #A3CC72;border-radius:8px;font-size:12px;color:#27500A;margin-bottom:16px;">
-      One Cost In cost centre selected — FTE values are auto-populated from the Cost Out FTE data with reversed signs.
-    </div>
-    <div class="rv-section">
-      <div class="rv-section-hdr">
-        <div class="rv-section-title">FTEs In — <span class="cc-badge-out">${inCc.code}</span> ${deptChipFor(inCc.code)} ${inCc.name}
-          <span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;">${inAttr.dept||'—'}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:11px;color:#666;">← mirrors Cost Out <span class="cc-badge-out">${outCcCode}</span></span>
-          <span class="unit-pill">FTEs (headcount)</span>
-        </div>
-      </div>
-      ${ciFteData.length?`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`:'<span class="rv-none" style="font-size:12px;">No FTE rows.</span>'}
-    </div>
-    <div class="btn-row" style="margin-top:14px;">
-      <button class="btn btn-secondary" onclick="go('ci-step2')">← Back</button>
-      <button class="btn btn-secondary" onclick="allowCiEditFte()">Edit values</button>
-      <button class="btn btn-primary" onclick="go('ci-step4')">Review →</button>
-    </div>`;
-  const siEl=document.getElementById('ci-si-step3');if(siEl)siEl.innerHTML=ciSi(2);
-  renderCiCcAggregate('fte');
-}
-
-function allowCiEditFte(){
-  const card=document.querySelector('#screen-ci-step3 .card');
-  if(card){renderCiStep3Multi(card);applyDirLabels();}
-}
-
-function renderCiStep3Multi(card){
-  // Make sure FTE data is initialised (it should already be — done in step2 multi)
-  const fp=JSON.stringify(Object.entries(ciInCcSel).map(([k,arr])=>[k,arr.map(x=>x.code).sort()]).sort());
-  if(ciFteData._fp!==fp||!ciFteData.length){
-    ciFteData=[];ciFteData._fp=fp;
-    Object.entries(ciInCcSel).forEach(([outCcCode,inCcs])=>{
-      const fteRows=(submittedBC?.fteData||[]).filter(r=>r.cc===outCcCode);
-      inCcs.forEach(inCc=>{
-        fteRows.forEach(r=>{
-          const fy25=Array.isArray(r.fy25)?r.fy25.map(v=>Number(v)||0):Array(12).fill(0);
-          const fy26=Array.isArray(r.fy26)?r.fy26.map(v=>Number(v)||0):Array(12).fill(0);
-          ciFteData.push({
-            cc:inCc.code,loc:r.loc,city:r.city,country:r.country,azW:r.azW,wt:r.wt,
-            sourceCc:outCcCode,
-            fy25,fy26,
-            fy27:Number(r.fy27)||0,fy28:Number(r.fy28)||0,fy29:Number(r.fy29)||0,
-          });
-        });
-      });
-    });
-  }
-
-  card.innerHTML=`
-    <div class="card-title">Summary</div>
-    <div id="ci-si-step3"></div>
-    <p style="font-size:13px;color:#666;margin-bottom:14px;">Enter the FTE values for each cost centre. Master data (cost centre, location, workforce, worker type) is fixed — only the numeric values are editable.</p>
-
-    <div id="ci-cc-agg-fte"></div>
-
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <span style="font-size:13px;font-weight:500;">FTEs In values</span>
-      <span class="unit-pill" style="margin-left:auto;">FTEs (headcount)</span>
-    </div>
-    <div class="toggle-bar">
-      <div style="margin-left:auto;display:flex;gap:8px;">
-        <button class="toggle-btn" onclick="downloadCiFteCsv()">⬇ Download CSV</button>
-        <label class="toggle-btn" style="cursor:pointer;margin:0;">⬆ Upload CSV<input type="file" id="ci-fte-csv-upload" accept=".csv" style="display:none;" onchange="uploadCiFteCsv(event)"/></label>
-      </div>
-    </div>
-    <div id="ci-fte-csv-feedback" style="display:none;font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div>
-    <div id="ci-fte-table-wrap"></div>
-
-    <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="go('ci-step2')">← Back</button><button class="btn btn-primary" onclick="go('ci-step4')">Review →</button></div>`;
-  const siEl=document.getElementById('ci-si-step3');if(siEl)siEl.innerHTML=ciSi(2);
-  renderCiCcAggregate('fte');
-  renderCiFteTable();
-}
-
-function renderCiTable(){
-  const wrap=document.getElementById('ci-table-wrap');
-  if(!wrap)return;
-  const exp26=ciExp.fy26,exp25=ciExp.fy25;
-  const moTh=MO.map(m=>`<th class="th-mo">${m}</th>`).join('');
-  const hasSubRow=exp25||exp26;
-
-  const thead=`<tr>
-    <th class="th-left sticky sticky-0"${hasSubRow?' rowspan="2"':''} style="min-width:110px;">Cost centre</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:60px;">Dept</th>
-    <th class="th-left sticky sticky-1"${hasSubRow?' rowspan="2"':''} style="min-width:110px;left:170px;">GL account</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:130px;">Product</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:140px;">Project</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:56px;">UV</th>
-    <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiTable();">FY25 ${exp25?'▼':'▶'}</th>
-    <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiTable();">FY26 ${exp26?'▼':'▶'}</th>
-    <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
-    <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
-    <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
-  </tr>
-  ${hasSubRow?`<tr>
-    ${exp25?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
-    ${exp26?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
-  </tr>`:''}`;
-
-  const na='<td class="td-left cod-na">N/A</td>';
-  const uniCells=(row)=>{
-    const isRnd=!!(row.project||row.projectName||row.uv);
-    const isSmm=!isRnd&&!!(row.product||row.productName);
-    return (isSmm?`<td class="td-left">${row.productName||row.prod||'—'}</td>`:na)
-      +(isRnd?`<td class="td-left">${row.projectName||row.prod||'—'}</td>`:na)
-      +(isRnd?`<td class="td-left">${row.uv||'—'}</td>`:na);
-  };
-
-  const tbody=ciData.map((row,ri)=>{
-    const rc=ri%2===1?'alt-row':'';
-    const t26=rowTotal(row.fy26),t25=rowTotal(row.fy25);
-    const mo26=exp26?MO.map((_,mi)=>`<td><input class="num-input" id="ci-inp-${ri}-fy26-${mi}" value="${row.fy26[mi]?fmtM(row.fy26[mi]):''}" placeholder="0.00"/></td>`).join(''):'';
-    const mo25=exp25?MO.map((_,mi)=>`<td><input class="num-input" id="ci-inp-${ri}-fy25-${mi}" value="${row.fy25[mi]?fmtM(row.fy25[mi]):''}" placeholder="0.00"/></td>`).join(''):'';
-    return`<tr id="ci-tr-${ri}" class="${rc}">
-      <td class="td-left sticky sticky-0"><span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${row.cc||'—'}</span></td>
-      <td class="td-left">${deptChipFor(row.cc)}</td>
-      <td class="td-left sticky sticky-1" style="left:170px;"><span class="gl-badge">${row.gl||'—'}</span> ${row.gln||''}</td>
-      ${uniCells(row)}
-      <td class="td-total" id="ci-tot-${ri}-fy25">${fmtM(t25)}</td>${mo25}
-      <td class="td-total" id="ci-tot-${ri}-fy26">${fmtM(t26)}</td>${mo26}
-      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy27" value="${row.fy27?fmtM(row.fy27):''}" placeholder="0.00"/></td>
-      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy28" value="${row.fy28?fmtM(row.fy28):''}" placeholder="0.00"/></td>
-      <td class="td-future"><input class="num-input" id="ci-inp-${ri}-fy29" value="${row.fy29?fmtM(row.fy29):''}" placeholder="0.00"/></td>
-    </tr>`;
-  }).join('');
-
-  wrap.innerHTML=`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
-
-  // Inputs are in USD millions; scale back to dollars (round to whole $) for balance math.
-  const toUsd=raw=>Math.round((Number(String(raw).replace(/,/g,''))||0)*1e6);
-  ciData.forEach((_,ri)=>{
-    ['fy26','fy25'].forEach(fk=>{MO.forEach((_,mi)=>{
-      const el=document.getElementById(`ci-inp-${ri}-${fk}-${mi}`);
-      if(el)el.addEventListener('input',()=>{ciData[ri][fk][mi]=toUsd(el.value);
-        const tot=rowTotal(ciData[ri][fk]);const te=document.getElementById(`ci-tot-${ri}-${fk}`);if(te)te.textContent=fmtM(tot);renderCiCcAggregate('cost');});
-    });});
-    ['fy27','fy28','fy29'].forEach(fk=>{const el=document.getElementById(`ci-inp-${ri}-${fk}`);
-      if(el)el.addEventListener('input',()=>{ciData[ri][fk]=toUsd(el.value);renderCiCcAggregate('cost');});});
-  });
-}
-
-function toggleCiAll(checked){ciData.forEach((_,ri)=>{checked?ciSel.add(ri):ciSel.delete(ri);const cb=document.getElementById(`ci-chk-${ri}`);if(cb)cb.checked=checked;const tr=document.getElementById(`ci-tr-${ri}`);if(tr)tr.classList.toggle('row-selected',checked);});document.getElementById('ci-copy-btn').disabled=!checked;document.getElementById('ci-remove-btn').disabled=!checked;}
-function toggleCiRow(ri,checked){checked?ciSel.add(ri):ciSel.delete(ri);const tr=document.getElementById(`ci-tr-${ri}`);if(tr)tr.classList.toggle('row-selected',checked);document.getElementById('ci-copy-btn').disabled=ciSel.size===0;document.getElementById('ci-remove-btn').disabled=ciSel.size===0;}
-function addBlankCiRow(){ciData.push({gl:'',gln:'New row',prod:'',fy26:Array(12).fill(0),fy25:Array(12).fill(0),fy27:0,fy28:0,fy29:0});renderCiTable();}
-function deleteCiRows(){ciData=ciData.filter((_,ri)=>!ciSel.has(ri));ciSel.clear();renderCiTable();}
-function copyCiRows(){const ins=[];for(let ri=ciData.length-1;ri>=0;ri--){if(ciSel.has(ri)){const r=ciData[ri];ins.push({ri,copy:{...r,fy26:[...r.fy26],fy25:[...r.fy25]}});}}ins.forEach(({ri,copy})=>ciData.splice(ri+1,0,copy));ciSel.clear();renderCiTable();}
-
-function renderCiFteTable(){
-  const wrap=document.getElementById('ci-fte-table-wrap');if(!wrap)return;
-  const exp26=ciExp.fy26,exp25=ciExp.fy25;
-  const moTh=MO.map(m=>`<th class="th-mo">${m}</th>`).join('');
-  const hasSubRow=exp25||exp26;
-
-  const thead=`<tr>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:110px;">Cost centre</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:60px;">Dept</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:90px;">Location</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:70px;">City</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:60px;">Country</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:120px;">AZ Workforce</th>
-    <th class="th-left"${hasSubRow?' rowspan="2"':''} style="min-width:90px;">Worker type</th>
-    <th class="th-fy" colspan="${exp25?13:1}" onclick="ciExp.fy25=!ciExp.fy25;renderCiFteTable();">FY25 ${exp25?'▼':'▶'}</th>
-    <th class="th-fy" colspan="${exp26?13:1}" onclick="ciExp.fy26=!ciExp.fy26;renderCiFteTable();">FY26 ${exp26?'▼':'▶'}</th>
-    <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
-    <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
-    <th class="th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
-  </tr>
-  ${hasSubRow?`<tr>
-    ${exp25?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
-    ${exp26?`<th class="th-mo th-total-sub">Total</th>${moTh}`:''}
-  </tr>`:''}`;
-
-  const tbody=ciFteData.map((row,ri)=>{
-    const rc=ri%2===1?'alt-row':'';
-    const t26=rowTotal(row.fy26),t25=rowTotal(row.fy25);
-    const mo25=exp25?MO.map((_,mi)=>`<td><input class="num-input" id="ci-fte-inp-${ri}-fy25-${mi}" value="${row.fy25[mi]?fmtFte(row.fy25[mi]):''}" placeholder="0"/></td>`).join(''):'';
-    const mo26=exp26?MO.map((_,mi)=>`<td><input class="num-input" id="ci-fte-inp-${ri}-fy26-${mi}" value="${row.fy26[mi]?fmtFte(row.fy26[mi]):''}" placeholder="0"/></td>`).join(''):'';
-    return`<tr id="ci-fte-tr-${ri}" class="${rc}">
-      <td class="td-left"><span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${row.cc||'—'}</span></td>
-      <td class="td-left">${deptChipFor(row.cc)}</td>
-      <td class="td-left">${row.loc||'—'}</td>
-      <td class="td-left">${row.city||'—'}</td>
-      <td class="td-left">${row.country||'—'}</td>
-      <td class="td-left">${row.azW||'—'}</td>
-      <td class="td-left">${row.wt||'—'}</td>
-      <td class="td-total" id="ci-fte-tot-${ri}-fy25">${fmtFte(t25)}</td>${mo25}
-      <td class="td-total" id="ci-fte-tot-${ri}-fy26">${fmtFte(t26)}</td>${mo26}
-      <td class="td-future"><input class="num-input" id="ci-fte-inp-${ri}-fy27" value="${row.fy27?fmtFte(row.fy27):''}" placeholder="0"/></td>
-      <td class="td-future"><input class="num-input" id="ci-fte-inp-${ri}-fy28" value="${row.fy28?fmtFte(row.fy28):''}" placeholder="0"/></td>
-      <td class="td-future"><input class="num-input" id="ci-fte-inp-${ri}-fy29" value="${row.fy29?fmtFte(row.fy29):''}" placeholder="0"/></td>
-    </tr>`;
-  }).join('');
-  wrap.innerHTML=`<div class="co-table-wrap"><table class="co-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
-
-  ciFteData.forEach((_,ri)=>{
-    ['fy26','fy25'].forEach(fk=>{MO.forEach((_,mi)=>{
-      const el=document.getElementById(`ci-fte-inp-${ri}-${fk}-${mi}`);
-      if(el)el.addEventListener('input',()=>{ciFteData[ri][fk][mi]=el.value===''?0:Number(el.value.replace(/,/g,''));
-        const tot=rowTotal(ciFteData[ri][fk]);const te=document.getElementById(`ci-fte-tot-${ri}-${fk}`);if(te)te.textContent=fmt(tot);renderCiCcAggregate('fte');});
-    });});
-    ['fy27','fy28','fy29'].forEach(fk=>{const el=document.getElementById(`ci-fte-inp-${ri}-${fk}`);
-      if(el)el.addEventListener('input',()=>{ciFteData[ri][fk]=el.value===''?0:Number(el.value.replace(/,/g,''));renderCiCcAggregate('fte');});});
-  });
-}
-function toggleCiFteRow(ri,checked){checked?ciFteSel.add(ri):ciFteSel.delete(ri);const tr=document.getElementById(`ci-fte-tr-${ri}`);if(tr)tr.classList.toggle('row-selected',checked);}
-function addBlankCiFteRow(){const locs=getFteSimLocs(ciActiveCcCode);const f=locs[0]||{loc:'',city:'',country:''};ciFteData.push({cc:ciActiveCcCode,loc:f.loc,city:f.city,country:f.country,azW:'Employee - Regular',wt:'Lab',fy26:Array(12).fill(0),fy25:Array(12).fill(0),fy27:0,fy28:0,fy29:0});renderCiFteTable();}
-function deleteCiFteRows(){ciFteData=ciFteData.filter((_,ri)=>!ciFteSel.has(ri));ciFteSel.clear();renderCiFteTable();}
-function copyCiFteRows(){const ins=[];for(let ri=ciFteData.length-1;ri>=0;ri--){if(ciFteSel.has(ri)){const r=ciFteData[ri];ins.push({ri,copy:{...r,fy26:[...r.fy26],fy25:[...r.fy25]}});}}ins.forEach(({ri,copy})=>ciFteData.splice(ri+1,0,copy));ciFteSel.clear();renderCiFteTable();}
-function onCiFteLocChange(ri,locCode){const locs=getFteSimLocs(ciActiveCcCode);const f=locs.find(l=>l.loc===locCode)||{loc:locCode,city:'—',country:'—'};ciFteData[ri].loc=f.loc;ciFteData[ri].city=f.city;ciFteData[ri].country=f.country;renderCiFteTable();}
-
-function showCiCsvFeedback(msg,kind){
-  const el=document.getElementById('ci-csv-feedback');if(!el)return;
-  el.textContent=msg;el.style.display='block';
-  el.style.background=kind==='ok'?'#EAF3DE':kind==='warn'?'#FAEEDA':'#FCEBEB';
-  el.style.color=kind==='ok'?'#27500A':kind==='warn'?'#BA7517':'#A32D2D';
-  setTimeout(()=>{if(el)el.style.display='none';},5000);
-}
-function showCiFteCsvFeedback(msg,kind){
-  const el=document.getElementById('ci-fte-csv-feedback');if(!el)return;
-  el.textContent=msg;el.style.display='block';
-  el.style.background=kind==='ok'?'#EAF3DE':kind==='warn'?'#FAEEDA':'#FCEBEB';
-  el.style.color=kind==='ok'?'#27500A':kind==='warn'?'#BA7517':'#A32D2D';
-  setTimeout(()=>{if(el)el.style.display='none';},5000);
-}
-
-function downloadCiCsv(){
-  if(!ciData.length){showCiCsvFeedback('No Cost In rows.','warn');return;}
-  const headers=['Cost centre','GL account','GL account name','Product',
-    'FY25 Total',...MO.map(m=>`FY25 ${m}`),
-    'FY26 Total',...MO.map(m=>`FY26 ${m}`),
-    'FY27','FY28','FY29'];
-  const rows=[headers.map(escCsv).join(',')];
-  ciData.forEach(row=>{
-    const t25=rowTotal(row.fy25),t26=rowTotal(row.fy26);
-    rows.push([row.cc,row.gl,row.gln,row.prod,
-      t25,...row.fy25,
-      t26,...row.fy26,
-      row.fy27,row.fy28,row.fy29
-    ].map(escCsv).join(','));
-  });
-  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='cost-in-values.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function uploadCiCsv(ev){
-  const file=ev.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
-      if(lines.length<2){showCiCsvFeedback('CSV appears to be empty.','warn');return;}
-      const headers=parseCsvLine(lines[0]);
-      const ci={cc:idx(headers,'Cost centre'),gl:idx(headers,'GL account'),prod:idx(headers,'Product'),
-        fy27:idx(headers,'FY27'),fy28:idx(headers,'FY28'),fy29:idx(headers,'FY29')};
-      const moIdx26=MO.map(m=>idx(headers,`FY26 ${m}`));
-      const moIdx25=MO.map(m=>idx(headers,`FY25 ${m}`));
-      if(ci.cc<0||ci.gl<0){showCiCsvFeedback('CSV is missing required columns (Cost centre, GL account).','error');return;}
-      let updated=0,skipped=0;
-      lines.slice(1).forEach(line=>{
-        const cols=parseCsvLine(line);
-        const code=cols[ci.cc]?.trim();
-        const gl=cols[ci.gl]?.trim();
-        const prod=cols[ci.prod>=0?ci.prod:0]?.trim();
-        if(!code||!gl)return;
-        const row=ciData.find(r=>r.cc===code&&r.gl===gl&&(!prod||r.prod===prod));
-        if(!row){skipped++;return;}
-        moIdx26.forEach((mi,i)=>{if(mi>=0&&cols[mi]!==undefined)row.fy26[i]=num(cols[mi]);});
-        moIdx25.forEach((mi,i)=>{if(mi>=0&&cols[mi]!==undefined)row.fy25[i]=num(cols[mi]);});
-        if(ci.fy27>=0&&cols[ci.fy27]!==undefined)row.fy27=num(cols[ci.fy27]);
-        if(ci.fy28>=0&&cols[ci.fy28]!==undefined)row.fy28=num(cols[ci.fy28]);
-        if(ci.fy29>=0&&cols[ci.fy29]!==undefined)row.fy29=num(cols[ci.fy29]);
-        updated++;
-      });
-      renderCiTable();
-      const msg=skipped?`Updated ${updated} row${updated!==1?'s':''} — ${skipped} row${skipped!==1?'s':''} not matched.`:`Updated ${updated} row${updated!==1?'s':''} successfully.`;
-      showCiCsvFeedback(msg,skipped?'warn':'ok');
-    }catch(err){showCiCsvFeedback('Could not parse CSV: '+err.message,'error');}
-    ev.target.value='';
-  };
-  reader.readAsText(file);
-}
-
-function downloadCiFteCsv(){
-  if(!ciFteData.length){showCiFteCsvFeedback('No FTE rows.','warn');return;}
-  const headers=['Cost centre','Location','City','Country','AZ Workforce','Worker type',
-    'FY25 Total',...MO.map(m=>`FY25 ${m}`),
-    'FY26 Total',...MO.map(m=>`FY26 ${m}`),
-    'FY27','FY28','FY29'];
-  const rows=[headers.map(escCsv).join(',')];
-  ciFteData.forEach(row=>{
-    const t25=rowTotal(row.fy25),t26=rowTotal(row.fy26);
-    rows.push([row.cc,row.loc,row.city,row.country,row.azW,row.wt,
-      t25,...row.fy25,t26,...row.fy26,
-      row.fy27,row.fy28,row.fy29
-    ].map(escCsv).join(','));
-  });
-  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='ftes-in.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function uploadCiFteCsv(ev){
-  const file=ev.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
-      if(lines.length<2){showCiFteCsvFeedback('CSV appears to be empty.','warn');return;}
-      const headers=parseCsvLine(lines[0]);
-      const ci={cc:idx(headers,'Cost centre'),loc:idx(headers,'Location'),
-        fy27:idx(headers,'FY27'),fy28:idx(headers,'FY28'),fy29:idx(headers,'FY29')};
-      const moIdx26=MO.map(m=>idx(headers,`FY26 ${m}`));
-      const moIdx25=MO.map(m=>idx(headers,`FY25 ${m}`));
-      if(ci.cc<0){showCiFteCsvFeedback('CSV missing required column (Cost centre).','error');return;}
-      let updated=0,skipped=0;
-      lines.slice(1).forEach(line=>{
-        const cols=parseCsvLine(line);
-        const code=cols[ci.cc]?.trim();
-        const loc=ci.loc>=0?cols[ci.loc]?.trim():null;
-        if(!code)return;
-        const row=ciFteData.find(r=>r.cc===code&&(!loc||r.loc===loc));
-        if(!row){skipped++;return;}
-        moIdx26.forEach((mi,i)=>{if(mi>=0&&cols[mi]!==undefined)row.fy26[i]=num(cols[mi]);});
-        moIdx25.forEach((mi,i)=>{if(mi>=0&&cols[mi]!==undefined)row.fy25[i]=num(cols[mi]);});
-        if(ci.fy27>=0&&cols[ci.fy27]!==undefined)row.fy27=num(cols[ci.fy27]);
-        if(ci.fy28>=0&&cols[ci.fy28]!==undefined)row.fy28=num(cols[ci.fy28]);
-        if(ci.fy29>=0&&cols[ci.fy29]!==undefined)row.fy29=num(cols[ci.fy29]);
-        updated++;
-      });
-      renderCiFteTable();
-      const msg=skipped?`Updated ${updated} row${updated!==1?'s':''} — ${skipped} row${skipped!==1?'s':''} not matched.`:`Updated ${updated} row${updated!==1?'s':''} successfully.`;
-      showCiFteCsvFeedback(msg,skipped?'warn':'ok');
-    }catch(err){showCiFteCsvFeedback('Could not parse CSV: '+err.message,'error');}
-    ev.target.value='';
-  };
-  reader.readAsText(file);
-}
-
-/* ── Cost In Step 3: Review ── */
-function renderCiReview(){
-  const el=document.getElementById('ci-review-wrap');
-  const coRows=submittedBC?submittedBC.ccData[ciActiveCcCode]||[]:[];
-  const hasSub=fyHasSubRow();
-  const coTable=coViewWrap(`ci4co:${ciActiveCcCode}`,'Cost out rows',fyTotals(coRows),`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${coRows.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`);
-
-  const ciTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${ciData.map(row=>`<tr>${roUniIdCells(row,false)}${fyDataCells(row,fmtCostM)}</tr>`).join('')}</tbody></table></div>`;
-
-  const fteTable=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-    <tr>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-      <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>
-      ${fyHeaderCells()}
-    </tr>
-    ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-  </thead><tbody>
-    ${ciFteData.map(row=>`<tr>
-      <td class="rv-td-left">${row.loc||'—'}</td>
-      <td class="rv-td-left">${row.city||'—'}</td>
-      <td class="rv-td-left">${row.country||'—'}</td>
-      <td class="rv-td-left">${row.azW||'—'}</td>
-      <td class="rv-td-left">${row.wt||'—'}</td>
-      ${fyDataCells(row,fmtFte)}
-    </tr>`).join('')}
-  </tbody></table></div>`;
-
-  el.innerHTML=`
-    <div id="ci-cc-agg-cost-r4"></div>
-    <div id="ci-cc-agg-fte-r4"></div>
-    <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">Cost Out values (reference) <span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;"><span class="cc-badge-out">${ciActiveCcCode}</span> ${deptChipFor(ciActiveCcCode)}</span></div></div>${coTable}</div>
-    <div class="rv-divider"></div>
-    <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">Your Cost In values ${ciData[0]?.cc?`<span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;"><span class="cc-badge-out">${ciData[0].cc}</span> ${deptChipFor(ciData[0].cc)}</span>`:''}</div><button class="rv-edit" onclick="go('ci-step2')">Edit</button></div>${ciTable}</div>
-    <div class="rv-divider"></div>
-    <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">FTEs In ${ciFteData[0]?.cc?`<span style="font-size:11px;color:#888;font-weight:400;margin-left:4px;"><span class="cc-badge-out">${ciFteData[0].cc}</span> ${deptChipFor(ciFteData[0].cc)}</span>`:''}</div><button class="rv-edit" onclick="go('ci-step3')">Edit</button></div>${fteTable}</div>`;
-  renderCiCcAggregate('cost','ci-cc-agg-cost-r4');
-  renderCiCcAggregate('fte','ci-cc-agg-fte-r4');
-}
 
 function submitCostIn(){
   const u=currentUser();
@@ -5416,7 +4467,7 @@ function toggleS6Fy(fy){
 }
 
 
-const NAV={dashboard:0,step1:1,step2:1,step3:1,step4:1,step5:1,step6:1,step7:1,approval:2,confirmation:2,'ci-step1':0,'ci-step2':0,'ci-step3':0,'ci-step4':0,'ci-confirmation':0};
+const NAV={dashboard:0,step1:1,step2:1,step3:1,step4:1,step5:1,step6:1,step7:1,approval:2,confirmation:2,'ci-step1':0,'ci-step2':0,'ci-step3':0,'ci-confirmation':0};
 function go(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   const scr=document.getElementById('screen-'+id);
@@ -5431,7 +4482,7 @@ function go(id){
     if(id==='step1'||id==='step6'||id==='step7') siEl.innerHTML=siLead(id);
     else siEl.innerHTML=si(id);
   }
-  ['ci-step1','ci-step2','ci-step3','ci-step4'].forEach((sid,i)=>{const el=document.getElementById(`ci-si-${sid}`);if(el)el.innerHTML=ciSi(i);});
+  ['ci-step1','ci-step2','ci-step3'].forEach((sid,i)=>{const el=document.getElementById(`ci-si-${sid}`);if(el)el.innerHTML=ciSi(i);});
 
   if(id==='dashboard')renderDashboard();
   if(id==='step2'){showBanner();renderCc2Hier();}
