@@ -4271,67 +4271,30 @@ function renderCiCcAggregate(mode,elId){
     return `<div class="rv-table-wrap" style="margin:0 0 6px;"><table class="rv-table"><thead><tr>
       <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th><th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${rows.map(row=>`<tr><td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td><td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>${fyDataCells(row,fmtFte)}</tr>`).join('')}</tbody></table></div>`;
   };
-  const outLabel=mode==='cost'?'Cost Out':'FTEs Out';
-  const inLabel=mode==='cost'?'Cost In (all)':'FTEs In (all)';
-  // Per-contributor split of the Cost In (all) total for one CC: the current user's
-  // live draft plus each other assigned contributor's submitted values (or Pending).
-  const contribRows=cc=>{
-    return ((submittedBC.costInPersons||{})[cc]||[]).map(p=>{
-      const mine=p.id===u.id;
-      let t,responded;
-      if(mine){t=sumRows((mode==='cost'?ciData:ciFteData).filter(r=>r.sourceCc===cc));responded=true;}
-      else{
-        t={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
-        responded=Object.values(ciResponses).some(r=>r.person.id===p.id);
-        Object.values(ciResponses).forEach(resp=>{if(resp.person.id!==p.id)return;const o=sumRows(((mode==='cost'?resp.ciData:resp.ciFteData)||[]).filter(r=>r.sourceCc===cc));FYK.forEach(fk=>t[fk]+=o[fk]);});
-      }
-      return {label:mine?'You (draft)':`${p.first} ${p.last}`,dept:p.dept||'',t,responded,mine};
-    });
-  };
-  const subRow=r=>{
-    const badge=r.mine?'<span class="badge badge-pending" style="font-size:9px;">Draft</span>'
-      :r.responded?'<span class="badge badge-approved" style="font-size:9px;">Submitted</span>':'<span class="badge badge-pending" style="font-size:9px;">Pending</span>';
-    const cells=FYK.map(fk=>r.responded?`<td style="color:#555;font-weight:400;">${fmtv(r.t[fk])}</td>`:'<td style="color:#bbb;">—</td>').join('');
-    return `<tr style="background:#fbfcfe;"><td class="s6-td-label" style="padding-left:24px;font-weight:400;color:#666;">${r.label} ${r.dept?`<span style="color:#aaa;font-size:10px;">${r.dept}</span> `:''}${badge}</td>${cells}</tr>`;
-  };
-  const dataRow=(label,vals,cls)=>`<tr class="${cls}"><td class="s6-td-label">${label}</td>${FYK.map(fk=>`<td>${fmtv(vals[fk])}</td>`).join('')}</tr>`;
-  const netRow=net=>`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">${mode==='cost'?'Net cost':'Net FTEs'}</td>${FYK.map(fk=>{const v=net[fk];const cls=v<0?'s6-td-neg':v>0?'s6-td-pos':'s6-td-zero';const d=fmtv(Math.abs(v));return`<td class="s6-td-net ${cls}">${v<0?'('+d+')':d}</td>`;}).join('')}</tr>`;
-  const head=`<thead><tr><th class="s6-th-label"></th>${FYL.map(l=>`<th class="s6-th-fy">${l}</th>`).join('')}</tr></thead>`;
-  const blocks=ccs.map(cc=>{
-    const nC=((submittedBC.costInPersons||{})[cc]||[]).length;
-    const shared=nC>1;
-    const co=coFor(cc);
+  // One flat table per mode: a row per cost centre showing its FY totals (the Many
+  // side the One contributor is consolidating), each row expandable to its full
+  // detail. Plus a grand-total row. (No per-CC blocks / Out-In-Net matrix — in the
+  // Many→One model the One side is a single CC handled by one contributor.)
+  const colspan=1+FYL.length;
+  const grand={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
+  const bodyRows=ccs.map(cc=>{
+    const co=coFor(cc);FYK.forEach(fk=>grand[fk]+=co[fk]);
     const scope=(mode==='cost'?'ciagg-co:':'ciagg-fte:')+cc;
     const expanded=coViewExpanded.has(scope);
     const safe=scope.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    // Cost Out / FTEs Out row — its label cell toggles the inline detail.
-    const out=`<tr class="s6-tr-out"><td class="s6-td-label" onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;">${expanded?'▼':'▶'} ${outLabel}</td>${FYK.map(fk=>`<td>${fmtv(co[fk])}</td>`).join('')}</tr>`;
-    let body=out;
-    if(shared){
-      const ci=ciFor(cc),net={};FYK.forEach(fk=>net[fk]=co[fk]-ci[fk]);
-      // Cost In (all) row — its label cell toggles the per-contributor breakdown.
-      const inScope=(mode==='cost'?'ciagg-coin:':'ciagg-ftein:')+cc;
-      const inExp=coViewExpanded.has(inScope);
-      const inSafe=inScope.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      body+=`<tr class="s6-tr-in"><td class="s6-td-label" onclick="toggleCoView('${inSafe}')" style="cursor:pointer;user-select:none;">${inExp?'▼':'▶'} ${inLabel}</td>${FYK.map(fk=>`<td>${fmtv(ci[fk])}</td>`).join('')}</tr>`;
-      if(inExp)body+=contribRows(cc).map(subRow).join('');
-      body+=netRow(net);
-    }
-    return `<div style="margin-bottom:12px;">
-      <div style="font-size:11px;font-weight:500;color:#444;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span>
-        <span style="color:#888;font-weight:400;">· ${nC} Cost In contributor${nC!==1?'s':''}</span>
-      </div>
-      <div class="s6-table-wrap"><table class="s6-table">${head}<tbody>${body}</tbody></table></div>
-      ${expanded?detailTable(cc):''}
-    </div>`;
+    const labelCell=`<td class="s6-td-label" onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;"><span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">${expanded?'▼':'▶'} <span class="cc-badge-out">${cc}</span>${deptChipFor(cc)}<span style="color:#888;font-weight:400;">${ccName(cc)}</span></span></td>`;
+    const sumr=`<tr class="s6-tr-out">${labelCell}${FYK.map(fk=>`<td>${fmtv(co[fk])}</td>`).join('')}</tr>`;
+    const detr=expanded?`<tr><td colspan="${colspan}" style="padding:4px 4px 8px;">${detailTable(cc)}</td></tr>`:'';
+    return sumr+detr;
   }).join('');
+  const totalRow=`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">Total — all cost centres</td>${FYK.map(fk=>`<td class="s6-td-net">${fmtv(grand[fk])}</td>`).join('')}</tr>`;
+  const head=`<thead><tr><th class="s6-th-label"></th>${FYL.map(l=>`<th class="s6-th-fy">${l}</th>`).join('')}</tr></thead>`;
   const unit=mode==='cost'?'USD ($m)':'FTEs (headcount)';
-  const title=mode==='cost'?'Cost out summary by cost centre':'FTEs out summary by cost centre';
+  const title=mode==='cost'?'Cost out by cost centre':'FTEs out by cost centre';
   el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:4px;display:flex;align-items:center;gap:8px;">${title} <span class="unit-pill">${unit}</span></div>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">Click a ${outLabel} row to see its detail. Cost centres with more than one Cost In Contributor also show the combined ${inLabel} (everyone's, including your draft) and the Net, so you can see whether each balances. <strong>Expand the ${inLabel} row to see each contributor's split</strong> — your draft plus what every other contributor has submitted (Pending until they do). Other contributors' figures are shown for context only.</p>
-    ${blocks}
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">Totals by cost centre — click a cost centre to expand its full detail.</p>
+    <div class="s6-table-wrap"><table class="s6-table">${head}<tbody>${bodyRows}${totalRow}</tbody></table></div>
   </div>`;
   if(bcMany()==='in')dirSwapNodes(el);  // self-swap so labels stay correct across input re-renders
 }

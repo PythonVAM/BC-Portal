@@ -80,9 +80,9 @@ with sync_playwright() as p:
           # FTE Out views collapsible with headcount totals on the per-CC screens
           and s6['nFte']>=1 and s6['fteTotals']
           and c1['nFte']>=1 and c1['fteTotals']
-          # CI step 3: same folding for FTEs — each CC's "FTEs Out" row is a
-          # collapsed toggleCoView trigger inside the aggregate.
-          and c3['nFte']>=1 and c3['collapsed']
+          # CI step 3: the FTE summary is one table with a collapsed toggleCoView
+          # trigger per cost centre (toggle labels are CC names, so they count under n).
+          and c3['n']>=1 and c3['collapsed']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
