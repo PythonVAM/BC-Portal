@@ -3226,191 +3226,102 @@ function renderRvByCC(){
     return cells.join('');
   }
 
-  // Render a single CC block (used for submitted CCs).
-  // ownerLabel: optional small label showing which contributor submitted this CC.
-  function renderCcBlock(cc,ownerLabel){
-    const attr=gca(cc.code);
-    const cur=attr.cur||'USD';
-    const sym=rvCurrency==='local'?currSymbol(cur):'$';
-    // Derive Full/Partial from this submission's own entry, not the global cc2Sel
-    // (during the Lead's aggregated view cc2Sel may not carry every contributor's CC).
-    const isFull=cc.type?cc.type==='full':isCcFull(cc.code);
+  // Build the output. In the Many→One model the One side is a SINGLE cost centre
+  // handled by ONE contributor, so step 6 no longer shows a block (and picker) per
+  // CC. Instead: contributor status chips, a combined read-only Many-side reference
+  // (all CCs in one flat table), and ONE Cost In Contributor picker (capped at 1).
+  const hasSub=exp25||exp26;
+  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
 
-    // Cost Out table — Dept-grouped sub-tables (CC is in the block header)
-    const coRows=ccData[cc.code]||[];
-    let coTableHTML=`<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:2px;">Cost out</div><span class="rv-none" style="font-size:12px;">No cost data entered.</span>`;
-    if(coRows.length){
-      const hasSub=exp25||exp26;
-      const formatCost=(v)=>fmtCostM(toLocal(v||0,cur));
-      // One flat unified table (CC & Dept are in the block header, so omit those columns).
-      const tbody=coRows.map((row,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(row,false)}${dataCellsForRow(row,formatCost)}</tr>`).join('');
-      const fullTable=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(false,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-      const rt=fyTotals(coRows);
-      const tot={fy25:toLocal(rt.fy25,cur),fy26:toLocal(rt.fy26,cur),fy27:toLocal(rt.fy27,cur),fy28:toLocal(rt.fy28,cur),fy29:toLocal(rt.fy29,cur)};
-      coTableHTML=coViewWrap(`s6co:${cc.code}`,'Cost out',tot,fullTable);
-    }
-
-    // FTE table
-    const fteRows=fteData.filter(r=>r.cc===cc.code);
-    let fteTableHTML=`<div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px;margin-top:14px;">FTEs out</div><span class="rv-none" style="font-size:12px;">No FTE data entered.</span>`;
-    if(fteRows.length){
-      const hasSub=exp25||exp26;
-      const fteThead=`<tr>
-        <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
-        <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
-        <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Country</th>
-        <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-        <th class="rv-th-left" style="min-width:80px;"${hasSub?' rowspan="2"':''}>Worker type</th>
-        ${fyHeaderCells()}
-      </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-      const formatFte=(v)=>fmtFte(v||0);
-      const fteTbody=fteRows.map((row,gi)=>{
-        const alt=gi%2===1?'style="background:#fafaf8;"':'';
-        return`<tr ${alt}>
-          <td class="rv-td-left rv-sticky rv-sticky-0">${row.loc||'—'}</td>
-          <td class="rv-td-left rv-sticky rv-sticky-1">${row.city||'—'}</td>
-          <td class="rv-td-left">${row.country||'—'}</td>
-          <td class="rv-td-left">${row.azW||'—'}</td>
-          <td class="rv-td-left">${row.wt||'—'}</td>
-          ${dataCellsForRow(row,formatFte)}
-        </tr>`;
-      }).join('');
-      const full=`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`;
-      fteTableHTML=coViewWrap(`s6fte:${cc.code}`,'FTEs out',fyTotals(fteRows),full,fmtFte,'FTEs out total');
-    }
-
-    // Cost In persons (only assignable when not awaiting)
-    const ciList=costInPersons[cc.code]||[];
-    const ciListHTML=ciList.length
-      ?ciList.map((p,pi)=>`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EEEDFE;color:#3C3489;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${p.initials}</div><div><div style="font-size:12px;">${p.first} ${p.last}</div><div style="font-size:11px;color:#666;">${p.dept}</div></div></div>${isAwaitingCo?'':`<button class="rv-ci-remove" onclick="removeCostInPerson('${cc.code}',${pi})">×</button>`}</div>`).join('')
-      :'';
-
-    const ciPanelHTML=isAwaitingCo
-      ?`<div class="rv-ci-label">Cost In Contributor(s) for this cost centre</div>
-        <div class="rv-ci-panel"><div style="font-size:12px;color:#888;font-style:italic;">Assignable once all Cost Out submissions are received.</div></div>`
-      :`<div class="rv-ci-label">Cost In Contributor(s) for this cost centre</div>
-        <div class="rv-ci-panel" id="rv-ci-panel-${cc.code}">
-          <div class="rv-ci-list" id="rv-ci-list-${cc.code}">${ciListHTML||'<span class="sel-empty" style="font-size:12px;">No Cost In Contributor(s) added yet.</span>'}</div>
-          <div style="position:relative;">
-            <input class="person-search" id="rv-ci-search-${cc.code}" placeholder="Search by name to add a Cost In Contributor…" autocomplete="off" style="font-size:12px;"/>
-            <div class="person-dropdown" id="rv-ci-dd-${cc.code}"></div>
-          </div>
-        </div>`;
-
-    return`<div class="rv-cc-block">
-      <div class="rv-cc-block-hdr">
-        <div class="rv-cc-block-title">
-          <span class="cc-badge-out">${cc.code}</span>
-          ${deptChipFor(cc.code)}
-          ${cc.name}
-          <span style="font-size:11px;color:#888;font-weight:400;">${attr.dept} · ${cur}</span>
-          ${isFull?'<span class="full-badge">Full CC</span>':'<span class="partial-badge">Partial</span>'}
-          ${ownerLabel?`<span style="font-size:11px;color:#888;font-weight:400;margin-left:auto;">${ownerLabel}</span>`:''}
-        </div>
-      </div>
-      <div class="rv-cc-block-body">
-        ${coTableHTML}
-        ${fteTableHTML}
-        ${ciPanelHTML}
-      </div>
-    </div>`;
+  // Combined Cost Out reference (all submitted CCs, one flat table — not per block).
+  const allCo=[];ccs.forEach(cc=>{(ccData[cc.code]||[]).forEach(r=>allCo.push({...r,cc:cc.code}));});
+  allCo.sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;return da!==db?da-db:a.cc.localeCompare(b.cc);});
+  let coRef='<span class="rv-none" style="font-size:12px;">No Cost Out submitted yet.</span>';
+  if(allCo.length){
+    const tbody=allCo.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>${roUniIdCells(r,true,'out')}${dataCellsForRow(r,v=>fmtCostM(v||0))}</tr>`).join('');
+    const full=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
+    coRef=coViewWrap('s6co:all','Cost out — all cost centres',fyTotals(allCo),full);
+  }
+  // Combined FTE reference (all CCs, one flat table with a Cost centre column).
+  const allFte=fteData.slice().sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;return da!==db?da-db:(a.cc||'').localeCompare(b.cc||'');});
+  let fteRef='<span class="rv-none" style="font-size:12px;">No FTEs submitted.</span>';
+  if(allFte.length){
+    const fteThead=`<tr>
+      <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
+      <th class="rv-th-left" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
+      <th class="rv-th-left" style="min-width:70px;"${hasSub?' rowspan="2"':''}>City</th>
+      <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
+      <th class="rv-th-left" style="min-width:80px;"${hasSub?' rowspan="2"':''}>Worker type</th>
+      ${fyHeaderCells()}
+    </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
+    const fteTbody=allFte.map((r,gi)=>`<tr ${gi%2===1?'style="background:#fafaf8;"':''}>
+      <td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${r.cc}</span></td>
+      <td class="rv-td-left">${r.loc||'—'}</td><td class="rv-td-left">${r.city||'—'}</td>
+      <td class="rv-td-left">${r.azW||'—'}</td><td class="rv-td-left">${r.wt||'—'}</td>
+      ${dataCellsForRow(r,v=>fmtFte(v||0))}</tr>`).join('');
+    const full=`<div class="rv-table-wrap"><table class="rv-table"><thead>${fteThead}</thead><tbody>${fteTbody}</tbody></table></div>`;
+    fteRef=coViewWrap('s6fte:all','FTEs out — all cost centres',fyTotals(allFte),full,fmtFte,'FTEs out total');
   }
 
-  // Build the output: iterate by contributor so the Lead sees who contributed what.
-  // For pending contributors, render a placeholder block (header + status only).
-  let html='';
-  if(contributors.length){
-    contributors.forEach(p=>{
-      const sub=coSubmissions[p.id];
-      // Group header for this contributor
-      const isSubmitted=!!sub;
-      const statusBadge=isSubmitted
-        ?'<span class="badge badge-approved" style="margin-left:8px;">Submitted</span>'
-        :'<span class="badge badge-pending" style="margin-left:8px;">Awaiting</span>';
-      const timeNote=isSubmitted?`<span style="font-size:11px;color:#888;margin-left:8px;">${sub.submittedAt||''}</span>`:'';
-      html+=`<div style="margin:18px 0 8px;display:flex;align-items:center;gap:8px;">
-        <div style="width:24px;height:24px;border-radius:50%;background:${isSubmitted?'#FAEEDA':'#f0efe9'};color:${isSubmitted?'#633806':'#888'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${p.initials}</div>
-        <div style="font-size:13px;font-weight:500;color:${isSubmitted?'#1a1a1a':'#888'};">${p.first} ${p.last}</div>
-        <div style="font-size:11px;color:#888;">${p.dept}</div>
-        ${statusBadge}
-        ${timeNote}
-      </div>`;
-      if(isSubmitted){
-        const subCcs=sub.cc2Sel||[];
-        if(subCcs.length){
-          subCcs.forEach(cc=>{
-            html+=renderCcBlock(cc);
-          });
-        } else {
-          html+=`<div style="padding:14px;background:#fafaf7;border-radius:8px;color:#888;font-size:12px;">No cost centres submitted.</div>`;
-        }
-      }
-      // For pending contributors, the header row with the "Awaiting" badge is enough —
-      // no per-CC block, no placeholder paragraph.
-    });
-  } else if(ccs.length){
-    // Defensive: no contributor structure but CCs exist — show as a flat list
-    ccs.forEach(cc=>{html+=renderCcBlock(cc);});
+  // Contributor status chips (who has submitted the Many side).
+  const chips=contributors.map(p=>{const done=!!coSubmissions[p.id];
+    return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:12px;margin:0 6px 6px 0;background:${done?'#EAF3DE':'#f0efe9'};color:${done?'#27500A':'#888'};"><span style="width:6px;height:6px;border-radius:50%;background:${done?'#5C9A1B':'#bbb'};"></span>${p.first} ${p.last} · ${done?'submitted':'awaiting'}</span>`;}).join('');
+
+  // ONE Cost In Contributor picker (single person for the whole One side).
+  const assigned=getOnePersonAssigned();
+  let pickerHTML;
+  if(isAwaitingCo){
+    pickerHTML=`<div class="rv-ci-label">Cost In Contributor</div><div class="rv-ci-panel"><div style="font-size:12px;color:#888;font-style:italic;">Assignable once all Cost Out submissions are received.</div></div>`;
   } else {
-    html='<span class="rv-none">No cost centres selected</span>';
+    pickerHTML=`<div class="rv-ci-label">Cost In Contributor — the single person who enters the offsetting side (one cost centre)</div>
+      <div class="rv-ci-panel">
+        ${assigned
+          ?`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EEEDFE;color:#3C3489;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${assigned.initials}</div><div><div style="font-size:12px;">${assigned.first} ${assigned.last}</div><div style="font-size:11px;color:#666;">${assigned.dept}</div></div></div><button class="rv-ci-remove" onclick="clearOnePerson()">×</button></div>`
+          :`<div style="position:relative;"><input class="person-search" id="rv-one-person-search" placeholder="Search by name to assign the Cost In Contributor…" autocomplete="off" style="font-size:12px;"/><div class="person-dropdown" id="rv-one-person-dd"></div></div>`}
+      </div>`;
   }
 
-  wrap.innerHTML=html;
+  wrap.innerHTML=`
+    <div style="margin-bottom:12px;">${chips||'<span class="rv-none" style="font-size:12px;">No contributors.</span>'}</div>
+    <div style="margin-bottom:12px;">${coRef}</div>
+    <div style="margin-bottom:16px;">${fteRef}</div>
+    ${pickerHTML}`;
 
-  // Wire person pickers for each rendered CI search box. We query the DOM rather
-  // than iterate getAllCostOut() (global cc2Sel) because the rendered CC set is the
-  // union of all contributors' submissions, which can differ from cc2Sel — keying
-  // off cc2Sel left some boxes (e.g. a CC only one contributor submitted) un-wired.
-  if(!isAwaitingCo){
-    wrap.querySelectorAll('input[id^="rv-ci-search-"]').forEach(inp=>{
-      const code=inp.id.slice('rv-ci-search-'.length);
-      const dd=document.getElementById(`rv-ci-dd-${code}`);
-      if(dd){
-        inp.addEventListener('focus',()=>renderCiDropdown(code,inp.value));
-        inp.addEventListener('input',()=>renderCiDropdown(code,inp.value));
-        inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
-      }
-    });
+  // Wire the single person picker (search box only shown when none assigned yet).
+  if(!isAwaitingCo&&!assigned){
+    const inp=document.getElementById('rv-one-person-search');
+    const dd=document.getElementById('rv-one-person-dd');
+    if(inp&&dd){
+      inp.addEventListener('focus',()=>renderOnePersonDropdown(inp.value));
+      inp.addEventListener('input',()=>renderOnePersonDropdown(inp.value));
+      inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
+    }
   }
 }
 
-function renderCiDropdown(ccCode,q){
-  const dd=document.getElementById(`rv-ci-dd-${ccCode}`);
-  if(!dd)return;
-  const already=new Set((costInPersons[ccCode]||[]).map(p=>p.id));
+// One-side person assignment: a SINGLE Cost In Contributor handles the whole One
+// side. The chosen person is assigned against every Many CC (so the CI flow routes
+// all of them to that one person, who mirrors them into the single One CC).
+function getOnePersonAssigned(){for(const arr of Object.values(costInPersons||{})){if(arr&&arr.length)return arr[0];}return null;}
+function setOnePerson(pid){
+  const p=PEOPLE.find(x=>x.id===pid);if(!p)return;
+  costInPersons={};getAllCostOut().forEach(cc=>{costInPersons[cc.code]=[{...p}];});
+  buildStep6();applyDirLabels();
+}
+function clearOnePerson(){costInPersons={};buildStep6();applyDirLabels();}
+function renderOnePersonDropdown(q){
+  const dd=document.getElementById('rv-one-person-dd');if(!dd)return;
   // Lead cannot be a Cost In Contributor; only show users with persona role 'BC Contributor'.
   const leadId=submittedBC?.bcLeadId||currentUser().id;
   const res=PEOPLE.filter(p=>{
     const profile=USER_PROFILES[p.id];
     if(!profile||profile.personaRole!=='BC Contributor')return false;
     if(p.id===leadId)return false;
-    if(already.has(p.id))return false;
-    return`${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase());
+    return`${p.first} ${p.last}`.toLowerCase().includes((q||'').toLowerCase());
   });
   if(!res.length){dd.innerHTML='<div class="person-no-results">No results</div>';dd.style.display='block';return;}
-  dd.innerHTML=res.map(p=>`<div class="person-option" onmousedown="addCostInPerson(event,'${ccCode}','${p.id}')"><div class="person-option-avatar">${p.initials}</div><div><div class="person-option-name">${p.first} ${p.last}</div><div class="person-option-dept">${p.dept}</div></div></div>`).join('');
+  dd.innerHTML=res.map(p=>`<div class="person-option" onmousedown="setOnePerson('${p.id}')"><div class="person-option-avatar">${p.initials}</div><div><div class="person-option-name">${p.first} ${p.last}</div><div class="person-option-dept">${p.dept}</div></div></div>`).join('');
   dd.style.display='block';
-}
-
-function addCostInPerson(ev,ccCode,pid){
-  ev.preventDefault();
-  const p=PEOPLE.find(x=>x.id===pid);if(!p)return;
-  if(!costInPersons[ccCode])costInPersons[ccCode]=[];
-  if(!costInPersons[ccCode].some(x=>x.id===pid))costInPersons[ccCode].push({...p});
-  const inp=document.getElementById(`rv-ci-search-${ccCode}`);if(inp)inp.value='';
-  const dd=document.getElementById(`rv-ci-dd-${ccCode}`);if(dd)dd.style.display='none';
-  // Re-render just this CC block's list
-  const listEl=document.getElementById(`rv-ci-list-${ccCode}`);
-  if(listEl)listEl.innerHTML=costInPersons[ccCode].map((px,pi)=>`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EEEDFE;color:#3C3489;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${px.initials}</div><div><div style="font-size:12px;">${px.first} ${px.last}</div><div style="font-size:11px;color:#666;">${px.dept}</div></div></div><button class="rv-ci-remove" onclick="removeCostInPerson('${ccCode}',${pi})">×</button></div>`).join('');
-}
-
-function removeCostInPerson(ccCode,pi){
-  if(costInPersons[ccCode])costInPersons[ccCode].splice(pi,1);
-  const listEl=document.getElementById(`rv-ci-list-${ccCode}`);
-  if(listEl){
-    const ciList=costInPersons[ccCode]||[];
-    listEl.innerHTML=ciList.length?ciList.map((px,pii)=>`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EEEDFE;color:#3C3489;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${px.initials}</div><div><div style="font-size:12px;">${px.first} ${px.last}</div><div style="font-size:11px;color:#666;">${px.dept}</div></div></div><button class="rv-ci-remove" onclick="removeCostInPerson('${ccCode}',${pii})">×</button></div>`).join(''):'<span class="sel-empty" style="font-size:12px;">No Cost In persons added yet.</span>';
-  }
 }
 
 /* ── User personas ── */
@@ -3829,9 +3740,9 @@ const coViewExpanded=new Set();
 function toggleCoView(scope){
   if(coViewExpanded.has(scope))coViewExpanded.delete(scope);else coViewExpanded.add(scope);
   const id=document.querySelector('.screen.active')?.id||'';
-  if(id==='screen-step6')renderRvByCC();
+  if(id==='screen-step6')buildStep6();
   else if(id==='screen-step7')buildStep7();
-  else if(id==='screen-ci-step1')renderCiByCc();
+  else if(id==='screen-ci-step1')renderCiBcSummary();
   else if(id==='screen-ci-step2')renderCiStep2();
   else if(id==='screen-ci-step3')renderCiStep3();
   else if(id==='screen-ci-step4')renderCiReview();

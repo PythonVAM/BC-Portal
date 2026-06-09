@@ -2,11 +2,10 @@ from pathlib import Path
 PROTO = (Path(__file__).parent.parent / 'transfer-hub-prototype.html').resolve()
 from playwright.sync_api import sync_playwright
 
-# Regression for the Cost-In assignment bug: on Lead step 6, every rendered CI
-# person-picker must be wired and usable — even when the global cc2Sel doesn't
-# carry every contributor's CC (the picker wiring keys off the rendered DOM, not
-# cc2Sel). Mirrors the reported scenario: C1 = partial+full, C2 = 2 partial,
-# C3 = 1 full; the C3 full-CC box used to be dead.
+# In the Many->One model, step 6 has a SINGLE Cost In Contributor picker (the One
+# side is one CC handled by one person). Assigning a person routes EVERY Many CC to
+# that person; the picker is capped at one (search box disappears once assigned, a
+# remove button clears it). Set-up: 3 Cost Out contributors submit several CCs.
 with sync_playwright() as p:
     b=p.chromium.launch()
     pg=b.new_context(viewport={'width':1400,'height':1100}).new_page()
@@ -28,31 +27,40 @@ with sync_playwright() as p:
       doCo('lt',[{code:'6200COM-CC-115',name:'C',type:'partial'},{code:'6200COM-CC-116',name:'D',type:'partial'}]);
       doCo('fa',[{code:'2110',name:'E',type:'full'}]);
       switchUser('jd'); openLeadView('step6');
-      // Force the divergence that triggered the original bug, then re-render.
-      cc2Sel=cc2Sel.filter(c=>c.code!=='2110');
-      renderRvByCC();
     """); pg.wait_for_timeout(300)
 
-    # Every rendered CI box must open its dropdown on focus.
-    boxes=pg.evaluate("""(()=>Array.from(document.querySelectorAll('input[id^="rv-ci-search-"]')).map(box=>{
-      const code=box.id.replace('rv-ci-search-','');
-      box.dispatchEvent(new Event('focus'));
-      const dd=document.getElementById('rv-ci-dd-'+code);
-      return {code, works:!!(dd&&dd.style.display==='block')};
-    }))()""")
-    print('CI search boxes:', boxes)
+    pre=pg.evaluate("""(()=>{
+      const blocks=document.querySelectorAll('#screen-step6 .rv-cc-block').length;  // no per-CC blocks now
+      const pickers=document.querySelectorAll('#screen-step6 input[id^="rv-ci-search-"]').length;  // no per-CC pickers
+      const one=document.getElementById('rv-one-person-search');
+      let ddWorks=false;
+      if(one){one.dispatchEvent(new Event('focus')); const dd=document.getElementById('rv-one-person-dd'); ddWorks=!!(dd&&dd.style.display==='block');}
+      return {blocks, pickers, hasSinglePicker:!!one, ddWorks};})()""")
+    print('step6 structure:', pre)
 
-    # The 3rd contributor's full CC (2110) must accept an assignment end-to-end.
+    # Assign one person via the single picker -> routed to every Many CC.
     assign=pg.evaluate("""(()=>{
-      const code='2110', inp=document.getElementById('rv-ci-search-'+code);
-      inp.dispatchEvent(new Event('focus')); inp.value='Carlos'; inp.dispatchEvent(new Event('input'));
-      const dd=document.getElementById('rv-ci-dd-'+code);
+      const inp=document.getElementById('rv-one-person-search');
+      inp.dispatchEvent(new Event('focus')); inp.value='a'; inp.dispatchEvent(new Event('input'));
+      const dd=document.getElementById('rv-one-person-dd');
       const opt=dd.querySelector('.person-option'); if(opt) opt.dispatchEvent(new Event('mousedown'));
-      return (costInPersons[code]||[]).map(p=>p.first+' '+p.last);
-    })()""")
-    print('Assigned to 2110:', assign)
+      const distinct=[...new Set(Object.values(costInPersons).flat().map(p=>p.id))];
+      const ccsCovered=Object.keys(costInPersons).filter(k=>(costInPersons[k]||[]).length).sort();
+      return {distinctPersons:distinct.length, ccsCovered,
+              searchGone:!document.getElementById('rv-one-person-search'),
+              showsAssigned:/Cost In Contributor/.test(document.getElementById('screen-step6').innerText)};})()""")
+    print('after assign:', assign)
 
-    ok = all(x['works'] for x in boxes) and assign==['Carlos Beltran'] and not errs
+    # Remove clears the whole One-side assignment.
+    cleared=pg.evaluate("""(()=>{clearOnePerson(); return {anyAssigned:Object.values(costInPersons).some(a=>a&&a.length), searchBack:!!document.getElementById('rv-one-person-search')};})()""")
+    print('after clear:', cleared)
+
+    ok = (pre['blocks']==0 and pre['pickers']==0 and pre['hasSinglePicker'] and pre['ddWorks']
+          and assign['distinctPersons']==1
+          and assign['ccsCovered']==['2110','5110','6200COM-CC-115','6200COM-CC-116','7300RND-CC-041']
+          and assign['searchGone']
+          and not cleared['anyAssigned'] and cleared['searchBack']
+          and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
     b.close()

@@ -38,11 +38,13 @@ with sync_playwright() as p:
         }})()""")
 
     s6=toggles('step6'); print('STEP6:', s6)
-    # Expand the first step-6 CO view -> full rows (N/A cells) appear
-    pg.evaluate("""document.querySelector('#screen-step6 [onclick^="toggleCoView"]').click()"""); pg.wait_for_timeout(150)
-    s6exp=pg.evaluate("""(()=>{const blk=document.querySelector('#screen-step6 .rv-cc-block');
-      return {glyph:blk.querySelector('[onclick^="toggleCoView"]').textContent.trim().slice(0,8),
-              hasRows:!!blk.querySelector('.rv-table-wrap table.rv-table td.cod-na')};})()""")
+    # Step 6 now shows ONE combined Cost Out view (not per-CC blocks). Expand it ->
+    # the full flat table with N/A cells appears.
+    pg.evaluate("""(()=>{const g=[...document.querySelectorAll('#screen-step6 [onclick^="toggleCoView"]')].find(x=>/Cost out/.test(x.textContent)); g.click();})()"""); pg.wait_for_timeout(150)
+    s6exp=pg.evaluate("""(()=>{const s=document.getElementById('screen-step6');
+      const g=[...s.querySelectorAll('[onclick^="toggleCoView"]')].find(x=>/Cost out/.test(x.textContent));
+      return {glyph:g.textContent.trim().slice(0,8),
+              hasRows:!!s.querySelector('.rv-table-wrap table.rv-table td.cod-na')};})()""")
     print('STEP6 expanded first:', s6exp)
 
     # Step 7 is now two blocks (Cost, FTEs), each with a collapsed "By SET Area"

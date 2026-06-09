@@ -31,23 +31,24 @@ with sync_playwright() as p:
       switchUser('jd'); go('step6');
     """); pg.wait_for_timeout(400)
 
-    # The per-CC Cost Out views are collapsible (collapsed by default) — expand them
-    # so we can inspect the underlying flat unified table.
+    # Step 6 now shows ONE combined Cost Out view (collapsible, collapsed by default)
+    # across all CCs — expand it to inspect the underlying flat unified table.
     pg.evaluate("""document.querySelectorAll('#rv-by-cc-wrap [onclick^="toggleCoView"]').forEach(t=>t.click())""")
     pg.wait_for_timeout(200)
 
-    # Lead step 6 Cost Out tables should be FLAT (no dept collapse), unified columns, $m.
+    # Lead step 6 Cost Out table should be FLAT (no dept collapse), unified columns
+    # with a Cost centre + Dept column (multi-CC table), $m.
     state=pg.evaluate("""
       (() => {
         const wrap=document.getElementById('rv-by-cc-wrap');
-        const tbl=wrap.querySelector('.rv-cc-block .rv-table');
+        const tbl=wrap.querySelector('.rv-table');  // first = combined Cost Out table
         const heads=Array.from(tbl.querySelectorAll('thead tr:first-child th'))
           .map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean);
         return {
           expandBtns: wrap.querySelectorAll('.dept-expand-btn').length,   // expect 0
           collapsedBlocks: wrap.querySelectorAll('.dept-group-collapsed').length, // expect 0
-          headers: heads,                                                 // GL/Product/Project/UV + FY
-          naCells: wrap.querySelectorAll('.rv-cc-block .rv-table td.cod-na').length, // > 0
+          headers: heads,                                                 // CC/Dept/GL/Product/Project/UV + FY
+          naCells: wrap.querySelectorAll('.rv-table td.cod-na').length,   // > 0
           dollarM: /\\d\\.\\d{2}/.test(tbl.innerText),                    // $m formatting present
         };
       })()
@@ -55,7 +56,7 @@ with sync_playwright() as p:
     print('Lead step 6 Cost Out:', state)
 
     ok = (state['expandBtns']==0 and state['collapsedBlocks']==0
-          and state['headers'][:4]==['GL account','Product','Project','UV']
+          and state['headers'][:6]==['Cost centre','Dept','GL account','Product','Project','UV']
           and state['naCells']>0 and state['dollarM'])
     print('PASS' if ok and not errs else 'FAIL')
     print('errors:',errs[:5])
