@@ -849,12 +849,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
         <button class="rv-expand-btn" id="rv-fte-expand-btn" onclick="toggleRvFteRows()">▶ Show rows</button>
       </div>
       <div id="rv-ftes-table"><span class="rv-none">No data entered</span></div>
-      <div id="rv-uv-ftes-wrap" style="display:none;">
-        <div style="margin-top:14px;"></div>
-        <div class="summary-sub-hdr">
-          <span class="summary-sub-title">UV FTEs out <span style="font-weight:400;color:#888;font-style:italic;font-size:11px;margin-left:6px;">R&amp;D cost centres only — allocated from FTEs out by Project × UV STAFF cost weights</span></span>
-          <button class="rv-expand-btn" id="rv-uvfte-expand-btn" onclick="toggleRvUvFteRows()">▶ Show rows</button>
-        </div>
+      <div id="rv-uv-ftes-wrap" style="display:none;margin-top:14px;">
         <div id="rv-uv-ftes-table"><span class="rv-none">No data entered</span></div>
       </div>
     </div>
@@ -2797,7 +2792,6 @@ function showFteCsvFeedback(msg,type){
 let rvCurrency='usd';
 let rvCoExpanded=false;   // show individual rows in section A cost out
 let rvFteExpanded=false;  // show individual rows in section A FTEs
-let rvUvFteExpanded=false;// show individual Project × UV rows in UV FTEs block
 let rvSectionA=true;      // section A visible
 let rvSectionB=true;      // section B visible
 // Per-CC Cost In persons: {ccCode: [{...person}]}
@@ -2843,13 +2837,6 @@ function toggleRvFteRows(){
   if(btn){btn.classList.toggle('active',rvFteExpanded);btn.textContent=rvFteExpanded?'▼ Hide rows':'▶ Show rows';}
   renderRvFtes();
 }
-function toggleRvUvFteRows(){
-  rvUvFteExpanded=!rvUvFteExpanded;
-  const btn=document.getElementById('rv-uvfte-expand-btn');
-  if(btn){btn.classList.toggle('active',rvUvFteExpanded);btn.textContent=rvUvFteExpanded?'▼ Hide rows':'▶ Show rows';}
-  renderRvUvFtes();
-}
-
 function buildReview(){
   document.getElementById('rv-bcname').textContent=document.getElementById('inp-bcname')?.value||'—';
   document.getElementById('rv-bcdesc').textContent=document.getElementById('inp-bcdesc')?.value||'—';
@@ -2995,9 +2982,7 @@ function renderRvUvFtes(){
   const ccs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
   if(!ccs.length){wrap.style.display='none';return;}
   wrap.style.display='block';
-  // Step 5 has no By SET Area/CC/Detail toggle — its Show rows expander maps to
-  // the cc-level (collapsed) vs detail-level (expanded) views.
-  el.innerHTML=uvFteBlockHTML(computeUvFteAlloc(ccs),rvUvFteExpanded?'detail':'cc');
+  el.innerHTML=uvFteBlockHTML(computeUvFteAlloc(ccs),'co');
 }
 
 // Compute the Project × UV FTE allocation for the given R&D-shape CCs from the
@@ -3023,9 +3008,15 @@ function computeUvFteAlloc(ccs){
       const projCode=row.project||'';
       const projName=row.projectName||'—';
       const uv=row.uv||'—';
+      // Project → Product → Therapy Area roll-up. R&D rows carry taCode/taName but not
+      // productName (the product lives on the PROJECTS entry), so derive from there.
+      const pj=PROJECTS.find(p=>p.code===projCode);
+      const taCode=row.taCode||(pj?pj.ta:'')||'';
+      const taName=row.taName||(taCode?taFull(taCode):'—');
+      const product=row.productName||(pj?pj.product:'')||'—';
       const k=`${projCode}|${uv}`;
       if(!byKey[k]){
-        byKey[k]={project:projCode,projectName:projName,uv,
+        byKey[k]={project:projCode,projectName:projName,uv,taCode,taName,product,
           cost:{fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0}};
       }
       const dst=byKey[k].cost;
@@ -3054,7 +3045,7 @@ function computeUvFteAlloc(ccs){
     const fyKeys=['fy27','fy28','fy29'];
     const monthKeys=['fy25','fy26'];
     a.allocatedRows=a.staffByUv.map(s=>({
-      project:s.project,projectName:s.projectName,uv:s.uv,
+      project:s.project,projectName:s.projectName,uv:s.uv,taCode:s.taCode,taName:s.taName,product:s.product,
       _raw:{
         fy25:s.cost.fy25.map((v,mi)=>{const t=a.staffTotals.fy25[mi]; return !a.ccTotals.fy25[mi]?0:(!t?'—':a.ccTotals.fy25[mi]*v/t);}),
         fy26:s.cost.fy26.map((v,mi)=>{const t=a.staffTotals.fy26[mi]; return !a.ccTotals.fy26[mi]?0:(!t?'—':a.ccTotals.fy26[mi]*v/t);}),
@@ -3098,19 +3089,30 @@ function computeUvFteAlloc(ccs){
   return ccAlloc;
 }
 
-// Render the UV FTE allocation block from a computed ccAlloc as a SINGLE flat table
-// that follows the same By SET Area / By cost centre / Detail granularity (`view`) as
-// the FTEs-by-cost-centre table above it:
-//   • 'area'   — one row per SET area (SET Area · FY)
+// Render the UV FTE allocation block as a SINGLE flat table with its OWN
+// By UV / By cost centre / Detail toggle (independent of the FTE summary above):
+//   • 'ta'     — one row per Therapy Area (TA · FY)
+//   • 'uv'     — one row per TA × UV (TA · UV · FY)
 //   • 'cc'     — one row per cost centre (MU · Cost centre · FY)
-//   • 'detail' — one row per Project × UV (MU · Cost centre · Project · UV · FY)
-// Each level ends in a "Total — R&D cost centres" grand-total row.
-function uvFteBlockHTML(ccAlloc,view){
-  view=view||'cc';
+//   • 'detail' — one row per Project × UV (MU · Cost centre · TA · Product · Project · UV · FY)
+// Projects roll up to Products, Products to Therapy Areas. Each level ends in a
+// "Total — R&D cost centres" row. `scope` ('lead' = Lead step 6b, 'co' = Cost Out
+// review step 5) keys the view state (uvFteView) + re-render target.
+function uvFteBlockHTML(ccAlloc,scope){
+  const view=(uvFteView&&uvFteView[scope])||'uv';
   const hasSub=fyHasSubRow();
   const ccsArr=Object.values(ccAlloc);
+  const header=`<div class="summary-sub-hdr">
+      <span class="summary-sub-title">UV FTEs out <span style="font-weight:400;color:#888;font-style:italic;font-size:11px;margin-left:6px;">R&amp;D cost centres only — allocated from FTEs out by Project × UV STAFF cost weights</span></span>
+      <span class="method-toggle" style="margin-bottom:0;">
+        <button class="method-btn ${view==='ta'?'active':''}" onclick="setUvFteView('${scope}','ta')">By TA</button>
+        <button class="method-btn ${view==='uv'?'active':''}" onclick="setUvFteView('${scope}','uv')">By UV</button>
+        <button class="method-btn ${view==='cc'?'active':''}" onclick="setUvFteView('${scope}','cc')">By cost centre</button>
+        <button class="method-btn ${view==='detail'?'active':''}" onclick="setUvFteView('${scope}','detail')">Detail</button>
+      </span>
+    </div>`;
   if(!ccsArr.some(a=>a.allocatedRows.length)){
-    return '<span class="rv-none">No R&amp;D Project × UV STAFF cost rows to allocate against. Add 5110-STAFF cost out for R&amp;D cost centres to see UV FTEs here.</span>';
+    return header+'<span class="rv-none">No R&amp;D Project × UV STAFF cost rows to allocate against. Add 5110-STAFF cost out for R&amp;D cost centres to see UV FTEs here.</span>';
   }
   // Add an allocated row (which may carry '—' for un-allocatable periods) into an
   // accumulator, treating '—' as 0 but flagging it.
@@ -3125,41 +3127,56 @@ function uvFteBlockHTML(ccAlloc,view){
   ccsArr.forEach(a=>a.allocatedRows.forEach(r=>addAlloc(synth,r)));
   const fyCols=(s6Exp.fy25?13:1)+(s6Exp.fy26?13:1)+3;
   const ccCell=cc=>`<span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="cc-badge-out">${cc.code}</span>${deptChipFor(cc.code)}<span style="color:#888;font-weight:400;">${cc.name}</span></span>`;
+  const taSort=(a,b)=>{const ia=Object.keys(TA_NAMES).indexOf(a),ib=Object.keys(TA_NAMES).indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);};
+  const uvSort=u=>{const i=UV_LIST.indexOf(u);return i<0?99:i;};
 
   let idCols, thead, bodyRows='';
-  if(view==='area'){
+  if(view==='ta'){
     idCols=1;
-    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:240px;"${hasSub?' rowspan="2"':''}>SET Area</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
-    const byArea={};
-    ccsArr.forEach(a=>{const sa=getSetArea(a.cc.code);const e=byArea[sa.code]=byArea[sa.code]||{name:sa.name,acc:blank()};a.allocatedRows.forEach(r=>addAlloc(e.acc,r));});
-    bodyRows=Object.keys(byArea).sort().map(k=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0"><span style="font-weight:500;">${byArea[k].name}</span> <span style="color:#888;font-weight:400;">(${k})</span></td>${fyDataCells(byArea[k].acc,fmtFte)}</tr>`).join('');
+    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:180px;"${hasSub?' rowspan="2"':''}>Therapy Area</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    const byTa={};
+    ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{const e=byTa[r.taCode||'—']=byTa[r.taCode||'—']||{taName:r.taName||'—',acc:blank()};addAlloc(e.acc,r);}));
+    bodyRows=Object.keys(byTa).sort(taSort).map(k=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${byTa[k].taName}</td>${fyDataCells(byTa[k].acc,fmtFte)}</tr>`).join('');
+  } else if(view==='uv'){
+    idCols=2;
+    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:180px;"${hasSub?' rowspan="2"':''}>Therapy Area</th><th class="rv-th-left" style="min-width:120px;"${hasSub?' rowspan="2"':''}>UV</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    const byTaUv={};
+    ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{const k=`${r.taCode||'—'}|${r.uv}`;const e=byTaUv[k]=byTaUv[k]||{taCode:r.taCode||'—',taName:r.taName||'—',uv:r.uv,acc:blank()};addAlloc(e.acc,r);}));
+    bodyRows=Object.values(byTaUv).sort((a,b)=>taSort(a.taCode,b.taCode)||uvSort(a.uv)-uvSort(b.uv)).map(e=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${e.taName}</td><td class="rv-td-left">${uvChipFor(e.uv)}</td>${fyDataCells(e.acc,fmtFte)}</tr>`).join('');
   } else if(view==='cc'){
     idCols=2;
     thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th><th class="rv-th-left" style="min-width:200px;"${hasSub?' rowspan="2"':''}>Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
     bodyRows=ccsArr.map(a=>{const mu=ccMU(a.cc.code);const acc=blank();a.allocatedRows.forEach(r=>addAlloc(acc,r));
       return `<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td>${fyDataCells(acc,fmtFte)}</tr>`;}).join('');
   } else {
-    idCols=4;
+    idCols=6;
     thead=`<thead><tr>
       <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
       <th class="rv-th-left" style="min-width:200px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
+      <th class="rv-th-left" style="min-width:140px;"${hasSub?' rowspan="2"':''}>Therapy Area</th>
+      <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>Product</th>
       <th class="rv-th-left" style="min-width:160px;"${hasSub?' rowspan="2"':''}>Project</th>
       <th class="rv-th-left" style="min-width:90px;"${hasSub?' rowspan="2"':''}>UV</th>
       ${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
     ccsArr.forEach(a=>{const mu=ccMU(a.cc.code);
       if(!a.allocatedRows.length){
-        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left" colspan="${2+fyCols}"><em style="color:#888;">No 5110-STAFF cost — UV FTEs cannot be allocated.</em></td></tr>`;
+        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left" colspan="${4+fyCols}"><em style="color:#888;">No 5110-STAFF cost — UV FTEs cannot be allocated.</em></td></tr>`;
         return;
       }
       a.allocatedRows.forEach(r=>{
-        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left">${r.projectName||'—'}</td><td class="rv-td-left">${uvChipFor(r.uv)}</td>${fyDataCells(r,fmtFte)}</tr>`;
+        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left">${r.taName||'—'}</td><td class="rv-td-left">${r.product||'—'}</td><td class="rv-td-left">${r.projectName||'—'}</td><td class="rv-td-left">${uvChipFor(r.uv)}</td>${fyDataCells(r,fmtFte)}</tr>`;
       });
     });
   }
   const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0" colspan="${idCols}">Total — R&amp;D cost centres</td>${fyDataCells(synth,fmtFte)}</tr>`;
   const footnote=hasUnallocated?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;">Some periods have FTEs Out but no STAFF Cost Out to allocate against (shown as "—").</div>`:'';
-  return `<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${bodyRows}${totalRow}</tbody></table></div>${footnote}`;
+  return header+`<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${bodyRows}${totalRow}</tbody></table></div>`+footnote;
 }
+// UV FTE block view state — its own toggle, separate from the FTE summary. Keyed by
+// scope: 'lead' (BC Lead step 6b) and 'co' (Cost Out review step 5). Default 'uv'
+// (= By TA + UV).
+let uvFteView={lead:'uv',co:'uv'};
+function setUvFteView(scope,view){uvFteView[scope]=view; if(scope==='lead')buildStep6b(); else renderRvUvFtes();}
 
 // One-side Cost In Contributor picker (a SINGLE person for the whole One side),
 // shown on the Lead's Summary screen (step 7). Returns the label + panel HTML.
@@ -4161,22 +4178,15 @@ function buildStep6b(){
   const fteCodes=[...new Set((submittedBC?.fteData||[]).map(r=>r.cc))];
   // UV-allocated FTEs view — R&D (gl+project+uv) CCs only; allocated from FTEs Out by
   // Project × UV STAFF cost weights (same engine as the Cost Out review, step 5). It
-  // follows the SAME By SET Area / By cost centre / Detail granularity as the FTE
-  // summary above (ciAggView['fte-lead']), so no separate expander is needed.
+  // has its OWN By UV / By cost centre / Detail toggle (uvFteView['lead']).
   const rndCcs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
-  const uvBlock=rndCcs.length?`
-    <div style="margin-top:20px;border-top:1px solid #ece9e0;padding-top:14px;">
-      <div class="summary-sub-hdr">
-        <span class="summary-sub-title">UV FTEs out <span style="font-weight:400;color:#888;font-style:italic;font-size:11px;margin-left:6px;">R&amp;D cost centres only — allocated from FTEs out by Project × UV STAFF cost weights · follows the view toggle above</span></span>
-      </div>
-      <div id="lead-uv-ftes-table"></div>
-    </div>`:'';
+  const uvBlock=rndCcs.length?`<div style="margin-top:20px;border-top:1px solid #ece9e0;padding-top:14px;"><div id="lead-uv-ftes-table"></div></div>`:'';
   el.innerHTML=`
     <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred. Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
     <div id="s6-agg-fte"></div>
     ${uvBlock}`;
   renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead',ccs:fteCodes});
-  if(rndCcs.length)document.getElementById('lead-uv-ftes-table').innerHTML=uvFteBlockHTML(computeUvFteAlloc(rndCcs),ciAggView['fte-lead']||'cc');
+  if(rndCcs.length)document.getElementById('lead-uv-ftes-table').innerHTML=uvFteBlockHTML(computeUvFteAlloc(rndCcs),'lead');
 }
 
 /* ── Step 7: BC Lead — Review ── */
