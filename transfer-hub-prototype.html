@@ -832,26 +832,13 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
         <span class="summary-section-title">Cost Out &amp; FTEs Out summary</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
-        <div class="method-toggle" style="margin-bottom:0;">
-          <button class="method-btn active" id="rv-usd-btn" onclick="setRvCurrency('usd')">USD</button>
-          <button class="method-btn" id="rv-local-btn" onclick="setRvCurrency('local')">Local</button>
-        </div>
         <button class="rv-edit" onclick="go('step3')">Edit Cost Out</button>
         <button class="rv-edit" onclick="go('step4')">Edit FTEs</button>
       </div>
     </div>
     <div id="rv-section-a-body">
-      <div class="summary-sub-hdr">
-        <span class="summary-sub-title">Cost out values</span>
-        <button class="rv-expand-btn" id="rv-co-expand-btn" onclick="toggleRvCoRows()">▶ Show rows</button>
-      </div>
-      <div id="rv-costout-table"><span class="rv-none">No data entered</span></div>
-      <div style="margin-top:14px;"></div>
-      <div class="summary-sub-hdr">
-        <span class="summary-sub-title">FTEs out</span>
-        <button class="rv-expand-btn" id="rv-fte-expand-btn" onclick="toggleRvFteRows()">▶ Show rows</button>
-      </div>
-      <div id="rv-ftes-table"><span class="rv-none">No data entered</span></div>
+      <div id="rv-co-agg"></div>
+      <div id="rv-fte-agg" style="margin-top:14px;"></div>
       <div id="rv-uv-ftes-wrap" style="display:none;margin-top:14px;">
         <div id="rv-uv-ftes-table"><span class="rv-none">No data entered</span></div>
       </div>
@@ -2824,8 +2811,6 @@ function showFteCsvFeedback(msg,type){
 
 /* ── Review ── */
 let rvCurrency='usd';
-let rvCoExpanded=false;   // show individual rows in section A cost out
-let rvFteExpanded=false;  // show individual rows in section A FTEs
 let rvSectionA=true;      // section A visible
 let rvSectionB=true;      // section B visible
 // Per-CC Cost In persons: {ccCode: [{...person}]}
@@ -2833,14 +2818,6 @@ let costInPersons={};
 const FX={GBP:0.79,EUR:0.92,USD:1,CHF:0.90,JPY:149};
 function toLocal(val,cur){if(rvCurrency==='usd')return val;const rate=FX[cur]||1;return Math.round(val/rate);}
 function currSymbol(cur){return{GBP:'£',EUR:'€',USD:'$',CHF:'CHF ',JPY:'¥'}[cur]||'$';}
-
-function setRvCurrency(c){
-  rvCurrency=c;
-  document.getElementById('rv-usd-btn').classList.toggle('active',c==='usd');
-  document.getElementById('rv-local-btn').classList.toggle('active',c==='local');
-  renderRvCostOut();
-  renderRvByCC();
-}
 
 // Sets currency view for Cost Out select/detail screens (USD edit + Local read-only view).
 function setCoCurrency(c){
@@ -2859,18 +2836,6 @@ function toggleRvSection(s){
   else{rvSectionB=!rvSectionB;document.getElementById('rv-section-b-body').style.display=rvSectionB?'block':'none';document.getElementById('rv-chev-b').classList.toggle('collapsed',!rvSectionB);}
 }
 
-function toggleRvCoRows(){
-  rvCoExpanded=!rvCoExpanded;
-  const btn=document.getElementById('rv-co-expand-btn');
-  if(btn){btn.classList.toggle('active',rvCoExpanded);btn.textContent=rvCoExpanded?'▼ Hide rows':'▶ Show rows';}
-  renderRvCostOut();
-}
-function toggleRvFteRows(){
-  rvFteExpanded=!rvFteExpanded;
-  const btn=document.getElementById('rv-fte-expand-btn');
-  if(btn){btn.classList.toggle('active',rvFteExpanded);btn.textContent=rvFteExpanded?'▼ Hide rows':'▶ Show rows';}
-  renderRvFtes();
-}
 function buildReview(){
   document.getElementById('rv-bcname').textContent=document.getElementById('inp-bcname')?.value||'—';
   document.getElementById('rv-bcdesc').textContent=document.getElementById('inp-bcdesc')?.value||'—';
@@ -2886,118 +2851,11 @@ function buildReview(){
     :`<div style="display:flex;flex-wrap:wrap;gap:6px;">${ccs.map(c=>`<span class="cc-badge-out">${c.code} — ${c.name}</span>`).join('')}</div>`;
   // init costInPersons for any new CCs (used by step 6 lead view)
   ccs.forEach(cc=>{if(!costInPersons[cc.code])costInPersons[cc.code]=[];});
-  renderRvCostOut();
-  renderRvFtes();
+  // Cost / FTE summaries use the shared component (By SET Area / By cost centre /
+  // Detail + USD/Local), reading the contributor's own live data via the '-co' scope.
+  renderCiCcAggregate('cost','rv-co-agg',{scope:'cost-co'});
+  renderCiCcAggregate('fte','rv-fte-agg',{scope:'fte-co'});
   renderRvUvFtes();
-}
-
-/* ── Section A: Cost Out summary table ── */
-function renderRvCostOut(){
-  const el=document.getElementById('rv-costout-table');
-  const ccs=getAllCostOut();
-  if(!ccs.length){el.innerHTML='<span class="rv-none">No cost centres selected</span>';return;}
-
-  const hasSub=fyHasSubRow();
-
-  if(!rvCoExpanded){
-    // Summary row: grand totals across all rows
-    // Build a synthetic row with fy25/fy26 month arrays so fyDataCells can produce monthly breakdowns
-    const repCur=gca(ccs[0].code).cur||'USD';
-    const sym=rvCurrency==='local'?currSymbol(repCur):'$';
-    const synth={fy25:new Array(12).fill(0),fy26:new Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-    ccs.forEach(cc=>{
-      (ccData[cc.code]||[]).forEach(row=>{
-        (row.fy25||[]).forEach((v,mi)=>{synth.fy25[mi]+=Number(v)||0;});
-        (row.fy26||[]).forEach((v,mi)=>{synth.fy26[mi]+=Number(v)||0;});
-        synth.fy27+=Number(row.fy27)||0;
-        synth.fy28+=Number(row.fy28)||0;
-        synth.fy29+=Number(row.fy29)||0;
-      });
-    });
-    // Convert to local currency for display
-    if(rvCurrency==='local'){
-      const rate=FX[repCur]||1;
-      synth.fy25=synth.fy25.map(v=>Math.round(v/rate));
-      synth.fy26=synth.fy26.map(v=>Math.round(v/rate));
-      synth.fy27=Math.round(synth.fy27/rate);
-      synth.fy28=Math.round(synth.fy28/rate);
-      synth.fy29=Math.round(synth.fy29/rate);
-    }
-    const fmtCost=(v)=>fmtCostM(v);
-    el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-      <tr>${fyHeaderCells()}</tr>
-      ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-    </thead><tbody><tr>${fyDataCells(synth,fmtCost)}</tr></tbody></table></div>`;
-    return;
-  }
-
-  // Expanded: one flat unified table across all CCs
-  let allRows=[];
-  ccs.forEach(cc=>{
-    const cur=gca(cc.code).cur||'USD';
-    (ccData[cc.code]||[]).forEach(row=>{
-      allRows.push({...row,cc:cc.code,
-        fy25:(row.fy25||[]).map(v=>toLocal(Number(v)||0,cur)),
-        fy26:(row.fy26||[]).map(v=>toLocal(Number(v)||0,cur)),
-        fy27:toLocal(row.fy27||0,cur),fy28:toLocal(row.fy28||0,cur),fy29:toLocal(row.fy29||0,cur)});
-    });
-  });
-  const fmtCost=(v)=>fmtCostM(v);
-  if(!allRows.length){el.innerHTML='<span class="rv-none">No cost data entered</span>';return;}
-  // One flat unified table sorted Dept → CC (values in $m).
-  const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-  allRows.sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;if(da!==db)return da-db;return (a.cc||'').localeCompare(b.cc||'');});
-  const tbody=allRows.map(r=>`<tr>${roUniIdCells(r,true)}${fyDataCells(r,fmtCost)}</tr>`).join('');
-  el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-}
-
-/* ── Section A: FTEs Out summary table ── */
-function renderRvFtes(){
-  const el=document.getElementById('rv-ftes-table');
-  if(!fteData.length){el.innerHTML='<span class="rv-none">No data entered</span>';return;}
-
-  const hasSub=fyHasSubRow();
-
-  if(!rvFteExpanded){
-    // Aggregate row across all FTE entries
-    const synth={fy25:new Array(12).fill(0),fy26:new Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-    fteData.forEach(row=>{
-      (row.fy25||[]).forEach((v,mi)=>{synth.fy25[mi]+=Number(v)||0;});
-      (row.fy26||[]).forEach((v,mi)=>{synth.fy26[mi]+=Number(v)||0;});
-      synth.fy27+=Number(row.fy27)||0;
-      synth.fy28+=Number(row.fy28)||0;
-      synth.fy29+=Number(row.fy29)||0;
-    });
-el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-      <tr>${fyHeaderCells()}</tr>
-      ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-    </thead><tbody><tr>${fyDataCells(synth,fmtFte)}</tr></tbody></table></div>`;
-    return;
-  }
-
-  const thead=`<tr>
-    <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-    <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
-    <th class="rv-th-left rv-sticky rv-sticky-1" style="min-width:90px;"${hasSub?' rowspan="2"':''}>Location</th>
-    <th class="rv-th-left rv-sticky rv-sticky-2" style="min-width:80px;"${hasSub?' rowspan="2"':''}>City</th>
-    <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Country</th>
-    <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-    <th class="rv-th-left" style="min-width:80px;"${hasSub?' rowspan="2"':''}>Worker type</th>
-    ${fyHeaderCells()}
-  </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-const tbody=fteData.map(row=>{
-    return`<tr>
-      <td class="rv-td-left rv-sticky rv-sticky-0"><span class="cc-badge-out">${row.cc||'—'}</span></td>
-      <td class="rv-td-left">${deptChipFor(row.cc)}</td>
-      <td class="rv-td-left rv-sticky rv-sticky-1">${row.loc||'—'}</td>
-      <td class="rv-td-left rv-sticky rv-sticky-2">${row.city||'—'}</td>
-      <td class="rv-td-left">${row.country||'—'}</td>
-      <td class="rv-td-left">${row.azW||'—'}</td>
-      <td class="rv-td-left">${row.wt||'—'}</td>
-      ${fyDataCells(row,fmtFte)}
-    </tr>`;
-  }).join('');
-  el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 }
 
 /* ── Section A: UV FTEs out (R&D CCs only) ──
@@ -3422,8 +3280,6 @@ function resetAllData(){
   ciCcPaths={};
   ciActiveCcCode=null;
   rvCurrency='usd';
-  rvCoExpanded=false;
-  rvFteExpanded=false;
   rvSectionA=true;
   rvSectionB=true;
   ciRvCurrency='usd';
@@ -3852,18 +3708,21 @@ function renderCiCcAggregate(mode,elId,opts){
   const scope=opts.scope||mode;            // state namespace (e.g. 'cost', 'cost-lead')
   const el=document.getElementById(elId||(mode==='cost'?'ci-cc-agg-cost':'ci-cc-agg-fte'));
   if(!el)return;
-  if(!submittedBC){el.innerHTML='';return;}
   const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-  const ccs=(opts.ccs?opts.ccs.slice():[...getMyAssignedCcCodes()]).sort((a,b)=>{const da=deptOrder[gca(a)?.bcDept]??9,db=deptOrder[gca(b)?.bcDept]??9;return da!==db?da-db:a.localeCompare(b);});
+  // Data source: explicit opts.src, else resolved from scope (submitted BC, or the
+  // contributor's live module data for the step-5 '-co' review).
+  const src=opts.src||_aggSrc(scope);
+  if(!src||!src.ccData){el.innerHTML='';return;}
+  const ccs=(opts.ccs?opts.ccs.slice():_aggCcs(scope)).sort((a,b)=>{const da=deptOrder[gca(a)?.bcDept]??9,db=deptOrder[gca(b)?.bcDept]??9;return da!==db?da-db:a.localeCompare(b);});
   if(!ccs.length){el.innerHTML='';return;}
   const fmtv=mode==='cost'?fmtCostM:fmtFte;
-  const ccName=cc=>(submittedBC.cc2Sel||[]).find(c=>c.code===cc)?.name||'';
+  const ccName=cc=>(src.cc2Sel||[]).find(c=>c.code===cc)?.name||'';
   // USD/Local currency toggle (cost only). When Local, each CC's stored-USD values
   // are converted to that CC's currency (per-CC, then aggregated — cross-CC totals
   // are a mixed-currency sum, matching the step-7 Local view).
   const isLocalCur=mode==='cost'&&aggCur==='local';
   const cvt=(v,cur)=>Math.round((v||0)/(FX[cur]||1));
-  const rawRows=cc=>mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc);
+  const rawRows=cc=>mode==='cost'?(src.ccData[cc]||[]):(src.fteData||[]).filter(r=>r.cc===cc);
   const outRows=cc=>{const rows=rawRows(cc);if(!isLocalCur)return rows;const cur=gca(cc).cur||'USD';
     return rows.map(r=>({...r,fy25:(r.fy25||[]).map(v=>cvt(v,cur)),fy26:(r.fy26||[]).map(v=>cvt(v,cur)),fy27:cvt(r.fy27,cur),fy28:cvt(r.fy28,cur),fy29:cvt(r.fy29,cur)}));};
   // Aggregate a set of rows into a single row-like object (monthly arrays + scalars)
@@ -3975,10 +3834,18 @@ function renderCiCcAggregate(mode,elId,opts){
    View level (ciAggView) and per-column filters (ciDetailFilters) are namespaced by
    scope; the open filter panel is keyed "scope::colKey". */
 function _aggMode(scope){return scope.indexOf('cost')===0?'cost':'fte';}
-function _aggCcs(scope){return scope.endsWith('-lead')?getAllCostOut().map(c=>c.code):[...getMyAssignedCcCodes()];}
+// Data source for an aggregate scope: '-co' = the Cost Out contributor's own live
+// module data (step 5 review); otherwise the submitted BC.
+function _aggSrc(scope){return scope.endsWith('-co')?{ccData,fteData,cc2Sel}:submittedBC;}
+function _aggCcs(scope){
+  if(scope.endsWith('-co'))return _aggMode(scope)==='cost'?Object.keys(ccData).filter(c=>(ccData[c]||[]).length):[...new Set((fteData||[]).map(r=>r.cc))];
+  if(scope.endsWith('-lead'))return getAllCostOut().map(c=>c.code);
+  return [...getMyAssignedCcCodes()];
+}
 function _aggRerender(scope){
   if(scope==='cost-lead')buildStep6();
   else if(scope==='fte-lead')buildStep6b();
+  else if(scope==='cost-co'||scope==='fte-co')buildReview();
   else if(scope==='cost')renderCiCostScreen();
   else renderCiFteScreen();
   applyDirLabels();
@@ -4026,8 +3893,9 @@ function ciFilterColSpec(mode){
 function ciFilterDistinct(scope,k){
   const mode=_aggMode(scope);
   const spec=ciFilterColSpec(mode).find(c=>c.k===k);if(!spec)return [];
+  const src=_aggSrc(scope);
   const rows=[];_aggCcs(scope).forEach(cc=>{
-    (mode==='cost'?(submittedBC.ccData[cc]||[]):(submittedBC.fteData||[]).filter(r=>r.cc===cc)).forEach(r=>rows.push({...r,cc}));
+    (mode==='cost'?(src.ccData[cc]||[]):(src.fteData||[]).filter(r=>r.cc===cc)).forEach(r=>rows.push({...r,cc}));
   });
   return [...new Set(rows.map(spec.g))];
 }
@@ -4664,7 +4532,7 @@ function go(id){
   if(id==='step3')renderCoSelect();
   if(id==='step3b')enterCoDetail();
   if(id==='step4'){materialiseCcDataFromDetail();initFteData();renderFteTable();}
-  if(id==='step5'){materialiseCcDataFromDetail();buildReview();}
+  if(id==='step5'){materialiseCcDataFromDetail();ciAggView['cost-co']='cc';ciAggView['fte-co']='cc';aggCur='usd';ciDetailFilters['cost-co']={};ciDetailFilters['fte-co']={};ciDetailFilterOpen=null;buildReview();}
   if(id==='step6')buildStep6();
   if(id==='step6b')buildStep6b();
   if(id==='step7')buildStep7();
@@ -4844,7 +4712,7 @@ function applyDirLabels(){
   if(want==='in'){
     const act=document.querySelector('.screen.active');
     if(act&&!['screen-step2','screen-step3','screen-step3b','screen-step4'].includes(act.id))
-      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"],[id^="s6-agg"]');
+      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"],[id^="s6-agg"],#rv-co-agg,#rv-fte-agg');
   }
 }
 
