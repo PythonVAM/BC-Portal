@@ -2995,9 +2995,14 @@ function renderRvUvFtes(){
   const ccs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
   if(!ccs.length){wrap.style.display='none';return;}
   wrap.style.display='block';
+  el.innerHTML=uvFteBlockHTML(computeUvFteAlloc(ccs),rvUvFteExpanded);
+}
 
-  const hasSub=fyHasSubRow();
-// Build per-CC allocation data
+// Compute the Project × UV FTE allocation for the given R&D-shape CCs from the
+// current ccData (5110-STAFF cost weights) and fteData (FTE totals). Returns a
+// {ccCode: {cc, ccTotals, staffByUv, staffTotals, allocatedRows}} map. Shared by the
+// Cost Out review (step 5) and the BC Lead's FTE screen (step 6b).
+function computeUvFteAlloc(ccs){
   const ccAlloc={};
   ccs.forEach(cc=>{
     // Sum FTE totals from fteData
@@ -3088,9 +3093,14 @@ function renderRvUvFtes(){
     // Strip _raw
     a.allocatedRows.forEach(r=>{delete r._raw;});
   });
+  return ccAlloc;
+}
 
-  // Collapsed view: aggregate row across all R&D CCs and Project×UV
-  if(!rvUvFteExpanded){
+// Render the UV FTE allocation block from a computed ccAlloc. Collapsed = one
+// aggregate row across all R&D CCs/Project×UV; expanded = per-CC Project×UV tables.
+function uvFteBlockHTML(ccAlloc,expanded){
+  const hasSub=fyHasSubRow();
+  if(!expanded){
     const synth={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
     let hasUnallocated=false;
     Object.values(ccAlloc).forEach(a=>{
@@ -3101,15 +3111,13 @@ function renderRvUvFtes(){
       });
     });
     if(!Object.values(ccAlloc).some(a=>a.allocatedRows.length)){
-      el.innerHTML='<span class="rv-none">No R&amp;D Project × UV STAFF cost rows to allocate against. Add 5110-STAFF cost out for R&amp;D cost centres to see UV FTEs here.</span>';
-      return;
+      return '<span class="rv-none">No R&amp;D Project × UV STAFF cost rows to allocate against. Add 5110-STAFF cost out for R&amp;D cost centres to see UV FTEs here.</span>';
     }
     const footnote=hasUnallocated?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;">Some periods have FTEs Out but no STAFF Cost Out to allocate against (shown as "—" in the detail rows).</div>`:'';
-    el.innerHTML=`<div class="rv-table-wrap"><table class="rv-table"><thead>
+    return `<div class="rv-table-wrap"><table class="rv-table"><thead>
       <tr>${fyHeaderCells()}</tr>
       ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
     </thead><tbody><tr>${fyDataCells(synth,fmtFte)}</tr></tbody></table></div>${footnote}`;
-    return;
   }
 
   // Expanded view: per-CC blocks
@@ -3151,7 +3159,7 @@ function renderRvUvFtes(){
       <div class="rv-table-wrap"><table class="rv-table"><thead>${thead}</thead><tbody>${tbody}${totalRow}</tbody></table></div>
     </div>`;
   });
-  el.innerHTML=html;
+  return html;
 }
 
 // One-side Cost In Contributor picker (a SINGLE person for the whole One side),
@@ -3566,7 +3574,7 @@ function openLeadView(targetStep){
   const nm=document.getElementById('inp-bcname');if(nm)nm.value=submittedBC.bcName||'';
   const dc=document.getElementById('inp-bcdesc');if(dc)dc.value=submittedBC.bcDesc||'';
   // Reset the Lead step-6 Cost/FTE summary view + filters for a clean review.
-  ciAggView['cost-lead']='cc';ciAggView['fte-lead']='cc';aggCur='usd';
+  ciAggView['cost-lead']='cc';ciAggView['fte-lead']='cc';aggCur='usd';leadUvFteExpanded=false;
   ciDetailFilters['cost-lead']={};ciDetailFilters['fte-lead']={};ciDetailFilterOpen=null;
   renderCc2Tray();
   go(targetStep);
@@ -4152,11 +4160,27 @@ function buildStep6b(){
   const el=document.getElementById('step6b-content');
   if(!el)return;
   const fteCodes=[...new Set((submittedBC?.fteData||[]).map(r=>r.cc))];
+  // UV-allocated FTEs view — R&D (gl+project+uv) CCs only; allocated from FTEs Out by
+  // Project × UV STAFF cost weights (same engine as the Cost Out review, step 5).
+  const rndCcs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
+  const uvBlock=rndCcs.length?`
+    <div style="margin-top:20px;border-top:1px solid #ece9e0;padding-top:14px;">
+      <div class="summary-sub-hdr">
+        <span class="summary-sub-title">UV FTEs out <span style="font-weight:400;color:#888;font-style:italic;font-size:11px;margin-left:6px;">R&amp;D cost centres only — allocated from FTEs out by Project × UV STAFF cost weights</span></span>
+        <button class="rv-expand-btn${leadUvFteExpanded?' active':''}" onclick="toggleLeadUvFtes()">${leadUvFteExpanded?'▼ Hide rows':'▶ Show rows'}</button>
+      </div>
+      <div id="lead-uv-ftes-table"></div>
+    </div>`:'';
   el.innerHTML=`
     <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred. Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
-    <div id="s6-agg-fte"></div>`;
+    <div id="s6-agg-fte"></div>
+    ${uvBlock}`;
   renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead',ccs:fteCodes});
+  if(rndCcs.length)document.getElementById('lead-uv-ftes-table').innerHTML=uvFteBlockHTML(computeUvFteAlloc(rndCcs),leadUvFteExpanded);
 }
+// Collapsible UV FTE block on the Lead's FTE screen (step 6b).
+let leadUvFteExpanded=false;
+function toggleLeadUvFtes(){leadUvFteExpanded=!leadUvFteExpanded;buildStep6b();}
 
 /* ── Step 7: BC Lead — Review ── */
 function buildStep7(){

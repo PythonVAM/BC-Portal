@@ -34,12 +34,42 @@ with sync_playwright() as p:
       ))()
     """)
     # Last row is Total FTE for CC; sum the rows above and confirm match
+    match=True
     if rows:
         total = rows[-1]
         # Sum FY26 (index 3 in CC row: Project, UV, FY25, FY26, FY27, FY28, FY29)
         fy26_sum = sum(float(r[3]) for r in rows[:-1] if len(r) > 3 and r[3] not in ('—', ''))
         fy26_total = float(total[3]) if len(total) > 3 else 0
-        print(f'FY26 allocated sum: {fy26_sum:.1f} vs Total FTE for CC: {fy26_total:.1f}  -> match: {abs(fy26_sum - fy26_total) < 0.05}')
+        match = abs(fy26_sum - fy26_total) < 0.05
+        print(f'FY26 allocated sum: {fy26_sum:.1f} vs Total FTE for CC: {fy26_total:.1f}  -> match: {match}')
+
+    # The BC Lead's FTE screen (step6b) shows the same UV-allocated FTEs view when
+    # R&D (gl+project+uv) CCs are in the BC — collapsed by default, expandable.
+    pg.evaluate("""
+      switchUser('jd'); contribs=[PEOPLE.find(p=>p.id==='om')]; go('step1');
+      document.getElementById('inp-bcname').value='UV lead'; saveAndNotifyCoPersons();
+      switchUser('om'); cc2Sel=[{code:'7300RND-CC-041',name:'CT',type:'partial'},{code:'5110',name:'Plat',type:'partial'}];
+      coGlPicked=new Set(); coDetail={}; coDetailSeen=new Set();
+      go('step3'); toggleCoGl('7300RND-CC-041|5110-STAFF',true); toggleCoGl('5110|5110-STAFF',true);
+      go('step3b'); go('step4');
+      fteData=[{cc:'7300RND-CC-041',loc:'GB-LON-001',city:'London',country:'UK',azW:'Employee - Regular',wt:'Lab',fy25:Array(12).fill(2),fy26:Array(12).fill(2),fy27:3,fy28:0,fy29:0}];
+      go('step5'); submitToLead();
+      switchUser('jd'); openLeadView('step6'); go('step6b');
+    """); pg.wait_for_timeout(300)
+    lead=pg.evaluate("""(()=>{const sc=document.getElementById('screen-step6b');
+      const hasUv=/UV FTEs out/.test(sc.innerText);
+      const collapsedRows=document.getElementById('lead-uv-ftes-table')?.querySelectorAll('tbody tr').length;
+      return {hasUv, collapsedRows};})()""")
+    pg.evaluate("toggleLeadUvFtes()"); pg.wait_for_timeout(150)
+    leadExp=pg.evaluate("""(()=>{const tbl=document.getElementById('lead-uv-ftes-table');
+      return {blocks:tbl.querySelectorAll('.rv-uv-block').length, hasProject:/Project/.test(tbl.innerText), totalRow:/Total FTE for CC/.test(tbl.innerText)};})()""")
+    print('LEAD step6b UV:', lead, '| expanded:', leadExp)
+
+    ok = (wrap['visible'] and match
+          and lead['hasUv'] and lead['collapsedRows']==1
+          and leadExp['blocks']>=1 and leadExp['hasProject'] and leadExp['totalRow']
+          and not errs)
+    print('PASS' if ok else 'FAIL')
     print('errors:',errs[:5])
     b.close()
 print("done")

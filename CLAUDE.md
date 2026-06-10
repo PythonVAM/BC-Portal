@@ -116,6 +116,8 @@ Where:
 
 **Visibility**: the block is hidden entirely if no R&D-shape CCs are in the submission.
 
+**Reuse**: the allocation math is `computeUvFteAlloc(ccs)` → `{ccCode:{cc,ccTotals,allocatedRows,…}}` and the render is `uvFteBlockHTML(ccAlloc,expanded)` (collapsed = one aggregate row; expanded = per-CC Project×UV tables). Both the Cost Out review (step 5, `renderRvUvFtes`, `rvUvFteExpanded`/`toggleRvUvFteRows`) and the **BC Lead's FTE screen** (step 6b, `buildStep6b` → `#lead-uv-ftes-table`, `leadUvFteExpanded`/`toggleLeadUvFtes`) render from them. The Lead reads the same `ccData`/`fteData` (synced from `submittedBC` by `openLeadView`).
+
 ### 2.8 FTE formatting (global rule)
 
 **All FTE values display at 1 decimal place** everywhere via the global `fmtFte()` formatter. Cost values stay at 0 decimal places via `fmt()`. Don't introduce local `const fmtFte = (v) => fmt(v)` lambdas — the global takes over.
