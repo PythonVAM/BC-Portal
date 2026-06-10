@@ -312,6 +312,9 @@ table.cod-tbl td, table.cod-tbl th { padding-left: 6px; padding-right: 6px; }
 .cod-cc-hdr { display: flex; align-items: center; gap: 9px; margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 0.5px solid #ebe9e3; }
 /* Greyed "N/A" cell — a column not used by this row's shape (Product/Project/UV) */
 td.cod-na { color: #b8b6b0; background: #f6f5f2; font-style: italic; font-size: 11px; text-align: center; }
+/* Derived, read-only identity value (e.g. TA, or Product for R&D rows) — shows the
+   value but greyed/shaded to signal it's auto-derived, not entered. */
+td.cod-derived { color: #8a8a8a; background: #faf9f6; font-style: italic; }
 /* Full CC read-only block on the Detail screen — separate from the editable Partial table */
 .cod-full-hdr { margin-top: 26px; }
 table.cod-full-tbl tbody tr.cod-full-row td { background: #fbfaf7; color: #4a4a4a; }
@@ -1447,7 +1450,7 @@ function roUniIdHead(showCc,hasSub){
   // MU (Management Unit, the second org layer) comes first, then Cost centre · Dept,
   // then Curr (the CC's currency). All four are CC-level identity columns.
   return (showCc?`<th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${rs}>MU</th><th class="rv-th-left" style="min-width:120px;"${rs}>Cost centre</th><th class="rv-th-left" style="min-width:46px;"${rs}>Dept</th><th class="rv-th-left" style="min-width:46px;"${rs}>Curr</th>`:'')
-    +`<th class="rv-th-left" style="min-width:150px;"${rs}>GL account</th><th class="rv-th-left" style="min-width:130px;"${rs}>Product</th><th class="rv-th-left" style="min-width:140px;"${rs}>Project</th><th class="rv-th-left" style="min-width:56px;"${rs}>UV</th>`;
+    +`<th class="rv-th-left" style="min-width:150px;"${rs}>GL account</th><th class="rv-th-left" style="min-width:70px;"${rs}>TA</th><th class="rv-th-left" style="min-width:130px;"${rs}>Product</th><th class="rv-th-left" style="min-width:140px;"${rs}>Project</th><th class="rv-th-left" style="min-width:56px;"${rs}>UV</th>`;
 }
 function roUniIdCells(row,showCc,ccBadge){
   const na='<td class="cod-na">N/A</td>';
@@ -1461,10 +1464,15 @@ function roUniIdCells(row,showCc,ccBadge){
   const mu=ccMU(cc);
   const ccCells=showCc?`<td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccInner}</td><td class="rv-td-left">${deptChipFor(cc)}</td><td class="rv-td-left">${gca(cc).cur||'—'}</td>`:'';
   const gl=`<td class="rv-td-left">${row.gln||row.gl||'—'}</td>`;
-  const prod=isSmm?`<td class="rv-td-left">${row.productName||row.prod||'—'}</td>`:na;
+  // TA + Product follow Project → Product → Therapy Area. TA is always derived/greyed;
+  // Product is derived/greyed for R&D rows, entered for SMM, N/A for GL-only.
+  const {product,taCode}=rowProductTa(row);
+  const ta=taCode?`<td class="rv-td-left cod-derived">${taAbbr(taCode)}</td>`:na;
+  const prod=isRnd?(product?`<td class="rv-td-left cod-derived">${product}</td>`:na)
+    :isSmm?`<td class="rv-td-left">${row.productName||row.prod||'—'}</td>`:na;
   const proj=isRnd?`<td class="rv-td-left">${row.projectName||row.prod||'—'}</td>`:na;
   const uv=isRnd?`<td class="rv-td-left">${row.uv||'—'}</td>`:na;
-  return ccCells+gl+prod+proj+uv;
+  return ccCells+gl+ta+prod+proj+uv;
 }
 // Cost formatter in $m with negative-as-red-parens (read-only tables).
 function fmtCostM(v){const n=Number(v)||0;if(n<0)return '<span style="color:#A32D2D;">('+fmtM(Math.abs(n))+')</span>';return fmtM(n);}
@@ -1541,6 +1549,25 @@ let coSelLastSel={};         // groupKey "Dept|shape" -> last clicked glKey (for
 
 function fmt$(n){return '$'+fmt(n);}
 function taFull(ta){return TA_NAMES[ta]||ta;}
+// 4-letter Therapy Area abbreviations (compact column display: Onco / Immu / CVRe).
+const TA_ABBR={'Onc':'Onco','Imm':'Immu','CVR':'CVRe'};
+function taAbbr(ta){return TA_ABBR[ta]||(ta&&ta!=='—'?ta:'—');}
+// Derive {product, taCode} for a cost row, following Project → Product → Therapy Area.
+// R&D rows carry a project (product + TA come from the PROJECTS entry); SMM rows carry
+// a product (TA from the PRODUCTS entry); GL-only rows have neither. Both are always
+// derived/read-only — TA is never entered, and Product is derived for R&D.
+function rowProductTa(row){
+  const isRnd=!!(row.project||row.projectName||row.uv);
+  if(isRnd){
+    const pj=PROJECTS.find(p=>p.code===row.project||p.name===row.projectName);
+    return {product:(pj?pj.product:row.productName)||null, taCode:row.taCode||(pj?pj.ta:null)};
+  }
+  if(row.product||row.productName){
+    const pr=PRODUCTS.find(p=>p.code===row.product||p.name===row.productName);
+    return {product:row.productName||(pr?pr.name:null), taCode:row.taCode||(pr?pr.ta:null)};
+  }
+  return {product:null, taCode:null};
+}
 
 /* ── SELECT screen ── */
 function renderCoSelect(){
@@ -1776,9 +1803,16 @@ function coDetailIdCells(ds,shape,mode,ccs){
   let glCell;
   if(mode==='adhoc')glCell=`<td><input class="cod-input cod-id-input" style="width:170px;" value="${esc(ds.gl)}" placeholder="GL code & name" onchange="editCoDetailIdentity('${ds.key}','gl',this.value)" ${stop}/></td>`;
   else glCell=`<td>${ds.gln||ds.gl||'—'}</td>`;
-  // Product — only used by gl+product shape
+  // TA — always derived/read-only (Project→Product→TA), greyed. N/A for GL-only shape.
+  const {product:derivedProd,taCode}=rowProductTa(ds);
+  const taCell=(shape==='gl+product'||shape==='gl+project+uv')
+    ? (taCode?`<td class="cod-derived">${taAbbr(taCode)}</td>`:`<td class="cod-derived">—</td>`)
+    : na;
+  // Product — entered for SMM (gl+product); derived/greyed from the Project for R&D
+  // (gl+project+uv); N/A for GL-only.
   let prodCell;
   if(shape==='gl+product')prodCell=(mode==='full')?`<td>${ds.productName||'—'}</td>`:combo('productName',ds.productName,134,'Product');
+  else if(shape==='gl+project+uv')prodCell=`<td class="cod-derived">${derivedProd||'—'}</td>`;
   else prodCell=na;
   // Project — only used by gl+project+uv shape
   let projCell;
@@ -1788,7 +1822,7 @@ function coDetailIdCells(ds,shape,mode,ccs){
   let uvCell;
   if(shape==='gl+project+uv')uvCell=(mode==='full')?`<td>${ds.uv||'—'}</td>`:combo('uv',ds.uv,62,'UV');
   else uvCell=na;
-  return ccCell+deptCell+glCell+prodCell+projCell+uvCell;
+  return ccCell+deptCell+glCell+taCell+prodCell+projCell+uvCell;
 }
 /* FY value cells for one row. `readonly` (Full CC rows) renders plain text instead of inputs. */
 function coDetailFyCells(ds,cur,readonly,exp25,exp26,localMode){
@@ -1823,7 +1857,7 @@ function renderCoDetail(){
 
   // ── Shared column scaffolding ── fixed 6 identity columns + FY columns.
   const moTh=MO.map(m=>`<th class="cod-mo">${m}</th>`).join('');
-  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:46px;">Dept</th><th style="min-width:118px;">GL account</th><th style="min-width:140px;">Product</th><th style="min-width:150px;">Project</th><th style="min-width:58px;">UV</th>`;
+  const idHead=`<th style="min-width:150px;">Cost centre</th><th style="min-width:46px;">Dept</th><th style="min-width:118px;">GL account</th><th style="min-width:64px;">TA</th><th style="min-width:140px;">Product</th><th style="min-width:150px;">Project</th><th style="min-width:58px;">UV</th>`;
   const idHeadSpanned=idHead.replace(/<th /g,hasSub?'<th rowspan="2" ':'<th ');
   const fyHead=`
     <th class="cod-num th-fy-sel" colspan="${exp25?13:1}" onclick="toggleCoDetailFy('fy25')">FY25 ${exp25?'▼':'▶'}</th>
@@ -3133,16 +3167,16 @@ function uvFteBlockHTML(ccAlloc,scope){
   let idCols, thead, bodyRows='';
   if(view==='ta'){
     idCols=1;
-    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:180px;"${hasSub?' rowspan="2"':''}>Therapy Area</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>TA</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
     const byTa={};
-    ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{const e=byTa[r.taCode||'—']=byTa[r.taCode||'—']||{taName:r.taName||'—',acc:blank()};addAlloc(e.acc,r);}));
-    bodyRows=Object.keys(byTa).sort(taSort).map(k=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${byTa[k].taName}</td>${fyDataCells(byTa[k].acc,fmtFte)}</tr>`).join('');
+    ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{const e=byTa[r.taCode||'—']=byTa[r.taCode||'—']||{acc:blank()};addAlloc(e.acc,r);}));
+    bodyRows=Object.keys(byTa).sort(taSort).map(k=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${taAbbr(k)}</td>${fyDataCells(byTa[k].acc,fmtFte)}</tr>`).join('');
   } else if(view==='uv'){
     idCols=2;
-    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:180px;"${hasSub?' rowspan="2"':''}>Therapy Area</th><th class="rv-th-left" style="min-width:120px;"${hasSub?' rowspan="2"':''}>UV</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+    thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:90px;"${hasSub?' rowspan="2"':''}>TA</th><th class="rv-th-left" style="min-width:120px;"${hasSub?' rowspan="2"':''}>UV</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
     const byTaUv={};
-    ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{const k=`${r.taCode||'—'}|${r.uv}`;const e=byTaUv[k]=byTaUv[k]||{taCode:r.taCode||'—',taName:r.taName||'—',uv:r.uv,acc:blank()};addAlloc(e.acc,r);}));
-    bodyRows=Object.values(byTaUv).sort((a,b)=>taSort(a.taCode,b.taCode)||uvSort(a.uv)-uvSort(b.uv)).map(e=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${e.taName}</td><td class="rv-td-left">${uvChipFor(e.uv)}</td>${fyDataCells(e.acc,fmtFte)}</tr>`).join('');
+    ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{const k=`${r.taCode||'—'}|${r.uv}`;const e=byTaUv[k]=byTaUv[k]||{taCode:r.taCode||'—',uv:r.uv,acc:blank()};addAlloc(e.acc,r);}));
+    bodyRows=Object.values(byTaUv).sort((a,b)=>taSort(a.taCode,b.taCode)||uvSort(a.uv)-uvSort(b.uv)).map(e=>`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${taAbbr(e.taCode)}</td><td class="rv-td-left">${uvChipFor(e.uv)}</td>${fyDataCells(e.acc,fmtFte)}</tr>`).join('');
   } else if(view==='cc'){
     idCols=2;
     thead=`<thead><tr><th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th><th class="rv-th-left" style="min-width:200px;"${hasSub?' rowspan="2"':''}>Cost centre</th>${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
@@ -3153,7 +3187,7 @@ function uvFteBlockHTML(ccAlloc,scope){
     thead=`<thead><tr>
       <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
       <th class="rv-th-left" style="min-width:200px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-      <th class="rv-th-left" style="min-width:140px;"${hasSub?' rowspan="2"':''}>Therapy Area</th>
+      <th class="rv-th-left" style="min-width:70px;"${hasSub?' rowspan="2"':''}>TA</th>
       <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>Product</th>
       <th class="rv-th-left" style="min-width:160px;"${hasSub?' rowspan="2"':''}>Project</th>
       <th class="rv-th-left" style="min-width:90px;"${hasSub?' rowspan="2"':''}>UV</th>
@@ -3164,7 +3198,7 @@ function uvFteBlockHTML(ccAlloc,scope){
         return;
       }
       a.allocatedRows.forEach(r=>{
-        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left">${r.taName||'—'}</td><td class="rv-td-left">${r.product||'—'}</td><td class="rv-td-left">${r.projectName||'—'}</td><td class="rv-td-left">${uvChipFor(r.uv)}</td>${fyDataCells(r,fmtFte)}</tr>`;
+        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left">${taAbbr(r.taCode)}</td><td class="rv-td-left">${r.product||'—'}</td><td class="rv-td-left">${r.projectName||'—'}</td><td class="rv-td-left">${uvChipFor(r.uv)}</td>${fyDataCells(r,fmtFte)}</tr>`;
       });
     });
   }
@@ -3975,7 +4009,8 @@ function ciFilterColSpec(mode){
     {k:'dept',l:'Dept',g:r=>gca(r.cc)?.bcDept||'—'},
     {k:'curr',l:'Curr',g:r=>gca(r.cc)?.cur||'—'},
     {k:'gl',l:'GL account',g:r=>r.gln||r.gl||'—'},
-    {k:'prod',l:'Product',g:r=>{const rnd=!!(r.project||r.projectName||r.uv);return (!rnd&&(r.product||r.productName))?(r.productName||r.prod||'—'):'N/A';}},
+    {k:'ta',l:'TA',g:r=>{const {taCode}=rowProductTa(r);return taCode?taAbbr(taCode):'N/A';}},
+    {k:'prod',l:'Product',g:r=>{const {product}=rowProductTa(r);return product||'N/A';}},
     {k:'proj',l:'Project',g:r=>{const rnd=!!(r.project||r.projectName||r.uv);return rnd?(r.projectName||r.prod||'—'):'N/A';}},
     {k:'uv',l:'UV',g:r=>{const rnd=!!(r.project||r.projectName||r.uv);return rnd?(r.uv||'—'):'N/A';}},
   ];

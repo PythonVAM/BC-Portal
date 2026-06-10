@@ -81,12 +81,12 @@ with sync_playwright() as p:
           # Lead UV block: own 4-way toggle, no expander, default By UV (TA + UV).
           and lead['hasUv'] and not lead['hasExpander']
           and lead['toggle']==['By TA','By UV','By cost centre','Detail'] and lead['active']==['By UV']
-          and lead['heads']==['Therapy Area','UV']
-          and leadTa=='Therapy Area'
+          and lead['heads']==['TA','UV']
+          and leadTa=='TA'
           and leadCc==['MU','Cost centre']
-          and leadDet['heads']==['MU','Cost centre','Therapy Area','Product','Project','UV'] and leadDet['dataRows']>1 and leadDet['totalRow']
+          and leadDet['heads']==['MU','Cost centre','TA','Product','Project','UV'] and leadDet['dataRows']>1 and leadDet['totalRow']
           # FTE summary toggle did not change the UV block (still Detail columns).
-          and uvUnchanged==['MU','Cost centre','Therapy Area','Product','Project','UV']
+          and uvUnchanged==['MU','Cost centre','TA','Product','Project','UV']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:',errs[:5])
