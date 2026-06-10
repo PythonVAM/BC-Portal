@@ -35,8 +35,10 @@ with sync_playwright() as p:
       costHead:document.querySelector('#rv-co-agg .rv-table thead th')?.textContent.trim(),
     }))()""")
     print('STEP5 summaries:', s5)
-    s5ok = (s5['cost']==['USD','Local','By SET Area','By cost centre','Detail']
-            and s5['fte']==['By SET Area','By cost centre','Detail']
+    # Step 5 is a summary screen (data editable via Back), so the Cost/FTE summaries
+    # drop the Detail level — just By SET Area / By cost centre (+ USD/Local on cost).
+    s5ok = (s5['cost']==['USD','Local','By SET Area','By cost centre']
+            and s5['fte']==['By SET Area','By cost centre']
             and s5['costHead']=='MU')
 
     # Switch the UV block's own toggle to Detail (flat Project × UV rows).
