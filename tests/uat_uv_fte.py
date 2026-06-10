@@ -57,22 +57,27 @@ with sync_playwright() as p:
       go('step5'); submitToLead();
       switchUser('jd'); openLeadView('step6'); go('step6b');
     """); pg.wait_for_timeout(300)
+    # The UV block follows the FTE summary's By SET Area / By cost centre / Detail
+    # toggle (no separate Show rows expander). Default view = cc.
     lead=pg.evaluate("""(()=>{const sc=document.getElementById('screen-step6b');
       const hasUv=/UV FTEs out/.test(sc.innerText);
-      const collapsedRows=document.getElementById('lead-uv-ftes-table')?.querySelectorAll('tbody tr').length;
-      return {hasUv, collapsedRows};})()""")
-    pg.evaluate("toggleLeadUvFtes()"); pg.wait_for_timeout(150)
-    leadExp=pg.evaluate("""(()=>{const tbl=document.getElementById('lead-uv-ftes-table');
+      const tbl=document.getElementById('lead-uv-ftes-table');
+      const ccHeads=[...tbl.querySelectorAll('thead th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,2);
+      return {hasUv, ccHeads, ccRows:tbl.querySelectorAll('tbody tr').length, hasExpander:!!sc.querySelector('.rv-expand-btn')};})()""")
+    pg.evaluate("setCiAggView('fte-lead','detail')"); pg.wait_for_timeout(150)
+    leadDet=pg.evaluate("""(()=>{const tbl=document.getElementById('lead-uv-ftes-table');
       const heads=[...tbl.querySelectorAll('thead th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,4);
       return {heads, dataRows:tbl.querySelectorAll('tbody tr').length, totalRow:/Total — R&D cost centres/.test(tbl.innerText)};})()""")
-    print('LEAD step6b UV:', lead, '| expanded:', leadExp)
+    pg.evaluate("setCiAggView('fte-lead','area')"); pg.wait_for_timeout(150)
+    leadArea=pg.evaluate("(document.querySelector('#lead-uv-ftes-table thead th')?.textContent||'').includes('SET Area')")
+    print('LEAD step6b UV cc:', lead, '| detail:', leadDet, '| area header:', leadArea)
 
     ok = (wrap['visible'] and match
-          and lead['hasUv'] and lead['collapsedRows']==1
-          # Lead UV table mirrors the FTE table above: MU · Cost centre lead columns,
-          # then Project · UV; expanded shows >1 row (detail + grand total).
-          and leadExp['heads']==['MU','Cost centre','Project','UV']
-          and leadExp['dataRows']>1 and leadExp['totalRow']
+          # Lead UV block follows the toggle, no expander.
+          and lead['hasUv'] and not lead['hasExpander']
+          and lead['ccHeads']==['MU','Cost centre'] and lead['ccRows']>=2
+          and leadDet['heads']==['MU','Cost centre','Project','UV']
+          and leadDet['dataRows']>1 and leadDet['totalRow'] and leadArea
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:',errs[:5])
