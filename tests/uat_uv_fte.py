@@ -33,15 +33,16 @@ with sync_playwright() as p:
         tr => Array.from(tr.querySelectorAll('td')).map(c=>c.textContent.trim())
       ))()
     """)
-    # Last row is Total FTE for CC; sum the rows above and confirm match
+    # Flat table now: data rows are MU · Cost centre · Project · UV · FY25..FY29
+    # (FY26 at index 5); the last row is the grand total (colspan label · FY25..FY29,
+    # FY26 at index 2). Summing the data rows' FY26 must match the total.
     match=True
     if rows:
         total = rows[-1]
-        # Sum FY26 (index 3 in CC row: Project, UV, FY25, FY26, FY27, FY28, FY29)
-        fy26_sum = sum(float(r[3]) for r in rows[:-1] if len(r) > 3 and r[3] not in ('—', ''))
-        fy26_total = float(total[3]) if len(total) > 3 else 0
+        fy26_sum = sum(float(r[5]) for r in rows[:-1] if len(r) > 5 and r[5] not in ('—', ''))
+        fy26_total = float(total[2]) if len(total) > 2 else 0
         match = abs(fy26_sum - fy26_total) < 0.05
-        print(f'FY26 allocated sum: {fy26_sum:.1f} vs Total FTE for CC: {fy26_total:.1f}  -> match: {match}')
+        print(f'FY26 allocated sum: {fy26_sum:.1f} vs grand total: {fy26_total:.1f}  -> match: {match}')
 
     # The BC Lead's FTE screen (step6b) shows the same UV-allocated FTEs view when
     # R&D (gl+project+uv) CCs are in the BC — collapsed by default, expandable.
@@ -62,12 +63,16 @@ with sync_playwright() as p:
       return {hasUv, collapsedRows};})()""")
     pg.evaluate("toggleLeadUvFtes()"); pg.wait_for_timeout(150)
     leadExp=pg.evaluate("""(()=>{const tbl=document.getElementById('lead-uv-ftes-table');
-      return {blocks:tbl.querySelectorAll('.rv-uv-block').length, hasProject:/Project/.test(tbl.innerText), totalRow:/Total FTE for CC/.test(tbl.innerText)};})()""")
+      const heads=[...tbl.querySelectorAll('thead th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,4);
+      return {heads, dataRows:tbl.querySelectorAll('tbody tr').length, totalRow:/Total — R&D cost centres/.test(tbl.innerText)};})()""")
     print('LEAD step6b UV:', lead, '| expanded:', leadExp)
 
     ok = (wrap['visible'] and match
           and lead['hasUv'] and lead['collapsedRows']==1
-          and leadExp['blocks']>=1 and leadExp['hasProject'] and leadExp['totalRow']
+          # Lead UV table mirrors the FTE table above: MU · Cost centre lead columns,
+          # then Project · UV; expanded shows >1 row (detail + grand total).
+          and leadExp['heads']==['MU','Cost centre','Project','UV']
+          and leadExp['dataRows']>1 and leadExp['totalRow']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:',errs[:5])

@@ -3096,70 +3096,48 @@ function computeUvFteAlloc(ccs){
   return ccAlloc;
 }
 
-// Render the UV FTE allocation block from a computed ccAlloc. Collapsed = one
-// aggregate row across all R&D CCs/Project×UV; expanded = per-CC Project×UV tables.
+// Render the UV FTE allocation block from a computed ccAlloc as a SINGLE flat table
+// matching the FTEs-by-cost-centre table above it: leads with MU · Cost centre, then
+// the UV-specific Project · UV columns, then the FY columns + a grand-total row.
+// Collapsed = just the total row; expanded = one row per (CC × Project × UV).
 function uvFteBlockHTML(ccAlloc,expanded){
   const hasSub=fyHasSubRow();
-  if(!expanded){
-    const synth={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-    let hasUnallocated=false;
-    Object.values(ccAlloc).forEach(a=>{
+  const ccsArr=Object.values(ccAlloc);
+  if(!ccsArr.some(a=>a.allocatedRows.length)){
+    return '<span class="rv-none">No R&amp;D Project × UV STAFF cost rows to allocate against. Add 5110-STAFF cost out for R&amp;D cost centres to see UV FTEs here.</span>';
+  }
+  // Grand total + unallocated flag across all allocated rows.
+  const synth={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
+  let hasUnallocated=false;
+  ccsArr.forEach(a=>a.allocatedRows.forEach(r=>{
+    r.fy25.forEach((v,mi)=>{if(v==='—')hasUnallocated=true;else synth.fy25[mi]+=v;});
+    r.fy26.forEach((v,mi)=>{if(v==='—')hasUnallocated=true;else synth.fy26[mi]+=v;});
+    ['fy27','fy28','fy29'].forEach(fk=>{if(r[fk]==='—')hasUnallocated=true;else synth[fk]+=r[fk];});
+  }));
+  const idCols=4;                       // MU · Cost centre · Project · UV
+  const fyCols=(s6Exp.fy25?13:1)+(s6Exp.fy26?13:1)+3;
+  const ccCell=cc=>`<span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="cc-badge-out">${cc.code}</span>${deptChipFor(cc.code)}<span style="color:#888;font-weight:400;">${cc.name}</span></span>`;
+  const thead=`<thead><tr>
+    <th class="rv-th-left rv-sticky rv-sticky-0" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
+    <th class="rv-th-left" style="min-width:200px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
+    <th class="rv-th-left" style="min-width:160px;"${hasSub?' rowspan="2"':''}>Project</th>
+    <th class="rv-th-left" style="min-width:90px;"${hasSub?' rowspan="2"':''}>UV</th>
+    ${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead>`;
+  let bodyRows='';
+  if(expanded){
+    ccsArr.forEach(a=>{const mu=ccMU(a.cc.code);
+      if(!a.allocatedRows.length){
+        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left" colspan="${2+fyCols}"><em style="color:#888;">No 5110-STAFF cost — UV FTEs cannot be allocated.</em></td></tr>`;
+        return;
+      }
       a.allocatedRows.forEach(r=>{
-        r.fy25.forEach((v,mi)=>{if(v==='—')hasUnallocated=true;else synth.fy25[mi]+=v;});
-        r.fy26.forEach((v,mi)=>{if(v==='—')hasUnallocated=true;else synth.fy26[mi]+=v;});
-        ['fy27','fy28','fy29'].forEach(fk=>{if(r[fk]==='—')hasUnallocated=true;else synth[fk]+=r[fk];});
+        bodyRows+=`<tr><td class="rv-td-left rv-sticky rv-sticky-0">${mu.code} ${mu.name}</td><td class="rv-td-left">${ccCell(a.cc)}</td><td class="rv-td-left">${r.projectName||'—'}</td><td class="rv-td-left">${uvChipFor(r.uv)}</td>${fyDataCells(r,fmtFte)}</tr>`;
       });
     });
-    if(!Object.values(ccAlloc).some(a=>a.allocatedRows.length)){
-      return '<span class="rv-none">No R&amp;D Project × UV STAFF cost rows to allocate against. Add 5110-STAFF cost out for R&amp;D cost centres to see UV FTEs here.</span>';
-    }
-    const footnote=hasUnallocated?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;">Some periods have FTEs Out but no STAFF Cost Out to allocate against (shown as "—" in the detail rows).</div>`:'';
-    return `<div class="rv-table-wrap"><table class="rv-table"><thead>
-      <tr>${fyHeaderCells()}</tr>
-      ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-    </thead><tbody><tr>${fyDataCells(synth,fmtFte)}</tr></tbody></table></div>${footnote}`;
   }
-
-  // Expanded view: per-CC blocks
-  let html='';
-  Object.values(ccAlloc).forEach(a=>{
-    if(!a.allocatedRows.length){
-      html+=`<div class="rv-uv-block">
-        <div class="rv-uv-block-hdr">
-          <span class="cc-badge-out">${a.cc.code}</span>
-          <span style="font-size:11px;color:#666;margin-left:6px;">${a.cc.name}</span>
-          ${deptChipFor(a.cc.code)}
-          <span style="margin-left:auto;font-size:11px;color:#888;font-style:italic;">No 5110-STAFF cost rows — UV FTEs cannot be allocated.</span>
-        </div>
-      </div>`;
-      return;
-    }
-    const thead=`<tr>
-      <th class="rv-th-left" style="min-width:180px;"${hasSub?' rowspan="2"':''}>Project</th>
-      <th class="rv-th-left" style="min-width:90px;"${hasSub?' rowspan="2"':''}>UV</th>
-      ${fyHeaderCells()}
-    </tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}`;
-    const tbody=a.allocatedRows.map(r=>`<tr>
-        <td class="rv-td-left">${r.projectName||'—'}</td>
-        <td class="rv-td-left">${uvChipFor(r.uv)}</td>
-        ${fyDataCells(r,fmtFte)}
-      </tr>`).join('');
-    const totalRow=`<tr class="rv-uv-total-row">
-      <td class="rv-td-left" style="font-weight:600;">Total FTE for CC</td>
-      <td class="rv-td-left"></td>
-      ${fyDataCells(a.ccTotals,fmtFte)}
-    </tr>`;
-    html+=`<div class="rv-uv-block">
-      <div class="rv-uv-block-hdr">
-        <span class="cc-badge-out">${a.cc.code}</span>
-        <span style="font-size:11px;color:#666;margin-left:6px;">${a.cc.name}</span>
-        ${deptChipFor(a.cc.code)}
-        <span style="margin-left:auto;font-size:11px;color:#888;">${a.allocatedRows.length} Project × UV ${a.allocatedRows.length===1?'row':'rows'}</span>
-      </div>
-      <div class="rv-table-wrap"><table class="rv-table"><thead>${thead}</thead><tbody>${tbody}${totalRow}</tbody></table></div>
-    </div>`;
-  });
-  return html;
+  const totalRow=`<tr style="font-weight:600;background:#f0efe9;"><td class="rv-td-left rv-sticky rv-sticky-0" colspan="${idCols}">Total — R&amp;D cost centres</td>${fyDataCells(synth,fmtFte)}</tr>`;
+  const footnote=hasUnallocated?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;">Some periods have FTEs Out but no STAFF Cost Out to allocate against (shown as "—").</div>`:'';
+  return `<div class="rv-table-wrap"><table class="rv-table">${thead}<tbody>${bodyRows}${totalRow}</tbody></table></div>${footnote}`;
 }
 
 // One-side Cost In Contributor picker (a SINGLE person for the whole One side),
@@ -3903,7 +3881,7 @@ function renderCiCcAggregate(mode,elId,opts){
         <button class="method-btn ${!isLocalCur?'active':''}" onclick="setAggCur('${scope}','usd')">USD</button>
         <button class="method-btn ${isLocalCur?'active':''}" onclick="setAggCur('${scope}','local')">Local</button>
       </span>`:'';
-  el.innerHTML=`<div style="margin-bottom:18px;border:0.5px solid #B5D4F4;border-radius:8px;padding:12px 14px;background:#F4F9FE;">
+  el.innerHTML=`<div style="margin-bottom:18px;">
     <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${title} <span class="unit-pill">${unit}</span>
       <span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;">${curToggle}
       <span class="method-toggle" style="margin-bottom:0;">
