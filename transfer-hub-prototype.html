@@ -406,7 +406,6 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
 .summary-section-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary, #1a1a1a); }
 .summary-chevron { font-size: 11px; color: #666; transition: transform 0.15s; display: inline-block; }
 .summary-chevron.collapsed { transform: rotate(-90deg); }
-#rv-section-a-body, #rv-section-b-body { padding: 16px; }
 .summary-sub-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .summary-sub-title { font-size: 12px; font-weight: 500; color: #1a1a1a; }
 .rv-expand-btn { font-size: 11px; padding: 3px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; border: 0.5px solid #ccc; background: #fff; color: #666; display: inline-flex; align-items: center; gap: 4px; }
@@ -825,23 +824,15 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
   </div>
   <div class="rv-divider"></div>
 
-  <div class="summary-section" id="rv-section-a">
-    <div class="summary-section-hdr" onclick="toggleRvSection('a')">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="summary-chevron" id="rv-chev-a">▼</span>
-        <span class="summary-section-title">Cost Out &amp; FTEs Out summary</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
-        <button class="rv-edit" onclick="go('step3')">Edit Cost Out</button>
-        <button class="rv-edit" onclick="go('step4')">Edit FTEs</button>
-      </div>
+  <div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:4px;">
+      <button class="rv-edit" onclick="go('step3')">Edit Cost Out</button>
+      <button class="rv-edit" onclick="go('step4')">Edit FTEs</button>
     </div>
-    <div id="rv-section-a-body">
-      <div id="rv-co-agg"></div>
-      <div id="rv-fte-agg" style="margin-top:14px;"></div>
-      <div id="rv-uv-ftes-wrap" style="display:none;margin-top:14px;">
-        <div id="rv-uv-ftes-table"><span class="rv-none">No data entered</span></div>
-      </div>
+    <div id="rv-co-agg"></div>
+    <div id="rv-fte-agg" style="margin-top:14px;"></div>
+    <div id="rv-uv-ftes-wrap" style="display:none;margin-top:14px;">
+      <div id="rv-uv-ftes-table"><span class="rv-none">No data entered</span></div>
     </div>
   </div>
 
@@ -2811,8 +2802,6 @@ function showFteCsvFeedback(msg,type){
 
 /* ── Review ── */
 let rvCurrency='usd';
-let rvSectionA=true;      // section A visible
-let rvSectionB=true;      // section B visible
 // Per-CC Cost In persons: {ccCode: [{...person}]}
 let costInPersons={};
 const FX={GBP:0.79,EUR:0.92,USD:1,CHF:0.90,JPY:149};
@@ -2831,10 +2820,6 @@ function setCoCurrency(c){
   }
 }
 
-function toggleRvSection(s){
-  if(s==='a'){rvSectionA=!rvSectionA;document.getElementById('rv-section-a-body').style.display=rvSectionA?'block':'none';document.getElementById('rv-chev-a').classList.toggle('collapsed',!rvSectionA);}
-  else{rvSectionB=!rvSectionB;document.getElementById('rv-section-b-body').style.display=rvSectionB?'block':'none';document.getElementById('rv-chev-b').classList.toggle('collapsed',!rvSectionB);}
-}
 
 function buildReview(){
   document.getElementById('rv-bcname').textContent=document.getElementById('inp-bcname')?.value||'—';
@@ -2853,8 +2838,8 @@ function buildReview(){
   ccs.forEach(cc=>{if(!costInPersons[cc.code])costInPersons[cc.code]=[];});
   // Cost / FTE summaries use the shared component (By SET Area / By cost centre /
   // Detail + USD/Local), reading the contributor's own live data via the '-co' scope.
-  renderCiCcAggregate('cost','rv-co-agg',{scope:'cost-co'});
-  renderCiCcAggregate('fte','rv-fte-agg',{scope:'fte-co'});
+  renderCiCcAggregate('cost','rv-co-agg',{scope:'cost-co',noDetail:true});
+  renderCiCcAggregate('fte','rv-fte-agg',{scope:'fte-co',noDetail:true});
   renderRvUvFtes();
 }
 
@@ -3280,8 +3265,6 @@ function resetAllData(){
   ciCcPaths={};
   ciActiveCcCode=null;
   rvCurrency='usd';
-  rvSectionA=true;
-  rvSectionB=true;
   ciRvCurrency='usd';
   ciCoExpanded=false;
   ciFteExpanded=false;
@@ -3729,7 +3712,11 @@ function renderCiCcAggregate(mode,elId,opts){
   // so fyDataCells can month-expand the totals.
   const aggRow=rows=>{const r={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};(rows||[]).forEach(x=>{(x.fy25||[]).forEach((v,i)=>r.fy25[i]+=Number(v)||0);(x.fy26||[]).forEach((v,i)=>r.fy26[i]+=Number(v)||0);r.fy27+=Number(x.fy27)||0;r.fy28+=Number(x.fy28)||0;r.fy29+=Number(x.fy29)||0;});return r;};
   const hasSub=fyHasSubRow();
-  const view=(ciAggView&&ciAggView[scope])||'cc';
+  // opts.noDetail hides the Detail level (e.g. the step-5 summary, where line-level
+  // data is reachable by navigating Back). Force a non-detail view if it sneaks in.
+  const noDetail=!!opts.noDetail;
+  let view=(ciAggView&&ciAggView[scope])||'cc';
+  if(noDetail&&view==='detail')view='cc';
   const allRows=[];ccs.forEach(cc=>outRows(cc).forEach(r=>allRows.push({...r,cc})));
   const grand=aggRow(allRows);
 
@@ -3818,10 +3805,10 @@ function renderCiCcAggregate(mode,elId,opts){
       <span class="method-toggle" style="margin-bottom:0;">
         <button class="method-btn ${view==='area'?'active':''}" onclick="setCiAggView('${scope}','area')">By SET Area</button>
         <button class="method-btn ${view==='cc'?'active':''}" onclick="setCiAggView('${scope}','cc')">By cost centre</button>
-        <button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${scope}','detail')">Detail</button>
+        ${noDetail?'':`<button class="method-btn ${view==='detail'?'active':''}" onclick="setCiAggView('${scope}','detail')">Detail</button>`}
       </span></span>
     </div>
-    <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='area'?'Totals by SET area. Switch to <strong>By cost centre</strong> or <strong>Detail</strong> for finer breakdowns.':view==='cc'?'Totals by cost centre. Switch to <strong>By SET Area</strong> for a coarser view or <strong>Detail</strong> for the full line-level breakdown.':'Full line-level detail across all cost centres — use the per-column filters to narrow it.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <p style="font-size:12px;color:#666;margin:0 0 10px;">${view==='area'?`Totals by SET area. Switch to <strong>By cost centre</strong>${noDetail?'':' or <strong>Detail</strong>'} for finer breakdowns.`:view==='cc'?`Totals by cost centre. Switch to <strong>By SET Area</strong> for a coarser view${noDetail?'':' or <strong>Detail</strong> for the full line-level breakdown'}.`:'Full line-level detail across all cost centres — use the per-column filters to narrow it.'} Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
     ${detailControls}
     ${table}
   </div>`;
