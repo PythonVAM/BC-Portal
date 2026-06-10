@@ -26,6 +26,19 @@ with sync_playwright() as p:
     print('UV FTE wrap visible:', wrap['visible'])
     print('Aggregate text:', wrap['text'])
 
+    # Step 5 Cost/FTE summaries use the shared component (cost: USD/Local + By SET Area
+    # / By cost centre / Detail; FTE: same minus currency), reading the contributor's
+    # own live data via the '-co' scope.
+    s5=pg.evaluate("""(()=>({
+      cost:[...document.querySelectorAll('#rv-co-agg .method-btn')].map(x=>x.textContent.trim()),
+      fte:[...document.querySelectorAll('#rv-fte-agg .method-btn')].map(x=>x.textContent.trim()),
+      costHead:document.querySelector('#rv-co-agg .rv-table thead th')?.textContent.trim(),
+    }))()""")
+    print('STEP5 summaries:', s5)
+    s5ok = (s5['cost']==['USD','Local','By SET Area','By cost centre','Detail']
+            and s5['fte']==['By SET Area','By cost centre','Detail']
+            and s5['costHead']=='MU')
+
     # Switch the UV block's own toggle to Detail (flat Project × UV rows).
     pg.evaluate("setUvFteView('co','detail');"); pg.wait_for_timeout(150)
     rows=pg.evaluate("""
@@ -77,7 +90,7 @@ with sync_playwright() as p:
     uvUnchanged=pg.evaluate("[...document.querySelectorAll('#lead-uv-ftes-table .rv-table thead tr:first-child th')].map(h=>h.textContent.replace(/[▶▼].*/,'').trim()).filter(Boolean).slice(0,6)")
     print('LEAD step6b UV default:', lead, '| ta head:', leadTa, '| cc heads:', leadCc, '| detail:', leadDet, '| after FTE->area:', uvUnchanged)
 
-    ok = (wrap['visible'] and match
+    ok = (wrap['visible'] and match and s5ok
           # Lead UV block: own 4-way toggle, no expander, default By UV (TA + UV).
           and lead['hasUv'] and not lead['hasExpander']
           and lead['toggle']==['By TA','By UV','By cost centre','Detail'] and lead['active']==['By UV']
