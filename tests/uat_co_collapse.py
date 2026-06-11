@@ -50,20 +50,19 @@ with sync_playwright() as p:
     s6fte=pg.evaluate("[...document.querySelectorAll('#s6-agg-fte .method-btn')].map(x=>x.textContent.trim())")
     print('STEP6 cost toggle:', s6cost, 'fte toggle:', s6fte, 'area header:', s6area, 'detail N/A cells:', s6det)
 
-    # Step 7 is now two blocks (Cost, FTEs), each with a collapsed "By SET Area"
-    # gate that reveals the per-area collapsible Cost Out / FTEs Out views.
+    # Step 7 is now two pivots (Cost, FTEs): columns = Out by SET area | In by SET
+    # area | Net, for the selected year. A universal Year toggle + Dept/CC (cost) +
+    # Normal/UV (fte); no By-SET-Area drill-down.
     pg.evaluate("openLeadView('step7')"); pg.wait_for_timeout(300)
-    s7gates=pg.evaluate("""[...document.querySelectorAll('#screen-step7 [onclick^="toggleCoView"]')].filter(x=>/By SET Area/.test(x.textContent)).map(x=>x.textContent.trim())""")
-    pg.evaluate("""[...document.querySelectorAll('#screen-step7 [onclick^="toggleCoView"]')].filter(x=>/By SET Area/.test(x.textContent)).forEach(g=>g.click())""")
-    pg.wait_for_timeout(250)
     s7=pg.evaluate("""(()=>{const s=document.getElementById('screen-step7');
-      const t=[...s.querySelectorAll('[onclick^="toggleCoView"]')];
-      const co=t.filter(x=>/Cost Out/.test(x.textContent));
-      const fte=t.filter(x=>/FTEs Out/.test(x.textContent));
-      return {coAreas:co.length, coCollapsed:co.every(x=>x.textContent.trim().startsWith('▶')), coTotals:/Cost out total/.test(s.innerText),
-              fteAreas:fte.length, fteCollapsed:fte.every(x=>x.textContent.trim().startsWith('▶')), fteTotals:/FTEs out total/.test(s.innerText),
-              twoMatrices:s.querySelectorAll('table.s6-table').length===2};})()""")
-    print('STEP7 gates:', s7gates, '| areas:', s7)
+      const tbls=[...s.querySelectorAll('table.s6-table')];
+      const h=t=>[...t.querySelectorAll('thead tr:first-child th')].map(x=>x.textContent.trim());
+      return {twoTables:tbls.length===2, costHdr:h(tbls[0]), fteHdr:h(tbls[1]),
+              years:[...s.querySelectorAll('[onclick^="setS7Year"]')].length,
+              hasCostToggle:[...s.querySelectorAll('[onclick^="setS7CostRowBy"]')].length===2,
+              hasFteToggle:[...s.querySelectorAll('[onclick^="setS7FteView"]')].length===2,
+              noDrill:[...s.querySelectorAll('[onclick^="toggleCoView"]')].length===0};})()""")
+    print('STEP7 pivot:', s7)
     # Receiver flow: ci-step1 = Cost summary, ci-step2 = FTEs summary — each has the
     # By SET Area / By cost centre / Detail toggle (not per-CC collapsibles).
     pg.evaluate("switchUser('lt'); openCiFlow();"); pg.wait_for_timeout(200)
@@ -72,11 +71,13 @@ with sync_playwright() as p:
     c2=pg.evaluate("[...document.querySelectorAll('#screen-ci-step2 .method-btn')].map(x=>x.textContent.trim())"); print('CI2 toggle:', c2)
 
     ok = (s6cost==['USD','Local','By SET Area','By cost centre','Detail'] and s6fte==['By SET Area','By cost centre','Detail'] and s6area and s6det
-          # Step 7: two aggregate matrices + collapsed By SET Area gates revealing
-          # per-area Cost Out / FTEs Out views with per-year totals.
-          and len(s7gates)==2 and all(g.startswith('▶') for g in s7gates) and s7['twoMatrices']
-          and s7['coAreas']>=1 and s7['coCollapsed'] and s7['coTotals']
-          and s7['fteAreas']>=1 and s7['fteCollapsed'] and s7['fteTotals']
+          # Step 7: two Out|In|Net pivots with the year / dept-cc / normal-uv toggles
+          # and no By-SET-Area drill-down.
+          # (assign phase here, so no Cost In columns yet — just Out groups + Net)
+          and s7['twoTables'] and s7['noDrill']
+          and s7['costHdr'][0]=='Dept' and s7['costHdr'][-1]=='Net' and 'Cost Out' in s7['costHdr']
+          and s7['fteHdr'][0]=='Location' and s7['fteHdr'][-1]=='Net' and 'FTEs Out' in s7['fteHdr']
+          and s7['years']==5 and s7['hasCostToggle'] and s7['hasFteToggle']
           # Receiver Cost (ci-step1) + FTEs (ci-step2): SET Area / CC / Detail toggle.
           and c1==['USD','Local','By SET Area','By cost centre','Detail']
           and c2==['By SET Area','By cost centre','Detail']

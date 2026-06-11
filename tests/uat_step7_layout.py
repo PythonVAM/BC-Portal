@@ -36,34 +36,40 @@ with sync_playwright() as p:
       submitCostIn(); switchUser('jd'); openLeadView('step7');
     """); pg.wait_for_timeout(400)
 
+    # Step 7 is now two pivots — Cost (rows = Dept | Cost centre) and FTEs (rows =
+    # Location | TA) — columns = [Out by SET area | In by SET area | Net], for the
+    # selected year. A universal Year toggle + Dept/CC (cost) + Normal/UV (fte). No
+    # By-SET-Area drill-down (that's on the prior screens). Balance check stays.
+    hdr1=lambda i: f"""[...document.querySelectorAll('#screen-step7 table.s6-table')][{i}].querySelectorAll('thead tr:first-child th')"""
     base=pg.evaluate("""(()=>{const s=document.getElementById('screen-step7');
-      return {aggLabels:[...s.querySelectorAll('.s6-td-label')].map(x=>x.textContent.trim()),
-              nMatrices:s.querySelectorAll('table.s6-table').length,
-              gates:[...s.querySelectorAll('[onclick^="toggleCoView"]')].filter(x=>/By SET Area/.test(x.textContent)).length,
+      const tbls=[...s.querySelectorAll('table.s6-table')];
+      const h=t=>[...t.querySelectorAll('thead tr:first-child th')].map(x=>x.textContent.trim());
+      return {nTables:tbls.length, costHdr:h(tbls[0]), fteHdr:h(tbls[1]),
+              years:[...s.querySelectorAll('[onclick^="setS7Year"]')].map(x=>x.textContent.trim()),
+              costRowToggle:[...s.querySelectorAll('[onclick^="setS7CostRowBy"]')].map(x=>x.textContent.trim()),
+              fteViewToggle:[...s.querySelectorAll('[onclick^="setS7FteView"]')].map(x=>x.textContent.trim()),
+              noDrill:[...s.querySelectorAll('[onclick^="toggleCoView"]')].length===0,
               balanced:/is balanced/i.test(s.innerText)};})()""")
     print('base:', base)
 
-    # Expand the Cost "By SET Area" gate -> Source (Cost Out) + Destination (Cost In) areas
-    pg.evaluate("""(()=>{const g=[...document.querySelectorAll('#screen-step7 [onclick^="toggleCoView"]')].find(x=>/By SET Area/.test(x.textContent)); g.click();})()""")
-    pg.wait_for_timeout(200)
-    drill=pg.evaluate("""(()=>{const s=document.getElementById('screen-step7');
-      const txt=s.innerText;
-      return {hasSourceLabel:/Cost Out — by source SET area/i.test(txt),
-              hasDestLabel:/Cost In — by destination SET area/i.test(txt),
-              areaCoToggles:[...s.querySelectorAll('[onclick^="toggleCoView"]')].filter(x=>/· Cost Out/.test(x.textContent)).length,
-              areaCiToggles:[...s.querySelectorAll('[onclick^="toggleCoView"]')].filter(x=>/· Cost In/.test(x.textContent)).length};})()""")
-    print('cost drill:', drill)
-    # Expand one source area -> row detail (N/A cells appear)
-    pg.evaluate("""(()=>{const t=[...document.querySelectorAll('#screen-step7 [onclick^="toggleCoView"]')].find(x=>/· Cost Out/.test(x.textContent)); t.click();})()""")
-    pg.wait_for_timeout(200)
-    rows=pg.evaluate("""!!document.querySelector('#screen-step7 .rv-table-wrap table.rv-table td.cod-na')""")
-    print('source area expands to rows:', rows)
+    # Toggle Cost rows to cost centre, FTE to UV — row-dimension header changes.
+    pg.evaluate("setS7CostRowBy('cc')"); pg.wait_for_timeout(120)
+    costRowLbl=pg.evaluate(f"{hdr1(0)}[0].textContent.trim()")
+    pg.evaluate("setS7FteView('uv')"); pg.wait_for_timeout(120)
+    fteRowLbl=pg.evaluate(f"{hdr1(1)}[0].textContent.trim()")
+    pg.evaluate("setS7Year('fy27')"); pg.wait_for_timeout(120)
+    activeYear=pg.evaluate("[...document.querySelectorAll('#screen-step7 [onclick^=\"setS7Year\"].active')].map(x=>x.textContent.trim())")
+    print('toggles -> cost row:', costRowLbl, '| fte row:', fteRowLbl, '| year:', activeYear)
 
-    ok = (base['aggLabels']==['Cost Out','Cost In','Net cost','FTEs Out','FTEs In','Net FTEs']
-          and base['nMatrices']==2 and base['gates']==2 and base['balanced']
-          and drill['hasSourceLabel'] and drill['hasDestLabel']
-          and drill['areaCoToggles']>=1 and drill['areaCiToggles']>=1
-          and rows and not errs)
+    ok = (base['nTables']==2
+          and base['costHdr']==['Dept','Cost Out','Cost In','Net']
+          and base['fteHdr']==['Location','FTEs Out','FTEs In','Net']
+          and base['years']==['FY25','FY26','FY27','FY28','FY29']
+          and base['costRowToggle']==['By Dept','By cost centre']
+          and base['fteViewToggle']==['Normal','UV view']
+          and base['noDrill'] and base['balanced']
+          and costRowLbl=='Cost centre' and fteRowLbl=='TA' and activeYear==['FY27']
+          and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
     b.close()
