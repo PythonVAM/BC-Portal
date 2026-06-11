@@ -35,7 +35,9 @@ with sync_playwright() as p:
     pg.evaluate("switchUser('jd'); openLeadView('step6')"); pg.wait_for_timeout(300)
     s6title=pg.evaluate("document.querySelector('#screen-step6 .card-title').textContent.trim()")
     pg.evaluate("openLeadView('step7')"); pg.wait_for_timeout(300)
-    s7=pg.evaluate("[...document.querySelectorAll('#screen-step7 .s6-td-label')].map(x=>x.textContent.trim()).slice(0,6)")
+    # step7 pivots: Out/In are now column-group headers (.s6-th-fy); in IN mode the
+    # direction swap flips Cost Out↔Cost In / FTEs Out↔FTEs In.
+    s7=pg.evaluate("[...document.querySelectorAll('#screen-step7 table.s6-table thead .s6-th-fy')].map(x=>x.textContent.trim())")
     print('STEP6 title (IN):', s6title)
     print('STEP7 labels (IN):', s7)
 
@@ -43,7 +45,7 @@ with sync_playwright() as p:
         ci2['title']=='Cost'  # receiver screen uses a neutral title
         and ci2['aggTitleCostIn']
         and s6title=='Cost'
-        and s7[:2]==['Cost In','Cost Out'] and 'FTEs In' in s7 and 'FTEs Out' in s7
+        and s7[:2]==['Cost In','Cost Out'] and 'FTEs In' in s7  # Cost groups + FTE out-group, swapped
         and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

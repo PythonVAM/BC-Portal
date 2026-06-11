@@ -4111,215 +4111,68 @@ function buildStep7(){
   function aggCi(fk,mi){if(!hasCI)return null;let t=0;Object.values(ciResponses).forEach(resp=>{(resp.ciData||[]).forEach(r=>{const cur=gca(r.cc||resp.ccCode).cur||'USD';if(mi!==undefined)t+=convCost(r[fk]?.[mi]||0,cur);else t+=(fk==='fy27'||fk==='fy28'||fk==='fy29')?convCost(r[fk]||0,cur):rowTotal((r[fk]||[]).map(v=>convCost(v,cur)));});});return t;}
   function aggCiFte(fk,mi){if(!hasCI)return null;let t=0;Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{if(mi!==undefined)t+=r[fk]?.[mi]||0;else t+=(fk==='fy27'||fk==='fy28'||fk==='fy29')?(r[fk]||0):rowTotal(r[fk]||[]);});});return t;}
 
-  function fmtCell(v,isCost){if(v===null)return`<td class="s6-td-awaiting">Awaiting</td>`;const neg=v<0;const f=isCost?fmtM:fmtFte;const disp=f(Math.abs(v));return`<td class="${v<0?'s6-td-neg':v>0?'s6-td-pos':'s6-td-zero'}">${neg?'('+disp+')':disp}</td>`;}
-  function netCell(co,ci,isCost){if(ci===null)return`<td class="s6-td-awaiting">Awaiting</td>`;const net=co-(ci||0);const neg=net<0;const f=isCost?fmtM:fmtFte;const disp=f(Math.abs(net));return`<td class="s6-td-net ${neg?'s6-td-neg':net>0?'s6-td-pos':'s6-td-zero'}">${neg?'('+disp+')':disp}</td>`;}
+  // ════ Summary pivots: rows × [Out by SET area | In by SET area | Net] for the
+  // selected year (s7Year). Cost rows = Dept | Cost centre; FTE rows = Location
+  // (normal) | TA (UV view). One year toggle governs both tables. ════
+  const fk=s7Year;
+  const FYLBL={fy25:'FY25',fy26:'FY26',fy27:'FY27',fy28:'FY28',fy29:'FY29'};
+  const areaName=code=>{const a=SET_AREAS[code];return a?`${code} ${a.name}`:code;};
+  const fkCost=(r,cur)=>(fk==='fy25'||fk==='fy26')?rowTotal((r[fk]||[]).map(v=>convCost(v,cur))):convCost(r[fk]||0,cur);
+  const fkFte=(r)=>(fk==='fy25'||fk==='fy26')?rowTotal(r[fk]||[]):(Number(r[fk])||0);
+  const fkAlloc=(r)=>{if(fk==='fy25'||fk==='fy26'){let t=0;(r[fk]||[]).forEach(v=>{if(v!=='—')t+=v;});return t;}return r[fk]==='—'?0:(Number(r[fk])||0);};
 
-  function buildRow(aggFn,isCost,label,rowClass){
-    const cells=[];
-    const fy25Tot=aggFn('fy25');
-    if(s6Exp.fy25){cells.push(fmtCell(fy25Tot,isCost).replace('class="','class="s6-td-subtotal '));MO.forEach((_,mi)=>cells.push(fmtCell(aggFn('fy25',mi),isCost)));}
-    else cells.push(fmtCell(fy25Tot,isCost));
-    const fy26Tot=aggFn('fy26');
-    if(s6Exp.fy26){cells.push(fmtCell(fy26Tot,isCost).replace('class="','class="s6-td-subtotal '));MO.forEach((_,mi)=>cells.push(fmtCell(aggFn('fy26',mi),isCost)));}
-    else cells.push(fmtCell(fy26Tot,isCost));
-    ['fy27','fy28','fy29'].forEach(fk=>cells.push(fmtCell(aggFn(fk),isCost)));
-    return`<tr class="${rowClass}"><td class="s6-td-label">${label}</td>${cells.join('')}</tr>`;
+  function costEntries(){
+    const rowBy=s7CostRowBy,out=[],inn=[];
+    ccs.forEach(cc=>{const cur=gca(cc.code).cur||'USD';let v=0;(ccData[cc.code]||[]).forEach(r=>v+=fkCost(r,cur));
+      if(v)out.push({rowKey:rowBy==='cc'?cc.code:(gca(cc.code).bcDept||'—'),area:getSetArea(cc.code).code,val:v});});
+    Object.values(ciResponses).forEach(resp=>{(resp.ciData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const cur=gca(cc).cur||'USD';const v=fkCost(r,cur);
+      if(v)inn.push({rowKey:rowBy==='cc'?cc:(gca(cc).bcDept||'—'),area:getSetArea(cc).code,val:v});});});
+    return {out,inn};
   }
-  function buildNetRow(coFn,ciFn,isCost,label){
-    const cells=[];
-    const bnc=(fk,mi)=>netCell(coFn(fk,mi),ciFn(fk,mi),isCost);
-    const fy25Tot=bnc('fy25');
-    if(s6Exp.fy25){cells.push(fy25Tot.replace('class="','class="s6-td-subtotal '));MO.forEach((_,mi)=>cells.push(bnc('fy25',mi)));}
-    else cells.push(fy25Tot);
-    const fy26Tot=bnc('fy26');
-    if(s6Exp.fy26){cells.push(fy26Tot.replace('class="','class="s6-td-subtotal '));MO.forEach((_,mi)=>cells.push(bnc('fy26',mi)));}
-    else cells.push(fy26Tot);
-    ['fy27','fy28','fy29'].forEach(fk=>cells.push(bnc(fk)));
-    return`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">${label}</td>${cells.join('')}</tr>`;
+  function fteEntries(){
+    const out=[],inn=[];
+    if(s7FteView==='uv'){
+      const alloc=computeUvFteAlloc(ccs.filter(cc=>coShape(cc.code)==='gl+project+uv'));
+      Object.values(alloc).forEach(a=>{a.allocatedRows.forEach(r=>{const v=fkAlloc(r);if(v)out.push({rowKey:taAbbr(r.taCode),area:getSetArea(a.cc.code).code,val:v});});});
+      // In side: the One CC's FTEs In bucketed under its TA (derived from its Cost In
+      // rows; '—' if the destination CC isn't R&D — UV allocation is R&D-only).
+      const taOf={};Object.values(ciResponses).forEach(resp=>{(resp.ciData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;if(!taOf[cc]){const t=rowProductTa(r).taCode;if(t)taOf[cc]=t;}});});
+      Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const v=fkFte(r);if(v)inn.push({rowKey:taAbbr(taOf[cc]||''),area:getSetArea(cc).code,val:v});});});
+    } else {
+      fteData.forEach(r=>{const v=fkFte(r);if(v)out.push({rowKey:r.loc||'—',area:getSetArea(r.cc).code,val:v});});
+      Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const v=fkFte(r);if(v)inn.push({rowKey:r.loc||'—',area:getSetArea(cc).code,val:v});});});
+    }
+    return {out,inn};
   }
-
-  const subRow25=s6Exp.fy25?MO.map(m=>`<th class="s6-th-mo">${m}</th>`).join(''):'';
-  const subRow26=s6Exp.fy26?MO.map(m=>`<th class="s6-th-mo">${m}</th>`).join(''):'';
-  const hasSubRow=s6Exp.fy25||s6Exp.fy26;
-  const thead=`<thead>
-    <tr>
-      <th class="s6-th-label"${hasSubRow?' rowspan="2"':''}></th>
-      <th class="s6-th-fy" colspan="${s6Exp.fy25?13:1}" onclick="toggleS6Fy('fy25')">FY25 ${s6Exp.fy25?'▼':'▶'}</th>
-      <th class="s6-th-fy" colspan="${s6Exp.fy26?13:1}" onclick="toggleS6Fy('fy26')">FY26 ${s6Exp.fy26?'▼':'▶'}</th>
-      <th class="s6-th-future"${hasSubRow?' rowspan="2"':''}>FY27</th>
-      <th class="s6-th-future"${hasSubRow?' rowspan="2"':''}>FY28</th>
-      <th class="s6-th-future"${hasSubRow?' rowspan="2"':''}>FY29</th>
-    </tr>
-    ${hasSubRow?`<tr>${s6Exp.fy25?`<th class="s6-th-mo s6-th-total">Total</th>${subRow25}`:''}${s6Exp.fy26?`<th class="s6-th-mo s6-th-total">Total</th>${subRow26}`:''}</tr>`:''}
-  </thead>`;
-
-  const costAggRows=[
-    buildRow(aggCo,true,'Cost Out','s6-tr-out'),
-    buildRow(v=>aggCi(v),true,'Cost In','s6-tr-in'),
-    buildNetRow(aggCo,aggCi,true,'Net cost'),
-  ].join('');
-  const fteAggRows=[
-    buildRow(aggCoFte,false,'FTEs Out','s6-tr-fte-out'),
-    buildRow(v=>aggCiFte(v),false,'FTEs In','s6-tr-fte-in'),
-    buildNetRow(aggCoFte,aggCiFte,false,'Net FTEs'),
-  ].join('');
-
-  // ── Build SET area detail blocks ──
-  // Collect rows keyed by SET area, separating CO data (sourcing areas) from
-  // CI data (receiving areas). The same area may appear in both passes if it
-  // is both a source and a destination on this BC.
-  const byArea={};
-  ccs.forEach(cc=>{
-    const sa=getSetArea(cc.code);
-    if(!byArea[sa.code])byArea[sa.code]={...sa,coRows:[],fteRows:[],ciRows:[],ciFteRows:[]};
-    (ccData[cc.code]||[]).forEach(row=>byArea[sa.code].coRows.push({cc,row}));
-    fteData.filter(r=>r.cc===cc.code).forEach(row=>byArea[sa.code].fteRows.push({cc,row}));
-  });
-  Object.values(ciResponses).forEach(resp=>{
-    (resp.ciData||[]).forEach(row=>{
-      const ciCcCode=row.cc||resp.ccCode;
-      const sa=getSetArea(ciCcCode);
-      if(!byArea[sa.code])byArea[sa.code]={...sa,coRows:[],fteRows:[],ciRows:[],ciFteRows:[]};
-      byArea[sa.code].ciRows.push({ccCode:ciCcCode,row,person:resp.person});
-    });
-    (resp.ciFteData||[]).forEach(row=>{
-      const ciCcCode=row.cc||resp.ccCode;
-      const sa=getSetArea(ciCcCode);
-      if(!byArea[sa.code])byArea[sa.code]={...sa,coRows:[],fteRows:[],ciRows:[],ciFteRows:[]};
-      byArea[sa.code].ciFteRows.push({ccCode:ciCcCode,row,person:resp.person});
-    });
-  });
-
-  // Render helpers used by both passes
-  const hasSub=fyHasSubRow();
-// Apply currency conversion to a row's numeric fields so cell formatters
-  // see local-currency values when the toggle is on.
-  function convertRow(row,cur){
-    if(!isLocal)return row;
-    const c=cur||'USD';
-    return {
-      ...row,
-      fy25:(row.fy25||[]).map(v=>convCost(v,c)),
-      fy26:(row.fy26||[]).map(v=>convCost(v,c)),
-      fy27:convCost(row.fy27||0,c),
-      fy28:convCost(row.fy28||0,c),
-      fy29:convCost(row.fy29||0,c),
-    };
-  }
-  // Sort a flat list of rows (each carrying `.cc`) by Dept (R&D→SMM→G&A) then CC code.
-  function sortDeptCc(flat){
+  function s7Pivot(rowDimLabel,outLabel,inLabel,data,fmtv){
+    const outE=data.out,inE=data.inn;
+    const outAreas=[...new Set(outE.map(e=>e.area))].sort();
+    const inAreas=[...new Set(inE.map(e=>e.area))].sort();
     const deptOrder={'R&D':0,'SMM':1,'G&A':2};
-    flat.sort((a,b)=>{const da=deptOrder[gca(a.cc)?.bcDept]??9,db=deptOrder[gca(b.cc)?.bcDept]??9;if(da!==db)return da-db;return (a.cc||'').localeCompare(b.cc||'');});
+    const rowKeys=[...new Set([...outE,...inE].map(e=>e.rowKey))].sort((a,b)=>{const da=deptOrder[a]??99,db=deptOrder[b]??99;return da!==db?da-db:String(a).localeCompare(String(b));});
+    if(!rowKeys.length)return '<div class="rv-none" style="font-size:12px;padding:8px 0;">No data for this view.</div>';
+    const out={},inn={};
+    outE.forEach(e=>{(out[e.rowKey]=out[e.rowKey]||{});out[e.rowKey][e.area]=(out[e.rowKey][e.area]||0)+e.val;});
+    inE.forEach(e=>{(inn[e.rowKey]=inn[e.rowKey]||{});inn[e.rowKey][e.area]=(inn[e.rowKey][e.area]||0)+e.val;});
+    const oc=outAreas.length,ic=inAreas.length;
+    const thead=`<thead><tr><th class="s6-th-label" rowspan="2">${rowDimLabel}</th>${oc?`<th class="s6-th-fy" colspan="${oc}">${outLabel}</th>`:''}${ic?`<th class="s6-th-fy" colspan="${ic}">${inLabel}</th>`:''}<th class="s6-th-future" rowspan="2">Net</th></tr><tr>${outAreas.map(a=>`<th class="s6-th-mo">${areaName(a)}</th>`).join('')}${inAreas.map(a=>`<th class="s6-th-mo">${areaName(a)}</th>`).join('')}</tr></thead>`;
+    const rowHtml=rk=>{const orow=out[rk]||{},irow=inn[rk]||{};
+      const oc2=outAreas.map(a=>`<td class="${orow[a]?'':'s6-td-zero'}">${orow[a]?fmtv(orow[a]):'—'}</td>`).join('');
+      const ic2=inAreas.map(a=>`<td class="${irow[a]?'':'s6-td-zero'}">${irow[a]?fmtv(irow[a]):'—'}</td>`).join('');
+      const so=Object.values(orow).reduce((s,v)=>s+v,0),si=Object.values(irow).reduce((s,v)=>s+v,0),net=si-so;
+      return `<tr><td class="s6-td-label">${rk}</td>${oc2}${ic2}<td class="s6-td-net ${net<0?'s6-td-neg':net>0?'s6-td-pos':'s6-td-zero'}">${fmtv(net)}</td></tr>`;};
+    const body=rowKeys.map(rowHtml).join('');
+    const ct=(areas,map)=>areas.map(a=>{let t=0;rowKeys.forEach(rk=>t+=(map[rk]&&map[rk][a]||0));return t;});
+    const ot=ct(outAreas,out),it=ct(inAreas,inn);
+    const go=ot.reduce((s,v)=>s+v,0),gi=it.reduce((s,v)=>s+v,0);
+    const totalRow=`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">Total</td>${ot.map(v=>`<td>${fmtv(v)}</td>`).join('')}${it.map(v=>`<td>${fmtv(v)}</td>`).join('')}<td class="s6-td-net">${fmtv(gi-go)}</td></tr>`;
+    return `<div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${body}${totalRow}</tbody></table></div>`;
   }
-
-  function coOutSection(area){
-    if(!area.coRows.length)return '';
-    const flat=area.coRows.map(({cc,row})=>{const cur=gca(cc.code).cur||'USD';return {...convertRow(row,cur),cc:cc.code};});
-    sortDeptCc(flat);
-    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#fafaf8;"':''}>${roUniIdCells(row,true,'out')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
-    const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    const label=`<span class="set-area-code">${area.code}</span> ${area.name} · Cost Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
-    return coViewWrap(`s7co:${area.code}`,label,fyTotals(flat),inner);
-  }
-  function fteOutSection(area){
-    const fteTbody=area.fteRows.map(({cc,row},gi)=>{const mu=ccMU(cc.code);
-      return`<tr${gi%2===1?' style="background:#fafaf8;"':''}>
-        <td class="rv-td-left">${mu.code} ${mu.name}</td>
-        <td class="rv-td-left"><span class="cc-badge-out">${cc.code}</span></td>
-        <td class="rv-td-left">${deptChipFor(cc.code)}</td>
-        <td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td>
-        <td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>
-        ${fyDataCells(row,fmtFte)}
-      </tr>`;
-    }).join('');
-    if(!area.fteRows.length)return '';
-    const fteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-        <tr>
-          <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
-          <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-          <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>
-          ${fyHeaderCells()}
-        </tr>
-        ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-      </thead><tbody>${fteTbody}</tbody></table></div>`;
-    const fteLabel=`<span class="set-area-code">${area.code}</span> ${area.name} · FTEs Out <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
-    return coViewWrap(`s7fte:${area.code}`,fteLabel,fyTotals(area.fteRows.map(p=>p.row)),fteFull,fmtFte,'FTEs out total');
-  }
-  function ciInSection(area){
-    if(!area.ciRows.length)return '';
-    const flat=area.ciRows.map(({ccCode,row})=>{const cur=gca(ccCode).cur||'USD';return {...convertRow(row,cur),cc:ccCode};});
-    sortDeptCc(flat);
-    const tbody=flat.map((row,gi)=>`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>${roUniIdCells(row,true,'in')}${fyDataCells(row,fmtCostM)}</tr>`).join('');
-    const inner=`<div class="rv-table-wrap"><table class="rv-table"><thead><tr>${roUniIdHead(true,hasSub)}${fyHeaderCells()}</tr>${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}</thead><tbody>${tbody}</tbody></table></div>`;
-    const label=`<span class="set-area-code">${area.code}</span> ${area.name} · Cost In <span class="unit-pill" style="font-size:10px;padding:1px 6px;">${isLocal?'Local Currency':'USD ($m)'}</span>`;
-    return coViewWrap(`s7ci:${area.code}`,label,fyTotals(flat),inner,fmtCostM,'Cost in total ($m)');
-  }
-  function ciFteInSection(area){
-    const ciFteTbody=area.ciFteRows.map(({ccCode,row,person},gi)=>{const mu=ccMU(ccCode);
-      return`<tr${gi%2===1?' style="background:#f0f7ee;"':''}>
-        <td class="rv-td-left">${mu.code} ${mu.name}</td>
-        <td class="rv-td-left"><span class="cc-badge-out" style="background:#EAF3DE;color:#27500A;">${ccCode}</span></td>
-        <td class="rv-td-left">${deptChipFor(ccCode)}</td>
-        <td class="rv-td-left">${row.loc||'—'}</td><td class="rv-td-left">${row.city||'—'}</td>
-        <td class="rv-td-left">${row.country||'—'}</td><td class="rv-td-left">${row.azW||'—'}</td><td class="rv-td-left">${row.wt||'—'}</td>
-        ${fyDataCells(row,fmtFte)}
-      </tr>`;
-    }).join('');
-    if(!area.ciFteRows.length)return '';
-    const ciFteFull=`<div class="rv-table-wrap"><table class="rv-table"><thead>
-        <tr>
-          <th class="rv-th-left" style="min-width:130px;"${hasSub?' rowspan="2"':''}>MU</th>
-          <th class="rv-th-left" style="min-width:110px;"${hasSub?' rowspan="2"':''}>Cost centre</th>
-          <th class="rv-th-left" style="min-width:60px;"${hasSub?' rowspan="2"':''}>Dept</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Location</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>City</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Country</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>AZ Workforce</th>
-          <th class="rv-th-left"${hasSub?' rowspan="2"':''}>Worker type</th>
-          ${fyHeaderCells()}
-        </tr>
-        ${hasSub?`<tr>${fySubheaderCells()}</tr>`:''}
-      </thead><tbody>${ciFteTbody}</tbody></table></div>`;
-    const ciFteLabel=`<span class="set-area-code">${area.code}</span> ${area.name} · FTEs In <span class="unit-pill" style="font-size:10px;padding:1px 6px;">FTEs (headcount)</span>`;
-    return coViewWrap(`s7cifte:${area.code}`,ciFteLabel,fyTotals(area.ciFteRows.map(p=>p.row)),ciFteFull,fmtFte,'FTEs in total');
-  }
-
-  // Collapsible "By SET Area" gate. No totals row of its own — the aggregate matrix
-  // above each block already shows the total; this just reveals the per-area breakdown.
-  function byAreaGate(scope,detailHTML){
-    if(!detailHTML)return '';
-    const expanded=coViewExpanded.has(scope);
-    const safe=String(scope).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return `<div style="margin-top:10px;">
-      <div onclick="toggleCoView('${safe}')" style="cursor:pointer;user-select:none;font-size:12px;font-weight:500;color:#444;">${expanded?'▼':'▶'} By SET Area</div>
-      ${expanded?`<div style="margin-top:8px;">${detailHTML}</div>`:''}</div>`;
-  }
-
-  const sourceAreas=Object.keys(byArea).filter(k=>byArea[k].coRows.length||byArea[k].fteRows.length).sort();
-  const destAreas=Object.keys(byArea).filter(k=>byArea[k].ciRows.length||byArea[k].ciFteRows.length).sort();
-  const subLabel=(txt,color)=>`<div style="font-size:11px;font-weight:500;color:${color};margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">${txt}</div>`;
-
-  function costAreaDetail(){
-    let h='';
-    const outAreas=sourceAreas.filter(k=>byArea[k].coRows.length);
-    const inAreas=destAreas.filter(k=>byArea[k].ciRows.length);
-    if(outAreas.length){h+=subLabel('Cost Out — by source SET area','#0C447C');outAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${coOutSection(byArea[k])}</div>`);}
-    if(inAreas.length){h+=subLabel('Cost In — by destination SET area','#27500A');inAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${ciInSection(byArea[k])}</div>`);}
-    return h;
-  }
-  function fteAreaDetail(){
-    let h='';
-    const outAreas=sourceAreas.filter(k=>byArea[k].fteRows.length);
-    const inAreas=destAreas.filter(k=>byArea[k].ciFteRows.length);
-    if(outAreas.length){h+=subLabel('FTEs Out — by source SET area','#0C447C');outAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${fteOutSection(byArea[k])}</div>`);}
-    if(inAreas.length){h+=subLabel('FTEs In — by destination SET area','#27500A');inAreas.forEach(k=>h+=`<div style="margin-bottom:8px;">${ciFteInSection(byArea[k])}</div>`);}
-    return h;
-  }
+  const yearToggle=`<div class="method-toggle" style="margin-bottom:0;">${FYS.map(f=>`<button class="method-btn ${s7Year===f?'active':''}" onclick="setS7Year('${f}')">${FYLBL[f]}</button>`).join('')}</div>`;
+  const costRowToggle=`<div class="method-toggle" style="margin-bottom:0;"><button class="method-btn ${s7CostRowBy==='dept'?'active':''}" onclick="setS7CostRowBy('dept')">By Dept</button><button class="method-btn ${s7CostRowBy==='cc'?'active':''}" onclick="setS7CostRowBy('cc')">By cost centre</button></div>`;
+  const fteViewToggle=`<div class="method-toggle" style="margin-bottom:0;"><button class="method-btn ${s7FteView==='normal'?'active':''}" onclick="setS7FteView('normal')">Normal</button><button class="method-btn ${s7FteView==='uv'?'active':''}" onclick="setS7FteView('uv')">UV view</button></div>`;
+  const costPivotHTML=s7Pivot(s7CostRowBy==='cc'?'Cost centre':'Dept','Cost Out','Cost In',costEntries(),fmtCostM);
+  const ftePivotHTML=s7Pivot(s7FteView==='uv'?'TA':'Location','FTEs Out','FTEs In',fteEntries(),fmtFte);
 
   // Collect unique Cost In Contributors across all CCs for the BC details panel
   const ciPersonsMap={};
@@ -4367,30 +4220,33 @@ function buildStep7(){
       </div>
     </div>
     <div class="rv-divider"></div>
-    <p style="font-size:12px;color:#666;margin:6px 0 14px;">Each block shows the aggregate total; expand <strong>By SET Area</strong> for the per-area breakdown, then a SET area for its row detail. Click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <p style="font-size:12px;color:#666;margin:6px 0 12px;">Out / In by SET area for the selected year. Switch the <strong>year</strong> (applies to both tables), <strong>Dept / cost centre</strong> (Cost) and <strong>Normal / UV</strong> (FTEs). Line-level detail is on the prior Cost and FTEs screens.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap;"><span style="font-size:12px;color:#666;font-weight:500;">Year</span>${yearToggle}</div>
 
     <div style="margin-bottom:18px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
         <span style="font-size:13px;font-weight:600;color:#0C447C;">💷 Cost</span>
-        <div class="method-toggle" style="margin-bottom:0;margin-left:auto;" onclick="event.stopPropagation()">
-          <button class="method-btn ${!isLocal?'active':''}" onclick="setStep7Currency('usd')">USD</button>
-          <button class="method-btn ${isLocal?'active':''}" onclick="setStep7Currency('local')">Local</button>
-        </div>
+        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
+          ${costRowToggle}
+          <div class="method-toggle" style="margin-bottom:0;">
+            <button class="method-btn ${!isLocal?'active':''}" onclick="setStep7Currency('usd')">USD</button>
+            <button class="method-btn ${isLocal?'active':''}" onclick="setStep7Currency('local')">Local</button>
+          </div>
+        </span>
         <span class="unit-pill">${isLocal?'Local Currency':'USD ($m)'}</span>
       </div>
-      <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${costAggRows}</tbody></table></div>
-      ${byAreaGate('s7area:cost',costAreaDetail())}
+      ${costPivotHTML}
     </div>
 
     <div class="rv-divider" style="margin-top:16px;"></div>
 
     <div style="margin-top:14px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
         <span style="font-size:13px;font-weight:600;color:#1a1a1a;">👥 FTEs</span>
-        <span class="unit-pill" style="margin-left:auto;">FTEs (headcount)</span>
+        <span style="margin-left:auto;" onclick="event.stopPropagation()">${fteViewToggle}</span>
+        <span class="unit-pill">FTEs (headcount)</span>
       </div>
-      <div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${fteAggRows}</tbody></table></div>
-      ${byAreaGate('s7area:fte',fteAreaDetail())}
+      ${ftePivotHTML}
     </div>
     ${(()=>{const st=submittedBC?.status;
       // Assign phase (before the One side has responded): the Summary ends with the
@@ -4492,6 +4348,13 @@ function setStep7Currency(c){
   s7Currency=c;
   if(document.getElementById('screen-step7')?.classList.contains('active'))buildStep7();
 }
+// Step-7 Summary pivot state: selected year (governs both tables), Cost row dimension
+// (Dept | Cost centre), and FTE view (Normal=Location | UV=TA).
+let s7Year='fy26', s7CostRowBy='dept', s7FteView='normal';
+function _s7Rerender(){if(document.getElementById('screen-step7')?.classList.contains('active'))buildStep7();}
+function setS7Year(fk){s7Year=fk;_s7Rerender();}
+function setS7CostRowBy(v){s7CostRowBy=v;_s7Rerender();}
+function setS7FteView(v){s7FteView=v;_s7Rerender();}
 function toggleS6Fy(fy){
   s6Exp[fy]=!s6Exp[fy];
   // Re-render whichever read-only view is currently visible
