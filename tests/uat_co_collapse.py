@@ -60,7 +60,7 @@ with sync_playwright() as p:
       return {twoTables:tbls.length===2, costHdr:h(tbls[0]), fteHdr:h(tbls[1]),
               years:[...s.querySelectorAll('[onclick^="setS7Year"]')].length,
               hasCostToggle:[...s.querySelectorAll('[onclick^="setS7CostRowBy"]')].length===2,
-              hasFteToggle:[...s.querySelectorAll('[onclick^="setS7FteView"]')].length===2,
+              noFteToggle:[...s.querySelectorAll(`[onclick^="setS7FteView"]`)].length===0,
               noDrill:[...s.querySelectorAll('[onclick^="toggleCoView"]')].length===0};})()""")
     print('STEP7 pivot:', s7)
     # Receiver flow: ci-step1 = Cost summary, ci-step2 = FTEs summary — each has the
@@ -77,7 +77,7 @@ with sync_playwright() as p:
           and s7['twoTables'] and s7['noDrill']
           and s7['costHdr'][0]=='Dept' and s7['costHdr'][-1]=='Net' and 'Cost Out' in s7['costHdr']
           and s7['fteHdr'][0]=='Location' and s7['fteHdr'][-1]=='Net' and 'FTEs Out' in s7['fteHdr']
-          and s7['years']==5 and s7['hasCostToggle'] and s7['hasFteToggle']
+          and s7['years']==5 and s7['hasCostToggle'] and s7['noFteToggle']
           # Receiver Cost (ci-step1) + FTEs (ci-step2): SET Area / CC / Detail toggle.
           and c1==['USD','Local','By SET Area','By cost centre','Detail']
           and c2==['By SET Area','By cost centre','Detail']

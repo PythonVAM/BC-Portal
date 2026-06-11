@@ -4025,6 +4025,34 @@ function submitCostIn(){
    Shows the BC context + contributor status chips, then the Many-side Cost summary
    via the shared component (By SET Area / By cost centre / Detail). FTEs live on
    step 6b; the person picker / submit actions live on the Summary (step 7). */
+// Boundary change details panel shown on the BC Lead's review screens (step6 Cost,
+// step6b FTEs). BC name · Lead · Cost Out / Cost In contributors · Cost Out CCs.
+function leadBcDetailsHTML(){
+  const ccs=getAllCostOut();
+  const isAwaitingCo=submittedBC?.status==='awaiting-co';
+  const coSubmissions=submittedBC?.coSubmissions||{};
+  const submittedCount=Object.keys(coSubmissions).length;
+  const totalCount=(submittedBC?.contributors||[]).length;
+  const statusPill=isAwaitingCo
+    ?`<span class="badge badge-pending" style="margin-left:8px;">${submittedCount}/${totalCount} Cost Out submitted</span>`
+    :`<span class="badge badge-approved" style="margin-left:8px;">All Cost Out submitted</span>`;
+  const ciPersonsMap={};
+  Object.values(submittedBC?.costInPersons||{}).forEach(arr=>(arr||[]).forEach(p=>{ciPersonsMap[p.id]=p;}));
+  const ciPersonsList=Object.values(ciPersonsMap);
+  const ciRow=ciPersonsList.length
+    ?`<div class="rv-row"><span class="rv-lbl">Cost In Contributor(s)</span><span>${ciPersonsList.map(p=>`${p.first} ${p.last} · ${p.dept}`).join('; ')}</span></div>`
+    :'';
+  return `<div class="rv-section" style="margin-bottom:14px;">
+      <div class="rv-section-hdr"><div class="rv-section-title">Boundary change details ${statusPill}</div></div>
+      <div class="rv-block">
+        <div class="rv-row"><span class="rv-lbl">BC name</span><span>${submittedBC?.bcName||document.getElementById('inp-bcname')?.value||'—'}</span></div>
+        <div class="rv-row"><span class="rv-lbl">BC Lead</span><span>${submittedBC?.submittedBy?submittedBC.submittedBy.first+' '+submittedBC.submittedBy.last+' · '+submittedBC.submittedBy.deptName:'—'}</span></div>
+        <div class="rv-row"><span class="rv-lbl">Cost Out Contributor(s)</span><span>${(submittedBC?.contributors||[]).map(p=>`${p.first} ${p.last} · ${p.dept}`).join('; ')||'—'}</span></div>
+        ${ciRow}
+        <div class="rv-row"><span class="rv-lbl">Cost Out CCs (submitted so far)</span><span>${ccs.map(c=>`<span class="cc-badge-out" style="margin-right:4px;">${c.code}</span>`).join('')||'<span style="color:#999;font-size:12px;">None yet</span>'}</span></div>
+      </div>
+    </div>`;
+}
 function buildStep6(){
   const el=document.getElementById('step6-content');
   if(!el)return;
@@ -4033,20 +4061,6 @@ function buildStep6(){
   const isAwaitingCo=submittedBC?.status==='awaiting-co';
   const contributors=submittedBC?.contributors||[];
   const coSubmissions=submittedBC?.coSubmissions||{};
-  const submittedCount=Object.keys(coSubmissions).length;
-  const totalCount=contributors.length;
-
-  const statusPill=isAwaitingCo
-    ?`<span class="badge badge-pending" style="margin-left:8px;">${submittedCount}/${totalCount} Cost Out submitted</span>`
-    :`<span class="badge badge-approved" style="margin-left:8px;">All Cost Out submitted</span>`;
-
-  // Collect unique Cost In Contributors across all CCs (only show row if at least one assigned)
-  const ciPersonsMap={};
-  Object.values(submittedBC?.costInPersons||{}).forEach(arr=>(arr||[]).forEach(p=>{ciPersonsMap[p.id]=p;}));
-  const ciPersonsList=Object.values(ciPersonsMap);
-  const ciRow=ciPersonsList.length
-    ?`<div class="rv-row"><span class="rv-lbl">Cost In Contributor(s)</span><span>${ciPersonsList.map(p=>`${p.first} ${p.last} · ${p.dept}`).join('; ')}</span></div>`
-    :'';
 
   // Contributor status chips (who has submitted the Many side).
   const chips=contributors.map(p=>{const done=!!coSubmissions[p.id];
@@ -4056,16 +4070,7 @@ function buildStep6(){
   const costCodes=ccs.map(c=>c.code).filter(code=>(submittedBC?.ccData?.[code]||[]).length);
 
   el.innerHTML=`
-    <div class="rv-section" style="margin-bottom:14px;">
-      <div class="rv-section-hdr"><div class="rv-section-title">Boundary change details ${statusPill}</div></div>
-      <div class="rv-block">
-        <div class="rv-row"><span class="rv-lbl">BC name</span><span>${submittedBC?.bcName||document.getElementById('inp-bcname')?.value||'—'}</span></div>
-        <div class="rv-row"><span class="rv-lbl">BC Lead</span><span>${submittedBC?.submittedBy?submittedBC.submittedBy.first+' '+submittedBC.submittedBy.last+' · '+submittedBC.submittedBy.deptName:'—'}</span></div>
-        <div class="rv-row"><span class="rv-lbl">Cost Out Contributor(s)</span><span>${(submittedBC?.contributors||[]).map(p=>`${p.first} ${p.last} · ${p.dept}`).join('; ')||'—'}</span></div>
-        ${ciRow}
-        <div class="rv-row"><span class="rv-lbl">Cost Out CCs (submitted so far)</span><span>${ccs.map(c=>`<span class="cc-badge-out" style="margin-right:4px;">${c.code}</span>`).join('')||'<span style="color:#999;font-size:12px;">None yet</span>'}</span></div>
-      </div>
-    </div>
+    ${leadBcDetailsHTML()}
     <div class="rv-divider"></div>
     <p style="font-size:13px;color:#666;margin:10px 0 12px;">${isAwaitingCo?'Cost Out submissions so far.':'Review the cost being transferred.'} Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail. Continue to <strong>FTEs</strong>, then the <strong>Summary</strong>.</p>
     <div style="margin-bottom:12px;">${chips||'<span class="rv-none" style="font-size:12px;">No contributors.</span>'}</div>
@@ -4084,6 +4089,8 @@ function buildStep6b(){
   const rndCcs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
   const uvBlock=rndCcs.length?`<div style="margin-top:20px;border-top:1px solid #ece9e0;padding-top:14px;"><div id="lead-uv-ftes-table"></div></div>`:'';
   el.innerHTML=`
+    ${leadBcDetailsHTML()}
+    <div class="rv-divider"></div>
     <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred. Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
     <div id="s6-agg-fte"></div>
     ${uvBlock}`;
@@ -4112,14 +4119,13 @@ function buildStep7(){
   function aggCiFte(fk,mi){if(!hasCI)return null;let t=0;Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{if(mi!==undefined)t+=r[fk]?.[mi]||0;else t+=(fk==='fy27'||fk==='fy28'||fk==='fy29')?(r[fk]||0):rowTotal(r[fk]||[]);});});return t;}
 
   // ════ Summary pivots: rows × [Out by SET area | In by SET area | Net] for the
-  // selected year (s7Year). Cost rows = Dept | Cost centre; FTE rows = Location
-  // (normal) | TA (UV view). One year toggle governs both tables. ════
+  // selected year (s7Year). Cost rows = Dept | Cost centre; FTE rows = Location.
+  // One year toggle governs both tables. ════
   const fk=s7Year;
   const FYLBL={fy25:'FY25',fy26:'FY26',fy27:'FY27',fy28:'FY28',fy29:'FY29'};
   const areaName=code=>{const a=SET_AREAS[code];return a?`${code} ${a.name}`:code;};
   const fkCost=(r,cur)=>(fk==='fy25'||fk==='fy26')?rowTotal((r[fk]||[]).map(v=>convCost(v,cur))):convCost(r[fk]||0,cur);
   const fkFte=(r)=>(fk==='fy25'||fk==='fy26')?rowTotal(r[fk]||[]):(Number(r[fk])||0);
-  const fkAlloc=(r)=>{if(fk==='fy25'||fk==='fy26'){let t=0;(r[fk]||[]).forEach(v=>{if(v!=='—')t+=v;});return t;}return r[fk]==='—'?0:(Number(r[fk])||0);};
 
   function costEntries(){
     const rowBy=s7CostRowBy,out=[],inn=[];
@@ -4131,17 +4137,8 @@ function buildStep7(){
   }
   function fteEntries(){
     const out=[],inn=[];
-    if(s7FteView==='uv'){
-      const alloc=computeUvFteAlloc(ccs.filter(cc=>coShape(cc.code)==='gl+project+uv'));
-      Object.values(alloc).forEach(a=>{a.allocatedRows.forEach(r=>{const v=fkAlloc(r);if(v)out.push({rowKey:taAbbr(r.taCode),area:getSetArea(a.cc.code).code,val:v});});});
-      // In side: the One CC's FTEs In bucketed under its TA (derived from its Cost In
-      // rows; '—' if the destination CC isn't R&D — UV allocation is R&D-only).
-      const taOf={};Object.values(ciResponses).forEach(resp=>{(resp.ciData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;if(!taOf[cc]){const t=rowProductTa(r).taCode;if(t)taOf[cc]=t;}});});
-      Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const v=fkFte(r);if(v)inn.push({rowKey:taAbbr(taOf[cc]||''),area:getSetArea(cc).code,val:v});});});
-    } else {
-      fteData.forEach(r=>{const v=fkFte(r);if(v)out.push({rowKey:r.loc||'—',area:getSetArea(r.cc).code,val:v});});
-      Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const v=fkFte(r);if(v)inn.push({rowKey:r.loc||'—',area:getSetArea(cc).code,val:v});});});
-    }
+    fteData.forEach(r=>{const v=fkFte(r);if(v)out.push({rowKey:r.loc||'—',area:getSetArea(r.cc).code,val:v});});
+    Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const v=fkFte(r);if(v)inn.push({rowKey:r.loc||'—',area:getSetArea(cc).code,val:v});});});
     return {out,inn};
   }
   function s7Pivot(rowDimLabel,outLabel,inLabel,data,fmtv){
@@ -4170,9 +4167,8 @@ function buildStep7(){
   }
   const yearToggle=`<div class="method-toggle" style="margin-bottom:0;">${FYS.map(f=>`<button class="method-btn ${s7Year===f?'active':''}" onclick="setS7Year('${f}')">${FYLBL[f]}</button>`).join('')}</div>`;
   const costRowToggle=`<div class="method-toggle" style="margin-bottom:0;"><button class="method-btn ${s7CostRowBy==='dept'?'active':''}" onclick="setS7CostRowBy('dept')">By Dept</button><button class="method-btn ${s7CostRowBy==='cc'?'active':''}" onclick="setS7CostRowBy('cc')">By cost centre</button></div>`;
-  const fteViewToggle=`<div class="method-toggle" style="margin-bottom:0;"><button class="method-btn ${s7FteView==='normal'?'active':''}" onclick="setS7FteView('normal')">Normal</button><button class="method-btn ${s7FteView==='uv'?'active':''}" onclick="setS7FteView('uv')">UV view</button></div>`;
   const costPivotHTML=s7Pivot(s7CostRowBy==='cc'?'Cost centre':'Dept','Cost Out','Cost In',costEntries(),fmtCostM);
-  const ftePivotHTML=s7Pivot(s7FteView==='uv'?'TA':'Location','FTEs Out','FTEs In',fteEntries(),fmtFte);
+  const ftePivotHTML=s7Pivot('Location','FTEs Out','FTEs In',fteEntries(),fmtFte);
 
   // Collect unique Cost In Contributors across all CCs for the BC details panel
   const ciPersonsMap={};
@@ -4220,7 +4216,7 @@ function buildStep7(){
       </div>
     </div>
     <div class="rv-divider"></div>
-    <p style="font-size:12px;color:#666;margin:6px 0 12px;">Out / In by SET area for the selected year. Switch the <strong>year</strong> (applies to both tables), <strong>Dept / cost centre</strong> (Cost) and <strong>Normal / UV</strong> (FTEs). Line-level detail is on the prior Cost and FTEs screens.</p>
+    <p style="font-size:12px;color:#666;margin:6px 0 12px;">Out / In by SET area for the selected year. Switch the <strong>year</strong> (applies to both tables) and <strong>Dept / cost centre</strong> (Cost). Line-level detail is on the prior Cost and FTEs screens.</p>
     <div style="display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap;"><span style="font-size:12px;color:#666;font-weight:500;">Year</span>${yearToggle}</div>
 
     <div style="margin-bottom:18px;">
@@ -4243,8 +4239,7 @@ function buildStep7(){
     <div style="margin-top:14px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
         <span style="font-size:13px;font-weight:600;color:#1a1a1a;">👥 FTEs</span>
-        <span style="margin-left:auto;" onclick="event.stopPropagation()">${fteViewToggle}</span>
-        <span class="unit-pill">FTEs (headcount)</span>
+        <span class="unit-pill" style="margin-left:auto;">FTEs (headcount)</span>
       </div>
       ${ftePivotHTML}
     </div>
@@ -4350,11 +4345,10 @@ function setStep7Currency(c){
 }
 // Step-7 Summary pivot state: selected year (governs both tables), Cost row dimension
 // (Dept | Cost centre), and FTE view (Normal=Location | UV=TA).
-let s7Year='fy26', s7CostRowBy='dept', s7FteView='normal';
+let s7Year='fy26', s7CostRowBy='dept';
 function _s7Rerender(){if(document.getElementById('screen-step7')?.classList.contains('active'))buildStep7();}
 function setS7Year(fk){s7Year=fk;_s7Rerender();}
 function setS7CostRowBy(v){s7CostRowBy=v;_s7Rerender();}
-function setS7FteView(v){s7FteView=v;_s7Rerender();}
 function toggleS6Fy(fy){
   s6Exp[fy]=!s6Exp[fy];
   // Re-render whichever read-only view is currently visible
