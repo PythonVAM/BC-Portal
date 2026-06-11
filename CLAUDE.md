@@ -146,6 +146,10 @@ Every screen has a two-tier sticky stack that pins essential context as the user
 
 The **hints banner** and the **profile-panel** intentionally scroll away with content (they're reference info, not action affordances).
 
+### 2.10a Boundary change details bar (Cost Out contributor steps)
+
+Every Cost Out contributor step (step2–step5) shows the **Boundary change details** panel (BC name · description · Requested by) at the top, rendered from one shared helper `bcDetailsPanelHTML()` into each screen's `.bc-details-host` div by `renderBcDetailsBars()` (called at the end of `go()`, and from `buildReview`). Values come from `submittedBC` (falling back to the step-1 inputs); "Requested by" is the current user. Don't reintroduce per-screen `rv-bcname`/`rv-bcdesc`/`rv-requested-by` ids — the host+helper keeps all steps consistent.
+
 ### 2.11 Flat unified read-only cost tables
 
 Every **cost** table — entry screens and read-only context tables alike — uses **one flat table with a fixed column set**, matching the Cost Out Detail screen. There is **no dept sub-grouping and no collapse**; rows are sorted **Dept (R&D → SMM → G&A) → Cost Centre** and every row is shown.

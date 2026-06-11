@@ -643,6 +643,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
     <div class="card-title">Cost Out task — Cost centres</div>
     <div id="si-step2"></div>
   </div>
+  <div class="bc-details-host"></div>
   <div class="notif-banner" id="notif-banner">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px;"><circle cx="8" cy="8" r="7" stroke="#185FA5" stroke-width="1.2"/><path d="M8 7v4M8 5.5v.5" stroke="#185FA5" stroke-width="1.4" stroke-linecap="round"/></svg>
     <span id="notif-text">Contributors will be notified that this boundary change is now available.</span>
@@ -662,6 +663,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
     <div class="card-title">Cost Out task — Select cost to transfer</div>
     <div id="si-step3"></div>
   </div>
+  <div class="bc-details-host"></div>
 
   <!-- Hints & Tips banner -->
   <div class="hints-banner" id="co-hints-banner">
@@ -711,6 +713,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
     <div class="card-title">Cost Out task — Enter transfer detail</div>
     <div id="si-step3b"></div>
   </div>
+  <div class="bc-details-host"></div>
 
   <!-- Hints & Tips banner -->
   <div class="hints-banner" id="cod-hints-banner">
@@ -772,6 +775,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
     <div class="card-title">Cost Out task — FTEs out</div>
     <div id="si-step4"></div>
   </div>
+  <div class="bc-details-host"></div>
   <p style="font-size:13px;color:#666;margin-bottom:14px;">Enter the FTE values for each cost centre. Click <strong>FY25</strong> or <strong>FY26</strong> column headings to expand monthly detail.</p>
 
   <!-- Partial BC FTEs -->
@@ -814,9 +818,7 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
     <div id="si-step5"></div>
   </div>
 
-  <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">Boundary change details</div></div>
-    <div class="rv-block"><div class="rv-row"><span class="rv-lbl">BC name</span><span id="rv-bcname">—</span></div><div class="rv-row"><span class="rv-lbl">BC description</span><span id="rv-bcdesc" style="white-space:normal;">—</span></div><div class="rv-row"><span class="rv-lbl">Requested by</span><span id="rv-requested-by">—</span></div></div>
-  </div>
+  <div class="bc-details-host"></div>
   <div class="rv-divider"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px;">
     <div class="rv-section"><div class="rv-section-hdr"><div class="rv-section-title">Cost Out contributors</div></div><div id="rv-contribs"><span class="rv-none">None</span></div></div>
@@ -2821,12 +2823,22 @@ function setCoCurrency(c){
 }
 
 
-function buildReview(){
-  document.getElementById('rv-bcname').textContent=document.getElementById('inp-bcname')?.value||'—';
-  document.getElementById('rv-bcdesc').textContent=document.getElementById('inp-bcdesc')?.value||'—';
+// Boundary change details panel (BC name · description · Requested by) — shown at
+// the top of every Cost Out contributor step (step2–step5) via `.bc-details-host`.
+function bcDetailsPanelHTML(){
   const u=currentUser();
-  const rbEl=document.getElementById('rv-requested-by');
-  if(rbEl)rbEl.textContent=`${u.first} ${u.last} · ${u.deptCode} ${u.deptName}`;
+  const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const name=submittedBC?.bcName||document.getElementById('inp-bcname')?.value||'—';
+  const desc=submittedBC?.bcDesc||document.getElementById('inp-bcdesc')?.value||'—';
+  const by=`${u.first} ${u.last} · ${u.deptCode||''} ${u.deptName||''}`.trim();
+  return `<div class="rv-section" style="margin-bottom:14px;"><div class="rv-section-hdr"><div class="rv-section-title">Boundary change details</div></div>
+    <div class="rv-block"><div class="rv-row"><span class="rv-lbl">BC name</span><span>${esc(name)}</span></div><div class="rv-row"><span class="rv-lbl">BC description</span><span style="white-space:normal;">${esc(desc)}</span></div><div class="rv-row"><span class="rv-lbl">Requested by</span><span>${esc(by)}</span></div></div>
+  </div>`;
+}
+function renderBcDetailsBars(){document.querySelectorAll('.bc-details-host').forEach(el=>{el.innerHTML=bcDetailsPanelHTML();});}
+
+function buildReview(){
+  renderBcDetailsBars();
   document.getElementById('rv-contribs').innerHTML=contribs.length
     ?contribs.map(p=>`<span class="person-chip" style="margin:2px;">${p.initials} ${p.first} ${p.last}</span>`).join('')
     :'<span class="rv-none">None</span>';
@@ -4547,6 +4559,8 @@ function go(id){
   if(id==='ci-step3')renderCiSummaryScreen();
   // On the setup screen, sync the direction toggle + its labels to the current pick.
   if(id==='step1')setBcManySide(bcManySide);
+  // Boundary change details bar on every Cost Out contributor step (step2–step5).
+  renderBcDetailsBars();
   // Relabel screen titles / Many-side microcopy for the chosen direction.
   applyDirLabels();
   // After any screen change, recompute sticky offsets so the screen-action
