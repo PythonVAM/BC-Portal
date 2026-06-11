@@ -47,28 +47,26 @@ with sync_playwright() as p:
       return {nTables:tbls.length, costHdr:h(tbls[0]), fteHdr:h(tbls[1]),
               years:[...s.querySelectorAll('[onclick^="setS7Year"]')].map(x=>x.textContent.trim()),
               costRowToggle:[...s.querySelectorAll('[onclick^="setS7CostRowBy"]')].map(x=>x.textContent.trim()),
-              fteViewToggle:[...s.querySelectorAll('[onclick^="setS7FteView"]')].map(x=>x.textContent.trim()),
+              noFteToggle:[...s.querySelectorAll('[onclick^="setS7FteView"]')].length===0,
               noDrill:[...s.querySelectorAll('[onclick^="toggleCoView"]')].length===0,
               balanced:/is balanced/i.test(s.innerText)};})()""")
     print('base:', base)
 
-    # Toggle Cost rows to cost centre, FTE to UV — row-dimension header changes.
+    # Toggle Cost rows to cost centre + year — row-dimension/year header changes.
     pg.evaluate("setS7CostRowBy('cc')"); pg.wait_for_timeout(120)
     costRowLbl=pg.evaluate(f"{hdr1(0)}[0].textContent.trim()")
-    pg.evaluate("setS7FteView('uv')"); pg.wait_for_timeout(120)
-    fteRowLbl=pg.evaluate(f"{hdr1(1)}[0].textContent.trim()")
     pg.evaluate("setS7Year('fy27')"); pg.wait_for_timeout(120)
     activeYear=pg.evaluate("[...document.querySelectorAll('#screen-step7 [onclick^=\"setS7Year\"].active')].map(x=>x.textContent.trim())")
-    print('toggles -> cost row:', costRowLbl, '| fte row:', fteRowLbl, '| year:', activeYear)
+    print('toggles -> cost row:', costRowLbl, '| year:', activeYear)
 
     ok = (base['nTables']==2
           and base['costHdr']==['Dept','Cost Out','Cost In','Net']
           and base['fteHdr']==['Location','FTEs Out','FTEs In','Net']
           and base['years']==['FY25','FY26','FY27','FY28','FY29']
           and base['costRowToggle']==['By Dept','By cost centre']
-          and base['fteViewToggle']==['Normal','UV view']
+          and base['noFteToggle']  # UV/Normal toggle removed from the Summary
           and base['noDrill'] and base['balanced']
-          and costRowLbl=='Cost centre' and fteRowLbl=='TA' and activeYear==['FY27']
+          and costRowLbl=='Cost centre' and activeYear==['FY27']
           and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])
