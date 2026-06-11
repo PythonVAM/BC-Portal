@@ -19,9 +19,10 @@ with sync_playwright() as p:
     pg.goto(f'file://{PROTO}'); pg.wait_for_load_state('networkidle')
 
     # --- Direction OUT (default): unchanged legacy labelling ---
-    pg.evaluate("""switchUser('jd'); contribs=[PEOPLE.find(p=>p.id==='om')]; go('step1');""")
-    out1=pg.evaluate("({h:document.getElementById('step1-contrib-heading').textContent,outActive:document.getElementById('dir-btn-out').classList.contains('active')})")
-    pg.evaluate("""document.getElementById('inp-bcname').value='OUT'; saveAndNotifyCoPersons();
+    # (Per-transfer direction is set at step 1 now; the test sets it via the active
+    # transfer's bcManySide and verifies the contributor screens relabel accordingly.)
+    pg.evaluate("""switchUser('jd'); contribs=[PEOPLE.find(p=>p.id==='om')]; setBcManySide('out'); go('step1');
+      document.getElementById('inp-bcname').value='OUT'; saveAndNotifyCoPersons();
       switchUser('om'); cc2Sel=[{code:'7300RND-CC-041',name:'CT',type:'partial'}];
       coGlPicked=new Set(); coDetail={}; coDetailSeen=new Set(); go('step3');""")
     out_si=pg.evaluate("[...document.querySelectorAll('#si-step3 .step-label')].map(x=>x.textContent)")
@@ -29,9 +30,8 @@ with sync_playwright() as p:
     out_body=pg.evaluate("/selecting Cost Out/.test(document.getElementById('screen-step3').innerText)")
 
     # --- Direction IN ---
-    pg.evaluate("""submittedBC=null; switchUser('jd'); contribs=[PEOPLE.find(p=>p.id==='om')]; go('step1'); setBcManySide('in');""")
-    in1=pg.evaluate("({h:document.getElementById('step1-contrib-heading').textContent,inActive:document.getElementById('dir-btn-in').classList.contains('active')})")
-    pg.evaluate("""document.getElementById('inp-bcname').value='IN'; saveAndNotifyCoPersons();
+    pg.evaluate("""submittedBC=null; switchUser('jd'); contribs=[PEOPLE.find(p=>p.id==='om')]; setBcManySide('in'); go('step1');
+      document.getElementById('inp-bcname').value='IN'; saveAndNotifyCoPersons();
       switchUser('om'); cc2Sel=[{code:'7300RND-CC-041',name:'CT',type:'partial'}];
       coGlPicked=new Set(); coDetail={}; coDetailSeen=new Set(); go('step3');""")
     in_si=pg.evaluate("[...document.querySelectorAll('#si-step3 .step-label')].map(x=>x.textContent)")
@@ -39,18 +39,16 @@ with sync_playwright() as p:
     in_body=pg.evaluate("({selIn:/selecting Cost In/.test(document.getElementById('screen-step3').innerText), noOut:!/Cost Out/.test(document.getElementById('screen-step3').innerText)})")
     stored=pg.evaluate("submittedBC.manySide")
 
-    print('OUT:', out1, out_si, out_t, 'body:', out_body)
-    print('IN :', in1, in_si, in_t, in_body, 'stored:', stored)
+    print('OUT:', out_si, out_t, 'body:', out_body)
+    print('IN :', in_si, in_t, in_body, 'stored:', stored)
 
     ok = (
         # OUT: legacy labels intact
-        out1['h']=='Cost Out Contributor(s)' and out1['outActive']
-        and out_si[1]=='Cost out — select' and out_si[3]=='FTEs out'
+        out_si[1]=='Cost out — select' and out_si[3]=='FTEs out'
         and out_t['step3']=='Cost Out task — Select cost to transfer'
         and out_t['step6']=='Cost'
         and out_t['ci1']=='Cost' and out_body  # receiver screens use neutral titles
         # IN: Many side = Cost In; One side = Cost Out
-        and in1['h']=='Cost In Contributor(s)' and in1['inActive']
         and in_si[1]=='Cost in — select' and in_si[3]=='FTEs in'
         and in_t['step3']=='Cost In task — Select cost to transfer'
         and in_t['step4']=='Cost In task — FTEs in'
