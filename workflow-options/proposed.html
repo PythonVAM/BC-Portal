@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Workflow — Proposed</title>
+<style>
+  :root{
+    --maroon:#8E1B53;
+    --maroon-deep:#7A1646;
+    --pink-bg:#FCEFF3;
+    --gold:#C7972F;
+    --out:#C13A60;
+    --in:#1F8E8E;
+    --ink:#2B2B2B;
+    --muted:#6B6B6B;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    color:var(--ink);
+    background:#fff;
+  }
+  .stage{
+    background:var(--pink-bg);
+    padding:34px 40px 44px;
+  }
+  .stage-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:18px;
+    margin-bottom:34px;
+  }
+  .stage-title{
+    margin:0;
+    font-size:23px;
+    font-weight:700;
+    letter-spacing:.42em;
+    color:var(--maroon);
+  }
+  .legend{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:9px;font-size:14px;color:#444}
+  .swatch{width:20px;height:20px;border-radius:3px}
+  .swatch.lead{background:var(--maroon)}
+  .swatch.out{background:#fff;border:2px solid var(--out)}
+  .swatch.in{background:#fff;border:2px solid var(--in)}
+
+  /* flow row */
+  .flow{
+    display:flex;
+    align-items:stretch;
+    gap:0;
+    flex-wrap:wrap;
+  }
+  .node-wrap{display:flex;align-items:center}
+  .node{
+    position:relative;
+    width:148px;
+    min-height:210px;
+    border-radius:4px;
+    padding:30px 18px 22px;
+    cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+  .node:hover{transform:translateY(-5px);box-shadow:0 10px 22px rgba(0,0,0,.16)}
+  .node.lead{background:var(--maroon)}
+  .node.out{background:#fff;border:2px solid var(--out)}
+  .node.in{background:#fff;border:2px solid var(--in)}
+  .node.sel{box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(0,0,0,.2);transform:translateY(-5px)}
+
+  .badge{
+    position:absolute;
+    top:-19px;
+    left:50%;
+    transform:translateX(-50%);
+    width:38px;height:38px;
+    border-radius:50%;
+    background:var(--gold);
+    color:#fff;
+    font-weight:700;
+    font-size:17px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 5px rgba(0,0,0,.2);
+  }
+  .role{
+    font-size:17px;
+    font-weight:700;
+    line-height:1.25;
+    margin-bottom:14px;
+  }
+  .node.lead .role{color:#fff}
+  .node.out .role{color:var(--out)}
+  .node.in .role{color:var(--in)}
+  .rule{width:78%;height:1px;margin:0 auto 14px;background:currentColor;opacity:.35}
+  .node.lead .rule{background:rgba(255,255,255,.5);opacity:1}
+  .task{font-size:14.5px;line-height:1.35}
+  .node.lead .task{color:rgba(255,255,255,.92)}
+  .node.out .task,.node.in .task{color:#3a3a3a}
+
+  .chev{
+    flex:0 0 30px;
+    align-self:center;
+    color:var(--maroon);
+    font-size:30px;
+    line-height:1;
+    text-align:center;
+  }
+
+  /* detail panel */
+  .detail{
+    max-width:980px;
+    margin:0 auto;
+    padding:24px 40px 40px;
+  }
+  .detail-card{
+    border-left:5px solid var(--maroon);
+    background:#faf6f8;
+    border-radius:0 8px 8px 0;
+    padding:20px 26px;
+  }
+  .detail-card .who{
+    display:inline-block;
+    font-size:12.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:3px 10px;
+    border-radius:20px;
+    margin-bottom:10px;
+  }
+  .who.lead{background:var(--maroon);color:#fff}
+  .who.out{background:#fff;border:1.5px solid var(--out);color:var(--out)}
+  .who.in{background:#fff;border:1.5px solid var(--in);color:var(--in)}
+  .detail-card h3{margin:4px 0 8px;font-size:19px}
+  .detail-card p{margin:0;line-height:1.55;color:#444;font-size:15px}
+  .hint{text-align:center;color:var(--muted);font-size:14px;margin:0 0 4px}
+  @media (max-width:920px){
+    .stage-title{font-size:18px;letter-spacing:.28em}
+    .flow{justify-content:center}
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <a href="index.html" style="display:inline-block;margin-bottom:18px;color:var(--maroon);text-decoration:none;font-size:14px;font-weight:600">&larr; All workflow options</a>
+    <div class="stage-top">
+      <h1 class="stage-title">THE PROPOSED WORKFLOW</h1>
+      <div class="legend">
+        <div class="legend-item"><span class="swatch lead"></span>SET BC Lead</div>
+        <div class="legend-item"><span class="swatch out"></span>Cost Out Contributor(s)</div>
+        <div class="legend-item"><span class="swatch in"></span>Cost In Contributor(s)</div>
+      </div>
+    </div>
+    <div class="flow" id="flow"></div>
+  </div>
+
+  <div class="detail">
+    <p class="hint">Click any step to see what happens in it.</p>
+    <div id="detail"></div>
+  </div>
+
+<script>
+  const STEPS = [
+    { n:1, type:'lead', role:'SET BC Lead', task:'Sets up the BC',
+      detail:'The SET BC Lead creates the boundary change: names it, captures the rationale, and defines its scope — including which side carries the many cost centres.' },
+    { n:2, type:'lead', role:'SET BC Lead', task:'Delegates to Cost Out Contributor(s)',
+      detail:'The Lead assigns the Cost Out side to one or more contributors, who own the cost centres that value is transferring out of.' },
+    { n:3, type:'out', role:'Cost Out Contributor(s)', task:'Submits Cost Out',
+      detail:'Each Cost Out Contributor enters the GL values and FTEs being transferred out of their cost centres, then submits back to the Lead.' },
+    { n:4, type:'lead', role:'SET BC Lead', task:'Reviews · Delegates to Cost In Contributor(s)',
+      detail:'The Lead reviews the assembled Cost Out, then delegates the offsetting Cost In side to the receiving contributor(s).' },
+    { n:5, type:'in', role:'Cost In Contributor(s)', task:'Submits Cost In',
+      detail:'The Cost In Contributor confirms the offsetting values landing in the receiving cost centre(s) so the change balances, then submits back to the Lead.' },
+    { n:6, type:'lead', role:'SET BC Lead', task:'Reviews',
+      detail:'The Lead performs the final review — checking that Cost Out and Cost In reconcile and the boundary change is balanced.' },
+    { n:7, type:'lead', role:'SET BC Lead', task:'Submits to Group',
+      detail:'Once balanced and approved, the Lead submits the completed boundary change to Group for final processing.' },
+  ];
+
+  const flow = document.getElementById('flow');
+  const detail = document.getElementById('detail');
+
+  STEPS.forEach((s, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'node-wrap';
+
+    const node = document.createElement('div');
+    node.className = 'node ' + s.type;
+    node.dataset.n = s.n;
+    node.innerHTML =
+      '<div class="badge">' + s.n + '</div>' +
+      '<div class="role">' + s.role + '</div>' +
+      '<div class="rule"></div>' +
+      '<div class="task">' + s.task + '</div>';
+    node.addEventListener('click', () => select(s.n));
+    wrap.appendChild(node);
+
+    if (i < STEPS.length - 1) {
+      const chev = document.createElement('div');
+      chev.className = 'chev';
+      chev.innerHTML = '&#10095;';
+      wrap.appendChild(chev);
+    }
+    flow.appendChild(wrap);
+  });
+
+  function select(n){
+    const s = STEPS.find(x => x.n === n);
+    document.querySelectorAll('.node').forEach(el =>
+      el.classList.toggle('sel', +el.dataset.n === n));
+    const label = s.type === 'lead' ? 'SET BC Lead'
+                : s.type === 'out'  ? 'Cost Out Contributor(s)'
+                : 'Cost In Contributor(s)';
+    detail.innerHTML =
+      '<div class="detail-card">' +
+        '<span class="who ' + s.type + '">Step ' + s.n + ' &middot; ' + label + '</span>' +
+        '<h3>' + s.task + '</h3>' +
+        '<p>' + s.detail + '</p>' +
+      '</div>';
+  }
+
+  select(1);
+</script>
+</body>
+</html>
