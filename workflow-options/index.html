@@ -80,6 +80,7 @@
   .dot.in{background:#fff;border:2px solid var(--in)}
   .dot.fbp{background:var(--fbp)}
   .dot.bclead{background:var(--fbp)}
+  .dot.fbpopt{background:#fff;border:2px dashed var(--fbp)}
   .dot.arrow{border:none;color:var(--maroon);font-size:13px;line-height:1;width:auto}
   .go{font-size:14px;font-weight:600;color:var(--maroon)}
   .card.soon .go{color:#999}
@@ -125,6 +126,13 @@
       href:'fluid-roles-consulted.html',
       blurb:'The fluid-role flow, but instead of automatic notification rules the BC Lead names "Consulted" people at setup. Simpler to implement — at the cost of relying on the Lead to include everyone relevant.',
       mini:['bclead','arrow','out','arrow','bclead','arrow','in','arrow','bclead'],
+    },
+    {
+      title:'Optional FBP Approval',
+      status:'live',
+      href:'optional-fbp-approval.html',
+      blurb:'The proposed workflow with one addition: before submitting to Group, the SET BC Lead can optionally route the BC to an FBP for approval — replacing today’s offline sign-off. Roles stay rigid and pervasive.',
+      mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead','arrow','fbpopt','arrow','lead'],
     },
     // Add future options here — e.g. Many→Many matrix, Lead-does-everything, parallel both-sides.
   ];
