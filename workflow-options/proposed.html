@@ -12,6 +12,7 @@
     --gold:#C7972F;
     --out:#C13A60;
     --in:#1F8E8E;
+    --fbp:#6A4C93;
     --ink:#2B2B2B;
     --muted:#6B6B6B;
   }
@@ -142,6 +143,28 @@
   .detail-card p{margin:0;line-height:1.55;color:#444;font-size:15px}
   .hint{text-align:center;color:var(--muted);font-size:14px;margin:0 0 4px}
 
+  /* roles mapping */
+  .roles{max-width:1180px;margin:0 auto;padding:18px 40px 4px}
+  .roles-title{
+    font-size:14px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--maroon);margin:0 0 8px;
+  }
+  .roles-intro{color:#555;font-size:14.5px;margin:0 0 20px;max-width:780px;line-height:1.5}
+  .roles-intro .k{font-weight:700;color:#2b2b2b}
+  .role-map{display:flex;flex-direction:column;gap:12px;max-width:760px}
+  .role-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .bc-role{
+    flex:0 0 auto;min-width:210px;
+    font-weight:700;font-size:14.5px;color:#fff;
+    padding:10px 16px;border-radius:6px;background:var(--maroon);
+  }
+  .bc-role.bclead{background:var(--fbp)}
+  .bc-role.contrib{background:#5a6472}
+  .map-arrow{color:var(--muted);font-size:20px;line-height:1}
+  .biz-role{font-size:15px;color:#2b2b2b;font-weight:600}
+  .biz-role .sub{display:block;font-weight:400;font-size:13px;color:#777;margin-top:3px;max-width:420px;line-height:1.4}
+  @media (max-width:920px){ .roles{padding-left:24px;padding-right:24px} }
+
   /* about / constraints + pros + cons */
   .notes{max-width:1180px;margin:0 auto;padding:6px 40px 60px}
   .notes-title{
@@ -203,6 +226,23 @@
     <p class="hint">Click any step to see what happens in it.</p>
     <div id="detail"></div>
   </div>
+
+  <section class="roles">
+    <h2 class="roles-title">Roles in this option</h2>
+    <p class="roles-intro">The portal defines three <span class="k">BC-specific roles</span>; each is filled by a <span class="k">generic business role</span>. The <span class="k">SET BC Lead is always an FP&amp;A person</span> &mdash; in every option.</p>
+    <div class="role-map">
+      <div class="role-row">
+        <span class="bc-role lead">SET BC Lead &nbsp;+&nbsp; BC Lead</span>
+        <span class="map-arrow">&rarr;</span>
+        <span class="biz-role">FP&amp;A<span class="sub">In this option the SET BC Lead and BC Lead are treated as one combined role, fulfilled by the same FP&amp;A person.</span></span>
+      </div>
+      <div class="role-row">
+        <span class="bc-role contrib">BC Contributor</span>
+        <span class="map-arrow">&rarr;</span>
+        <span class="biz-role">FBP &nbsp;or&nbsp; GFS Analyst</span>
+      </div>
+    </div>
+  </section>
 
   <section class="notes">
     <h2 class="notes-title">About this option</h2>
