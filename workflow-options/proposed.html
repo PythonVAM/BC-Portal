@@ -141,6 +141,44 @@
   .detail-card h3{margin:4px 0 8px;font-size:19px}
   .detail-card p{margin:0;line-height:1.55;color:#444;font-size:15px}
   .hint{text-align:center;color:var(--muted);font-size:14px;margin:0 0 4px}
+
+  /* about / constraints + pros + cons */
+  .notes{max-width:1180px;margin:0 auto;padding:6px 40px 60px}
+  .notes-title{
+    font-size:14px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--maroon);margin:0 0 18px;
+  }
+  .notes-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
+  }
+  .note-card{
+    border:1px solid #eadfe4;
+    border-radius:8px;
+    padding:18px 22px 8px;
+    background:#fff;
+    border-top:4px solid var(--maroon);
+  }
+  .note-card.pros{border-top-color:var(--in)}
+  .note-card.cons{border-top-color:var(--gold)}
+  .note-head{
+    display:flex;align-items:center;gap:9px;
+    font-size:16px;font-weight:700;color:var(--ink);margin-bottom:6px;
+  }
+  .note-icon{
+    width:26px;height:26px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:14px;color:#fff;background:var(--maroon);
+  }
+  .note-card.pros .note-icon{background:var(--in)}
+  .note-card.cons .note-icon{background:var(--gold)}
+  .note-card ul{margin:6px 0 12px;padding-left:20px}
+  .note-card li{margin-bottom:11px;line-height:1.5;font-size:14.5px;color:#444}
+  .note-card strong{color:#2b2b2b}
+  @media (max-width:920px){
+    .notes{padding-left:24px;padding-right:24px}
+  }
   @media (max-width:920px){
     .stage-title{font-size:18px;letter-spacing:.28em}
     .flow{justify-content:center}
@@ -165,6 +203,35 @@
     <p class="hint">Click any step to see what happens in it.</p>
     <div id="detail"></div>
   </div>
+
+  <section class="notes">
+    <h2 class="notes-title">About this option</h2>
+    <div class="notes-grid">
+
+      <div class="note-card constraints">
+        <div class="note-head"><span class="note-icon">&#9881;</span>Constraints</div>
+        <ul>
+          <li><strong>Roles are pervasive and mutually exclusive.</strong> A SET BC Lead is only ever a SET BC Lead &mdash; never a Contributor &mdash; and a Contributor is never a Lead.</li>
+          <li><strong>Contributors are Finance roles.</strong> A Contributor is assumed to be either a Finance Business Partner (FBP) or a GFS Analyst.</li>
+        </ul>
+      </div>
+
+      <div class="note-card pros">
+        <div class="note-head"><span class="note-icon">&#10003;</span>Advantages</div>
+        <ul>
+          <li><strong>Full SET Area visibility for the Lead.</strong> Because every BC is orchestrated by the SET BC Lead, the Lead reliably sees all of the boundary changes in their SET Area.</li>
+        </ul>
+      </div>
+
+      <div class="note-card cons">
+        <div class="note-head"><span class="note-icon">&#9888;</span>Trade-offs</div>
+        <ul>
+          <li><strong>FBP sign-off is offline.</strong> Where an FBP needs to sign off on a BC, that approval happens as a manual, offline activity &mdash; the Lead shares the information with them &mdash; <em>unless</em> the FBP was themselves a Contributor on the BC.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
 
 <script>
   const STEPS = [
