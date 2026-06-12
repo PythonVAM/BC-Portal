@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Workflow — Options</title>
+<style>
+  :root{
+    --maroon:#8E1B53;
+    --maroon-deep:#7A1646;
+    --pink-bg:#FCEFF3;
+    --gold:#C7972F;
+    --out:#C13A60;
+    --in:#1F8E8E;
+    --ink:#2B2B2B;
+    --muted:#6B6B6B;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    color:var(--ink);
+    background:#fff;
+  }
+  header{
+    background:var(--pink-bg);
+    padding:46px 40px 40px;
+  }
+  header h1{
+    margin:0 0 10px;
+    font-size:25px;
+    font-weight:700;
+    letter-spacing:.30em;
+    color:var(--maroon);
+  }
+  header p{
+    margin:0;
+    max-width:760px;
+    color:#555;
+    font-size:15.5px;
+    line-height:1.55;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    gap:22px;
+    padding:36px 40px 56px;
+    max-width:1180px;
+    margin:0 auto;
+  }
+  .card{
+    display:flex;
+    flex-direction:column;
+    text-decoration:none;
+    color:inherit;
+    border:1px solid #eadfe4;
+    border-top:5px solid var(--maroon);
+    border-radius:8px;
+    background:#fff;
+    padding:22px 24px 20px;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .card:hover{transform:translateY(-5px);box-shadow:0 12px 26px rgba(0,0,0,.12)}
+  .card.soon{opacity:.6;border-top-color:#c9c9c9;cursor:default}
+  .card.soon:hover{transform:none;box-shadow:none}
+  .tag{
+    align-self:flex-start;
+    font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+    padding:3px 10px;border-radius:20px;margin-bottom:12px;
+  }
+  .tag.live{background:var(--maroon);color:#fff}
+  .tag.soon{background:#ececec;color:#888}
+  .card h2{margin:0 0 8px;font-size:18.5px}
+  .card p{margin:0 0 16px;color:#555;font-size:14.5px;line-height:1.5;flex:1}
+  .mini{display:flex;align-items:center;gap:5px;margin-bottom:14px;flex-wrap:wrap}
+  .dot{width:15px;height:15px;border-radius:3px}
+  .dot.lead{background:var(--maroon)}
+  .dot.out{background:#fff;border:2px solid var(--out)}
+  .dot.in{background:#fff;border:2px solid var(--in)}
+  .dot.arrow{border:none;color:var(--maroon);font-size:13px;line-height:1;width:auto}
+  .go{font-size:14px;font-weight:600;color:var(--maroon)}
+  .card.soon .go{color:#999}
+  footer{padding:0 40px 50px;max-width:1180px;margin:0 auto;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+  <header>
+    <h1>BC WORKFLOW OPTIONS</h1>
+    <p>Interactive process-flow diagrams exploring different ways a Boundary Change could be orchestrated. Each option is a self-contained, clickable walkthrough — open one to step through the flow.</p>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>Transfer Hub Boundary Change Portal · workflow exploration</footer>
+
+<script>
+  const OPTIONS = [
+    {
+      title:'The Proposed Workflow',
+      status:'live',
+      href:'proposed.html',
+      blurb:'Lead-orchestrated, sequential hand-offs: the Lead sets up the BC and delegates Cost Out, then Cost In, reviewing between each, before submitting to Group.',
+      mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead'],
+    },
+    // Add future options here — e.g. Many→Many matrix, Lead-does-everything, parallel both-sides.
+  ];
+
+  const grid = document.getElementById('grid');
+
+  OPTIONS.forEach(o => {
+    const live = o.status === 'live';
+    const el = document.createElement(live ? 'a' : 'div');
+    el.className = 'card ' + (live ? '' : 'soon');
+    if (live) el.href = o.href;
+
+    const mini = (o.mini || []).map(m =>
+      m === 'arrow' ? '<span class="dot arrow">&#10095;</span>'
+                    : '<span class="dot ' + m + '"></span>'
+    ).join('');
+
+    el.innerHTML =
+      '<span class="tag ' + o.status + '">' + (live ? 'Live' : 'Coming soon') + '</span>' +
+      '<h2>' + o.title + '</h2>' +
+      '<p>' + o.blurb + '</p>' +
+      '<div class="mini">' + mini + '</div>' +
+      '<span class="go">' + (live ? 'Open walkthrough &rarr;' : 'Not built yet') + '</span>';
+
+    grid.appendChild(el);
+  });
+</script>
+</body>
+</html>
