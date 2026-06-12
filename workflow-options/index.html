@@ -79,6 +79,7 @@
   .dot.out{background:#fff;border:2px solid var(--out)}
   .dot.in{background:#fff;border:2px solid var(--in)}
   .dot.fbp{background:var(--fbp)}
+  .dot.bclead{background:var(--fbp)}
   .dot.arrow{border:none;color:var(--maroon);font-size:13px;line-height:1;width:auto}
   .go{font-size:14px;font-weight:600;color:var(--maroon)}
   .card.soon .go{color:#999}
@@ -105,11 +106,11 @@
       mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead'],
     },
     {
-      title:'Workflow with FBP Sign-off',
+      title:'FBP-led Workflow',
       status:'live',
       href:'fbp-signoff.html',
-      blurb:'As the proposed flow, but the Finance Business Partner is brought into the Lead’s steps and adds a formal in-system sign-off step before the BC is submitted to Group.',
-      mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead','arrow','fbp','arrow','lead'],
+      blurb:'The BC Lead role is filled by the FBP, who orchestrates the whole BC, then submits it up to the SET BC Lead (FP&A) for oversight and the final submission to Group.',
+      mini:['bclead','arrow','bclead','arrow','out','arrow','bclead','arrow','in','arrow','bclead','arrow','bclead','arrow','lead'],
     },
     // Add future options here — e.g. Many→Many matrix, Lead-does-everything, parallel both-sides.
   ];
