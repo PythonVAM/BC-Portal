@@ -77,8 +77,39 @@
   .lvl.mid{background:#fdf3e0;color:#9a6b16}
   .lvl.bad{background:#fbe9ec;color:#b23a4e}
 
-  .legend-line{padding:0 40px 50px;color:var(--muted);font-size:13px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  /* group band rows */
+  table.cmp td.grouphead{
+    background:var(--maroon);color:#fff;
+    font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    padding:8px 16px;border-bottom:1px solid #eadfe4;
+  }
+
+  .legend-line{padding:0 40px 40px;color:var(--muted);font-size:13px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
   .legend-line .lvl{font-size:11.5px}
+
+  /* best-practice assessment card */
+  .assessment{max-width:1180px;margin:0 auto;padding:6px 40px 64px}
+  .assess-card{
+    border:1px solid #eadfe4;border-radius:10px;border-top:5px solid var(--maroon);
+    background:#fff;padding:24px 28px 26px;
+  }
+  .assess-card h2{
+    margin:0 0 6px;font-size:14px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);
+  }
+  .assess-card h3{margin:22px 0 8px;font-size:16px;color:var(--ink)}
+  .assess-card p{margin:0 0 12px;font-size:14.5px;line-height:1.55;color:#444;max-width:880px}
+  .assess-card .k{font-weight:700;color:#2b2b2b}
+  .lenses{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+  .lens{background:#f6eef2;color:#8E1B53;border:1px solid #e3d2dc;border-radius:20px;padding:4px 12px;font-size:12.5px;font-weight:600}
+  .assess-card ul{margin:6px 0 4px;padding-left:20px}
+  .assess-card li{margin-bottom:9px;font-size:14.5px;line-height:1.5;color:#444}
+  .assess-card li .k{color:#2b2b2b}
+  .rec{
+    background:#faf6f8;border-left:4px solid var(--gold);
+    padding:14px 18px;border-radius:0 8px 8px 0;margin-top:6px;
+  }
+  .rec p{margin:0;max-width:880px}
+  .note-line{font-size:13px;color:#777;margin-top:16px;font-style:italic}
   @media (max-width:920px){
     header h1{font-size:18px;letter-spacing:.18em}
     .cmp-wrap{padding-left:16px;padding-right:16px}
@@ -98,10 +129,51 @@
 
   <div class="legend-line">
     <span>Ratings:</span>
-    <span><span class="lvl good">Good</span> favourable</span>
-    <span><span class="lvl mid">Medium</span> mixed</span>
-    <span><span class="lvl bad">High / Low</span> less favourable</span>
+    <span><span class="lvl good">Strong</span> favourable</span>
+    <span><span class="lvl mid">Moderate</span> mixed</span>
+    <span><span class="lvl bad">Weak</span> less favourable</span>
+    <span>(implementation complexity reads the same way &mdash; low complexity is favourable / green).</span>
   </div>
+
+  <section class="assessment">
+    <div class="assess-card">
+      <h2>Best-practice assessment</h2>
+      <p>This is <span class="k">not a SOX-controlled process</span>, so controls should be <span class="k">proportionate to the risk and materiality</span> of each boundary change rather than driven by external compliance. Even so, the same widely-used governance principles apply as good practice:</p>
+      <div class="lenses">
+        <span class="lens">Segregation of duties (COSO / ISACA)</span>
+        <span class="lens">Four-eyes / maker–checker</span>
+        <span class="lens">Auditability &amp; record-keeping</span>
+        <span class="lens">Clear accountability (RACI)</span>
+        <span class="lens">Consulted / Informed by rule</span>
+        <span class="lens">Systematic over discretionary controls</span>
+        <span class="lens">Proportionate / risk-based control</span>
+        <span class="lens">Adoption &amp; change management</span>
+      </div>
+
+      <h3>Headline</h3>
+      <ul>
+        <li><span class="k">Strongest control alignment &mdash; FBP-led.</span> A mandatory, in-system, two-level approval (FBP leads, SET BC Lead approves) with clean segregation of duties and a full audit trail.</li>
+        <li><span class="k">Best fit to current ways of working &mdash; Fluid and Fluid · Consulted.</span> They mirror how teams already operate, at the cost of control guarantees.</li>
+        <li><span class="k">Weakest control points.</span> The Proposed option's <span class="k">offline, un-auditable</span> sign-off; and the fluid options' lack of a <span class="k">mandatory independent approver</span> plus oversight that relies on complex logic (Fluid) or the Lead's memory (Consulted) &mdash; a discretionary control, which best practice disfavours.</li>
+      </ul>
+
+      <h3>Recommendation (proportionate, since not SOX)</h3>
+      <div class="rec">
+        <p>Take a flexible base but harden three things: <span class="k">(1)</span> make the independent approval <span class="k">mandatory above a value / risk threshold</span> rather than optional or absent; <span class="k">(2)</span> keep every approval <span class="k">in-system</span> for a clean trail; and <span class="k">(3)</span> <span class="k">auto-notify the SET BC Lead</span> for their area by rule, not by discretion. In practice that's the Optional-FBP step made <em>threshold-mandatory</em>, layered on a fluid model, with a systematic &ldquo;Informed&rdquo; rule &mdash; capturing most of the adoption upside without the control gaps.</p>
+      </div>
+
+      <h3>Per-option verdict</h3>
+      <ul>
+        <li><span class="k">Proposed</span> &mdash; simple with clear ownership; the weak link is the offline approval.</li>
+        <li><span class="k">Optional FBP Approval</span> &mdash; right idea, but discretionary; make it threshold-mandatory.</li>
+        <li><span class="k">FBP-led</span> &mdash; best controls; main cost is the change impact on some areas.</li>
+        <li><span class="k">Fluid roles</span> &mdash; best adoption; needs a mandatory checker and systematic notifications.</li>
+        <li><span class="k">Fluid · Consulted</span> &mdash; flexible and simpler, but discretionary notification is the control weakness.</li>
+      </ul>
+
+      <p class="note-line">Ratings reflect general governance principles applied to this process; the precise bar would be set by your own risk appetite and materiality thresholds.</p>
+    </div>
+  </section>
 
 <script>
   const OPTIONS = [
@@ -114,6 +186,12 @@
       informed:'Is the BC Lead — full visibility by default',
       impl:{text:'Low',tone:'good'},
       flex:{text:'Low',tone:'bad'},
+      sod:{text:'Moderate',tone:'mid'},
+      approval4eyes:{text:'Weak',tone:'bad'},
+      audit:{text:'Weak',tone:'bad'},
+      accountability:{text:'Strong',tone:'good'},
+      oversight:{text:'Strong',tone:'good'},
+      adoption:{text:'Medium',tone:'mid'},
       tradeoff:'FBP sign-off stays a manual offline step',
       bestWhen:'You want the simplest build and accept offline FBP sign-off' },
 
@@ -126,6 +204,12 @@
       informed:'Is the BC Lead — full visibility by default',
       impl:{text:'Low',tone:'good'},
       flex:{text:'Low',tone:'bad'},
+      sod:{text:'Moderate',tone:'mid'},
+      approval4eyes:{text:'Moderate',tone:'mid'},
+      audit:{text:'Moderate',tone:'mid'},
+      accountability:{text:'Strong',tone:'good'},
+      oversight:{text:'Strong',tone:'good'},
+      adoption:{text:'High',tone:'good'},
       tradeoff:'Roles stay rigid; adds no flexibility',
       bestWhen:'You want today&rsquo;s process digitised with minimal change' },
 
@@ -138,6 +222,12 @@
       informed:'Receives every BC Lead submission',
       impl:{text:'Low',tone:'good'},
       flex:{text:'Low–Med',tone:'mid'},
+      sod:{text:'Strong',tone:'good'},
+      approval4eyes:{text:'Strong',tone:'good'},
+      audit:{text:'Strong',tone:'good'},
+      accountability:{text:'Strong',tone:'good'},
+      oversight:{text:'Strong',tone:'good'},
+      adoption:{text:'Medium',tone:'mid'},
       tradeoff:'FBPs can no longer act as Contributors',
       bestWhen:'FBPs naturally own BCs and should lead them' },
 
@@ -150,6 +240,12 @@
       informed:'Notification rules (auto-determined, complex)',
       impl:{text:'High',tone:'bad'},
       flex:{text:'High',tone:'good'},
+      sod:{text:'Moderate',tone:'mid'},
+      approval4eyes:{text:'Weak',tone:'bad'},
+      audit:{text:'Moderate',tone:'mid'},
+      accountability:{text:'Moderate',tone:'mid'},
+      oversight:{text:'Weak',tone:'bad'},
+      adoption:{text:'High',tone:'good'},
       tradeoff:'Complex notifications; harder to document',
       bestWhen:'You want to mirror existing flexible ways of working' },
 
@@ -162,11 +258,18 @@
       informed:'Only those the Lead names as Consulted',
       impl:{text:'Medium',tone:'mid'},
       flex:{text:'High',tone:'good'},
+      sod:{text:'Moderate',tone:'mid'},
+      approval4eyes:{text:'Weak',tone:'bad'},
+      audit:{text:'Moderate',tone:'mid'},
+      accountability:{text:'Moderate',tone:'mid'},
+      oversight:{text:'Weak',tone:'bad'},
+      adoption:{text:'High',tone:'good'},
       tradeoff:'Lead may forget to include relevant people',
       bestWhen:'You want flexibility but simpler notifications' },
   ];
 
   const ROWS = [
+    { group:'Workflow &amp; roles' },
     { label:'Role model', key:'roleModel' },
     { label:'Who can be BC Lead', key:'bcLead' },
     { label:'BC Contributors', key:'contributors' },
@@ -174,7 +277,16 @@
     { label:'Approval before Group', key:'approval' },
     { label:'SET BC Lead informed via', key:'informed' },
     { label:'Implementation complexity', key:'impl', rating:true },
-    { label:'Flexibility / fit to today', key:'flex', rating:true },
+
+    { group:'Best-practice alignment' },
+    { label:'Segregation of duties', key:'sod', rating:true },
+    { label:'Independent approval before Group', key:'approval4eyes', rating:true },
+    { label:'Auditability of approval', key:'audit', rating:true },
+    { label:'Accountability clarity', key:'accountability', rating:true },
+    { label:'Guaranteed oversight visibility', key:'oversight', rating:true },
+    { label:'Adoption / fit to current ways', key:'adoption', rating:true },
+
+    { group:'Summary' },
     { label:'Main trade-off', key:'tradeoff' },
     { label:'Best when…', key:'bestWhen' },
   ];
@@ -202,6 +314,15 @@
   const tbody = document.createElement('tbody');
   ROWS.forEach(r => {
     const tr = document.createElement('tr');
+    if (r.group){
+      const td = document.createElement('td');
+      td.className = 'grouphead';
+      td.colSpan = OPTIONS.length + 1;
+      td.innerHTML = r.group;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
     const dim = document.createElement('td');
     dim.className = 'dim';
     dim.innerHTML = r.label;
