@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Workflow — Fluid Roles</title>
+<style>
+  :root{
+    --maroon:#8E1B53;
+    --maroon-deep:#7A1646;
+    --pink-bg:#FCEFF3;
+    --gold:#C7972F;
+    --out:#C13A60;
+    --in:#1F8E8E;
+    --fbp:#6A4C93;
+    --ink:#2B2B2B;
+    --muted:#6B6B6B;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    color:var(--ink);
+    background:#fff;
+  }
+  .stage{
+    background:var(--pink-bg);
+    padding:34px 40px 44px;
+  }
+  .stage-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:18px;
+    margin-bottom:34px;
+  }
+  .stage-title{
+    margin:0;
+    font-size:23px;
+    font-weight:700;
+    letter-spacing:.42em;
+    color:var(--maroon);
+  }
+  .legend{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:9px;font-size:14px;color:#444}
+  .swatch{width:20px;height:20px;border-radius:3px}
+  .swatch.bclead{background:var(--fbp)}
+  .swatch.out{background:#fff;border:2px solid var(--out)}
+  .swatch.in{background:#fff;border:2px solid var(--in)}
+
+  /* flow row */
+  .flow{
+    display:flex;
+    align-items:stretch;
+    gap:0;
+    flex-wrap:wrap;
+  }
+  .node-wrap{display:flex;align-items:center}
+  .node{
+    position:relative;
+    width:148px;
+    min-height:210px;
+    border-radius:4px;
+    padding:30px 18px 22px;
+    cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+  .node:hover{transform:translateY(-5px);box-shadow:0 10px 22px rgba(0,0,0,.16)}
+  .node.bclead{background:var(--fbp)}
+  .node.out{background:#fff;border:2px solid var(--out)}
+  .node.in{background:#fff;border:2px solid var(--in)}
+  .node.sel{box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(0,0,0,.2);transform:translateY(-5px)}
+
+  .badge{
+    position:absolute;
+    top:-19px;
+    left:50%;
+    transform:translateX(-50%);
+    width:38px;height:38px;
+    border-radius:50%;
+    background:var(--gold);
+    color:#fff;
+    font-weight:700;
+    font-size:17px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 5px rgba(0,0,0,.2);
+  }
+  .role{
+    font-size:17px;
+    font-weight:700;
+    line-height:1.25;
+    margin-bottom:14px;
+  }
+  .node.bclead .role{color:#fff}
+  .node.out .role{color:var(--out)}
+  .node.in .role{color:var(--in)}
+  .rule{width:78%;height:1px;margin:0 auto 14px;background:currentColor;opacity:.35}
+  .node.bclead .rule{background:rgba(255,255,255,.5);opacity:1}
+  .task{font-size:14.5px;line-height:1.35}
+  .node.bclead .task{color:rgba(255,255,255,.92)}
+  .node.out .task,.node.in .task{color:#3a3a3a}
+
+  .chev{
+    flex:0 0 30px;
+    align-self:center;
+    color:var(--maroon);
+    font-size:30px;
+    line-height:1;
+    text-align:center;
+  }
+
+  /* notification annotation */
+  .flow-note{
+    margin:26px auto 0;
+    max-width:760px;
+    display:flex;align-items:flex-start;gap:10px;
+    background:#fff;
+    border:1px dashed var(--maroon);
+    border-radius:8px;
+    padding:12px 16px;
+    font-size:14px;color:#555;line-height:1.45;
+  }
+  .flow-note .bell{font-size:16px;line-height:1.4}
+  .flow-note strong{color:var(--maroon)}
+
+  /* detail panel */
+  .detail{
+    max-width:980px;
+    margin:0 auto;
+    padding:24px 40px 40px;
+  }
+  .detail-card{
+    border-left:5px solid var(--maroon);
+    background:#faf6f8;
+    border-radius:0 8px 8px 0;
+    padding:20px 26px;
+  }
+  .detail-card .who{
+    display:inline-block;
+    font-size:12.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:3px 10px;
+    border-radius:20px;
+    margin-bottom:10px;
+  }
+  .who.bclead{background:var(--fbp);color:#fff}
+  .who.out{background:#fff;border:1.5px solid var(--out);color:var(--out)}
+  .who.in{background:#fff;border:1.5px solid var(--in);color:var(--in)}
+  .detail-card h3{margin:4px 0 8px;font-size:19px}
+  .detail-card p{margin:0;line-height:1.55;color:#444;font-size:15px}
+  .hint{text-align:center;color:var(--muted);font-size:14px;margin:0 0 4px}
+
+  /* roles mapping */
+  .roles{max-width:1180px;margin:0 auto;padding:18px 40px 4px}
+  .roles-title{
+    font-size:14px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--maroon);margin:0 0 8px;
+  }
+  .roles-intro{color:#555;font-size:14.5px;margin:0 0 20px;max-width:780px;line-height:1.5}
+  .roles-intro .k{font-weight:700;color:#2b2b2b}
+  .role-map{display:flex;flex-direction:column;gap:12px;max-width:820px}
+  .role-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .bc-role{
+    flex:0 0 auto;min-width:210px;
+    font-weight:700;font-size:14.5px;color:#fff;
+    padding:10px 16px;border-radius:6px;background:var(--maroon);
+  }
+  .bc-role.bclead{background:var(--fbp)}
+  .bc-role.contrib{background:#5a6472}
+  .map-arrow{color:var(--muted);font-size:20px;line-height:1}
+  .biz-role{font-size:15px;color:#2b2b2b;font-weight:600}
+  .biz-role .sub{display:block;font-weight:400;font-size:13px;color:#777;margin-top:3px;max-width:480px;line-height:1.4}
+  @media (max-width:920px){ .roles{padding-left:24px;padding-right:24px} }
+
+  /* about / constraints + pros + cons */
+  .notes{max-width:1180px;margin:0 auto;padding:6px 40px 60px}
+  .notes-title{
+    font-size:14px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--maroon);margin:0 0 18px;
+  }
+  .notes-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
+  }
+  .note-card{
+    border:1px solid #eadfe4;
+    border-radius:8px;
+    padding:18px 22px 8px;
+    background:#fff;
+    border-top:4px solid var(--maroon);
+  }
+  .note-card.pros{border-top-color:var(--in)}
+  .note-card.cons{border-top-color:var(--gold)}
+  .note-head{
+    display:flex;align-items:center;gap:9px;
+    font-size:16px;font-weight:700;color:var(--ink);margin-bottom:6px;
+  }
+  .note-icon{
+    width:26px;height:26px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:14px;color:#fff;background:var(--maroon);
+  }
+  .note-card.pros .note-icon{background:var(--in)}
+  .note-card.cons .note-icon{background:var(--gold)}
+  .note-card ul{margin:6px 0 12px;padding-left:20px}
+  .note-card li{margin-bottom:11px;line-height:1.5;font-size:14.5px;color:#444}
+  .note-card strong{color:#2b2b2b}
+  @media (max-width:920px){
+    .notes{padding-left:24px;padding-right:24px}
+  }
+  @media (max-width:920px){
+    .stage-title{font-size:18px;letter-spacing:.28em}
+    .flow{justify-content:center}
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <a href="index.html" style="display:inline-block;margin-bottom:18px;color:var(--maroon);text-decoration:none;font-size:14px;font-weight:600">&larr; All workflow options</a>
+    <div class="stage-top">
+      <h1 class="stage-title">FLUID-ROLE WORKFLOW</h1>
+      <div class="legend">
+        <div class="legend-item"><span class="swatch bclead"></span>BC Lead</div>
+        <div class="legend-item"><span class="swatch out"></span>Cost Out Contributor(s)</div>
+        <div class="legend-item"><span class="swatch in"></span>Cost In Contributor(s)</div>
+      </div>
+    </div>
+    <div class="flow" id="flow"></div>
+    <div class="flow-note">
+      <span class="bell">&#128276;</span>
+      <span>Throughout, the <strong>SET BC Lead (FP&amp;A)</strong> is kept informed of this BC through notification rules &mdash; they are <strong>not a step in the flow</strong>, which is what makes the notification logic more involved.</span>
+    </div>
+  </div>
+
+  <div class="detail">
+    <p class="hint">Click any step to see what happens in it.</p>
+    <div id="detail"></div>
+  </div>
+
+  <section class="roles">
+    <h2 class="roles-title">Roles in this option</h2>
+    <p class="roles-intro">Here the mapping of <span class="k">business roles to BC roles is fluid</span>: <span class="k">whoever creates a BC becomes its BC Lead</span>, and any business role can do so. The <span class="k">SET BC Lead is always an FP&amp;A person</span> &mdash; in every option.</p>
+    <div class="role-map">
+      <div class="role-row">
+        <span class="bc-role bclead">BC Lead</span>
+        <span class="map-arrow">&rarr;</span>
+        <span class="biz-role">FP&amp;A, FBP, GFS Analyst or Junior Local Finance<span class="sub">Whoever sets up the BC becomes its Lead &mdash; the mapping is fluid, so any of these business roles can lead a given BC.</span></span>
+      </div>
+      <div class="role-row">
+        <span class="bc-role contrib">BC Contributor</span>
+        <span class="map-arrow">&rarr;</span>
+        <span class="biz-role">FP&amp;A, FBP, GFS Analyst or Junior Local Finance<span class="sub">Per-BC exclusivity: the person who set up a BC can't also be a Contributor on it &mdash; but the same person can be a Contributor on a different BC set up by someone else.</span></span>
+      </div>
+      <div class="role-row">
+        <span class="bc-role lead">SET BC Lead</span>
+        <span class="map-arrow">&rarr;</span>
+        <span class="biz-role">FP&amp;A<span class="sub">Oversight at SET Area level. Not a step in the flow &mdash; kept aware of BCs in their area via notification rules.</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2 class="notes-title">About this option</h2>
+    <div class="notes-grid">
+
+      <div class="note-card constraints">
+        <div class="note-head"><span class="note-icon">&#9881;</span>Constraints</div>
+        <ul>
+          <li><strong>Fluid role mapping.</strong> Within a single BC, the BC Lead can be an FP&amp;A, FBP, GFS Analyst or Junior Local Finance person &mdash; whoever creates the BC becomes its Lead.</li>
+          <li><strong>Per-BC role exclusivity (not pervasive).</strong> A person who sets up a BC (its Lead) can't be a Contributor on that same BC, but can be a Contributor on a different BC set up by someone else.</li>
+          <li><strong>SET BC Lead is still FP&amp;A.</strong> They provide SET-Area oversight but are not a mandatory step in the flow.</li>
+        </ul>
+      </div>
+
+      <div class="note-card pros">
+        <div class="note-head"><span class="note-icon">&#10003;</span>Advantages</div>
+        <ul>
+          <li><strong>Closer to existing ways of working.</strong> The fluid mapping correlates more closely with how teams already operate.</li>
+          <li><strong>Less rigid.</strong> Roles aren't fixed to a person up front &mdash; they're assigned per BC, based on who picks it up.</li>
+        </ul>
+      </div>
+
+      <div class="note-card cons">
+        <div class="note-head"><span class="note-icon">&#9888;</span>Trade-offs</div>
+        <ul>
+          <li><strong>More complex to implement.</strong> Fluid, per-BC role assignment is harder to build than fixed, mutually-exclusive roles.</li>
+          <li><strong>Less clear to document.</strong> The rules are harder to write down and explain unambiguously.</li>
+          <li><strong>Complex notification rules.</strong> Because the SET BC Lead may not be in the flow, a more involved set of notifications is needed to ensure they are always aware of BCs in their area.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+<script>
+  const STEPS = [
+    { n:1, type:'bclead', role:'BC Lead', task:'Sets up the BC',
+      detail:'Whoever creates the boundary change becomes its BC Lead — this may be an FP&A, FBP, GFS Analyst or Junior Local Finance person. They name it, capture the rationale, and define its scope.' },
+    { n:2, type:'bclead', role:'BC Lead', task:'Delegates to Cost Out Contributor(s)',
+      detail:'The BC Lead assigns the Cost Out side to one or more contributors (anyone except themselves on this BC), who own the cost centres that value is transferring out of.' },
+    { n:3, type:'out', role:'Cost Out Contributor(s)', task:'Submits Cost Out',
+      detail:'Each Cost Out Contributor enters the GL values and FTEs being transferred out of their cost centres, then submits back to the BC Lead.' },
+    { n:4, type:'bclead', role:'BC Lead', task:'Reviews · Delegates to Cost In Contributor(s)',
+      detail:'The BC Lead reviews the assembled Cost Out, then delegates the offsetting Cost In side to the receiving contributor(s).' },
+    { n:5, type:'in', role:'Cost In Contributor(s)', task:'Submits Cost In',
+      detail:'The Cost In Contributor confirms the offsetting values landing in the receiving cost centre(s) so the change balances, then submits back to the BC Lead.' },
+    { n:6, type:'bclead', role:'BC Lead', task:'Reviews',
+      detail:'The BC Lead performs the final review — checking that Cost Out and Cost In reconcile and the boundary change is balanced.' },
+    { n:7, type:'bclead', role:'BC Lead', task:'Submits to Group',
+      detail:'The BC Lead submits the completed, balanced boundary change to Group. The SET BC Lead is kept informed via notifications rather than a mandatory approval step.' },
+  ];
+
+  const flow = document.getElementById('flow');
+  const detail = document.getElementById('detail');
+
+  STEPS.forEach((s, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'node-wrap';
+
+    const node = document.createElement('div');
+    node.className = 'node ' + s.type;
+    node.dataset.n = s.n;
+    node.innerHTML =
+      '<div class="badge">' + s.n + '</div>' +
+      '<div class="role">' + s.role + '</div>' +
+      '<div class="rule"></div>' +
+      '<div class="task">' + s.task + '</div>';
+    node.addEventListener('click', () => select(s.n));
+    wrap.appendChild(node);
+
+    if (i < STEPS.length - 1) {
+      const chev = document.createElement('div');
+      chev.className = 'chev';
+      chev.innerHTML = '&#10095;';
+      wrap.appendChild(chev);
+    }
+    flow.appendChild(wrap);
+  });
+
+  function select(n){
+    const s = STEPS.find(x => x.n === n);
+    document.querySelectorAll('.node').forEach(el =>
+      el.classList.toggle('sel', +el.dataset.n === n));
+    const label = s.type === 'bclead' ? 'BC Lead'
+                : s.type === 'out'    ? 'Cost Out Contributor(s)'
+                : 'Cost In Contributor(s)';
+    detail.innerHTML =
+      '<div class="detail-card">' +
+        '<span class="who ' + s.type + '">Step ' + s.n + ' &middot; ' + label + '</span>' +
+        '<h3>' + s.task + '</h3>' +
+        '<p>' + s.detail + '</p>' +
+      '</div>';
+  }
+
+  select(1);
+</script>
+</body>
+</html>
