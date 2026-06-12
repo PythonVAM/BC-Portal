@@ -12,6 +12,7 @@
     --gold:#C7972F;
     --out:#C13A60;
     --in:#1F8E8E;
+    --fbp:#6A4C93;
     --ink:#2B2B2B;
     --muted:#6B6B6B;
   }
@@ -77,6 +78,7 @@
   .dot.lead{background:var(--maroon)}
   .dot.out{background:#fff;border:2px solid var(--out)}
   .dot.in{background:#fff;border:2px solid var(--in)}
+  .dot.fbp{background:var(--fbp)}
   .dot.arrow{border:none;color:var(--maroon);font-size:13px;line-height:1;width:auto}
   .go{font-size:14px;font-weight:600;color:var(--maroon)}
   .card.soon .go{color:#999}
@@ -101,6 +103,13 @@
       href:'proposed.html',
       blurb:'Lead-orchestrated, sequential hand-offs: the Lead sets up the BC and delegates Cost Out, then Cost In, reviewing between each, before submitting to Group.',
       mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead'],
+    },
+    {
+      title:'Workflow with FBP Sign-off',
+      status:'live',
+      href:'fbp-signoff.html',
+      blurb:'As the proposed flow, but the Finance Business Partner is brought into the Lead’s steps and adds a formal in-system sign-off step before the BC is submitted to Group.',
+      mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead','arrow','fbp','arrow','lead'],
     },
     // Add future options here — e.g. Many→Many matrix, Lead-does-everything, parallel both-sides.
   ];

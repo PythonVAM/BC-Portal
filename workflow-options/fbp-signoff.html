@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BC Workflow — Proposed</title>
+<title>BC Workflow — FBP Sign-off</title>
 <style>
   :root{
     --maroon:#8E1B53;
@@ -12,6 +12,7 @@
     --gold:#C7972F;
     --out:#C13A60;
     --in:#1F8E8E;
+    --fbp:#6A4C93;
     --ink:#2B2B2B;
     --muted:#6B6B6B;
   }
@@ -47,6 +48,7 @@
   .swatch.lead{background:var(--maroon)}
   .swatch.out{background:#fff;border:2px solid var(--out)}
   .swatch.in{background:#fff;border:2px solid var(--in)}
+  .swatch.fbp{background:var(--fbp)}
 
   /* flow row */
   .flow{
@@ -73,6 +75,7 @@
   .node.lead{background:var(--maroon)}
   .node.out{background:#fff;border:2px solid var(--out)}
   .node.in{background:#fff;border:2px solid var(--in)}
+  .node.fbp{background:var(--fbp)}
   .node.sel{box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(0,0,0,.2);transform:translateY(-5px)}
 
   .badge{
@@ -98,10 +101,11 @@
   .node.lead .role{color:#fff}
   .node.out .role{color:var(--out)}
   .node.in .role{color:var(--in)}
+  .node.fbp .role{color:#fff}
   .rule{width:78%;height:1px;margin:0 auto 14px;background:currentColor;opacity:.35}
-  .node.lead .rule{background:rgba(255,255,255,.5);opacity:1}
+  .node.lead .rule,.node.fbp .rule{background:rgba(255,255,255,.5);opacity:1}
   .task{font-size:14.5px;line-height:1.35}
-  .node.lead .task{color:rgba(255,255,255,.92)}
+  .node.lead .task,.node.fbp .task{color:rgba(255,255,255,.92)}
   .node.out .task,.node.in .task{color:#3a3a3a}
 
   .chev{
@@ -138,6 +142,7 @@
   .who.lead{background:var(--maroon);color:#fff}
   .who.out{background:#fff;border:1.5px solid var(--out);color:var(--out)}
   .who.in{background:#fff;border:1.5px solid var(--in);color:var(--in)}
+  .who.fbp{background:var(--fbp);color:#fff}
   .detail-card h3{margin:4px 0 8px;font-size:19px}
   .detail-card p{margin:0;line-height:1.55;color:#444;font-size:15px}
   .hint{text-align:center;color:var(--muted);font-size:14px;margin:0 0 4px}
@@ -189,11 +194,12 @@
   <div class="stage">
     <a href="index.html" style="display:inline-block;margin-bottom:18px;color:var(--maroon);text-decoration:none;font-size:14px;font-weight:600">&larr; All workflow options</a>
     <div class="stage-top">
-      <h1 class="stage-title">THE PROPOSED WORKFLOW</h1>
+      <h1 class="stage-title">WORKFLOW WITH FBP SIGN-OFF</h1>
       <div class="legend">
         <div class="legend-item"><span class="swatch lead"></span>SET BC Lead</div>
         <div class="legend-item"><span class="swatch out"></span>Cost Out Contributor(s)</div>
         <div class="legend-item"><span class="swatch in"></span>Cost In Contributor(s)</div>
+        <div class="legend-item"><span class="swatch fbp"></span>Finance Business Partner</div>
       </div>
     </div>
     <div class="flow" id="flow"></div>
@@ -211,15 +217,17 @@
       <div class="note-card constraints">
         <div class="note-head"><span class="note-icon">&#9881;</span>Constraints</div>
         <ul>
-          <li><strong>Roles are pervasive and mutually exclusive.</strong> A SET BC Lead is only ever a SET BC Lead &mdash; never a Contributor &mdash; and a Contributor is never a Lead.</li>
-          <li><strong>Contributors are Finance roles.</strong> A Contributor is assumed to be either a Finance Business Partner (FBP) or a GFS Analyst.</li>
+          <li><strong>Roles are pervasive and mutually exclusive.</strong> A SET BC Lead, an FBP and a Contributor are each only ever in that one role on a BC &mdash; no person holds two.</li>
+          <li><strong>The FBP is a formal, in-system approver.</strong> The FBP is brought into the Lead's steps for visibility and adds a sign-off step before the BC goes to Group &mdash; replacing the offline approval of the proposed workflow.</li>
+          <li><strong>Contributors are GFS Analysts (or other finance colleagues).</strong> Because the FBP now occupies the approver role, the contributor roles are filled by GFS Analysts or other nominated colleagues rather than the FBP.</li>
         </ul>
       </div>
 
       <div class="note-card pros">
         <div class="note-head"><span class="note-icon">&#10003;</span>Advantages</div>
         <ul>
-          <li><strong>Full SET Area visibility for the Lead.</strong> Because every BC is orchestrated by the SET BC Lead, the Lead reliably sees all of the boundary changes in their SET Area.</li>
+          <li><strong>Everyone with a stake stays informed.</strong> Both FBPs and SET BC Leads are always aware of all BCs in which they have a vested interest &mdash; the FBP sign-off is captured in the system, not offline.</li>
+          <li><strong>Full SET Area visibility for the Lead.</strong> Every BC is orchestrated by the SET BC Lead, so the Lead reliably sees all of the boundary changes in their SET Area.</li>
           <li><strong>Simple to implement.</strong> Fixed, mutually-exclusive roles keep the IT solution straightforward to build and operate.</li>
         </ul>
       </div>
@@ -227,7 +235,8 @@
       <div class="note-card cons">
         <div class="note-head"><span class="note-icon">&#9888;</span>Trade-offs</div>
         <ul>
-          <li><strong>FBP sign-off is offline.</strong> Where an FBP needs to sign off on a BC, that approval happens as a manual, offline activity &mdash; the Lead shares the information with them &mdash; <em>unless</em> the FBP was themselves a Contributor on the BC.</li>
+          <li><strong>FBPs can no longer contribute.</strong> An FBP who previously acted as a Contributor can no longer perform that role, since the roles are mutually exclusive and the FBP is now the approver.</li>
+          <li><strong>Uneven change impact.</strong> The shift is larger for areas that don't use a GFS function and instead rely on local finance teams &mdash; they will need to identify other colleagues to fill the contributor roles.</li>
         </ul>
       </div>
 
@@ -237,7 +246,7 @@
 <script>
   const STEPS = [
     { n:1, type:'lead', role:'SET BC Lead', task:'Sets up the BC',
-      detail:'The SET BC Lead creates the boundary change: names it, captures the rationale, and defines its scope — including which side carries the many cost centres.' },
+      detail:'The SET BC Lead creates the boundary change: names it, captures the rationale, and defines its scope. The FBP is brought in from the outset so they have visibility of the BC in their area.' },
     { n:2, type:'lead', role:'SET BC Lead', task:'Delegates to Cost Out Contributor(s)',
       detail:'The Lead assigns the Cost Out side to one or more contributors, who own the cost centres that value is transferring out of.' },
     { n:3, type:'out', role:'Cost Out Contributor(s)', task:'Submits Cost Out',
@@ -247,9 +256,11 @@
     { n:5, type:'in', role:'Cost In Contributor(s)', task:'Submits Cost In',
       detail:'The Cost In Contributor confirms the offsetting values landing in the receiving cost centre(s) so the change balances, then submits back to the Lead.' },
     { n:6, type:'lead', role:'SET BC Lead', task:'Reviews',
-      detail:'The Lead performs the final review — checking that Cost Out and Cost In reconcile and the boundary change is balanced.' },
-    { n:7, type:'lead', role:'SET BC Lead', task:'Submits to Group',
-      detail:'Once balanced and approved, the Lead submits the completed boundary change to Group for final processing.' },
+      detail:'The Lead performs the review — checking that Cost Out and Cost In reconcile and the boundary change is balanced — then routes it to the FBP for sign-off.' },
+    { n:7, type:'fbp', role:'Finance Business Partner', task:'Submits to SET BC Lead',
+      detail:'The FBP reviews the balanced boundary change and formally signs off, submitting their approval back to the SET BC Lead. This sign-off is captured in the system rather than handled offline.' },
+    { n:8, type:'lead', role:'SET BC Lead', task:'Submits to Group',
+      detail:'With the FBP sign-off in hand, the Lead submits the completed boundary change to Group for final processing.' },
   ];
 
   const flow = document.getElementById('flow');
@@ -285,7 +296,8 @@
       el.classList.toggle('sel', +el.dataset.n === n));
     const label = s.type === 'lead' ? 'SET BC Lead'
                 : s.type === 'out'  ? 'Cost Out Contributor(s)'
-                : 'Cost In Contributor(s)';
+                : s.type === 'in'   ? 'Cost In Contributor(s)'
+                : 'Finance Business Partner (FBP)';
     detail.innerHTML =
       '<div class="detail-card">' +
         '<span class="who ' + s.type + '">Step ' + s.n + ' &middot; ' + label + '</span>' +
