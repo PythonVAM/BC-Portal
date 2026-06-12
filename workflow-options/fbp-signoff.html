@@ -202,6 +202,22 @@
   .note-card ul{margin:6px 0 12px;padding-left:20px}
   .note-card li{margin-bottom:11px;line-height:1.5;font-size:14.5px;color:#444}
   .note-card strong{color:#2b2b2b}
+
+  /* best-practice assessment card */
+  .lvl{display:inline-block;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700}
+  .lvl.good{background:#e6f4ec;color:#1f7a4d}
+  .lvl.mid{background:#fdf3e0;color:#9a6b16}
+  .lvl.bad{background:#fbe9ec;color:#b23a4e}
+  .bp{max-width:1180px;margin:0 auto;padding:6px 40px 60px}
+  .bp-intro{color:#555;font-size:14.5px;margin:0 0 16px;max-width:840px;line-height:1.5}
+  .bp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 26px;max-width:840px;margin-bottom:18px}
+  .bp-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eef0f2;padding:9px 0}
+  .bp-label{font-size:14px;color:#3a3a3a;font-weight:600}
+  .bp-verdict{background:#faf6f8;border-left:4px solid var(--gold);padding:14px 18px;border-radius:0 8px 8px 0;font-size:14.5px;line-height:1.55;color:#444;max-width:880px}
+  .bp-verdict strong{color:#2b2b2b}
+  .bp-more{display:inline-block;margin-top:14px;color:var(--maroon);font-weight:600;font-size:14px;text-decoration:none}
+  .bp-more:hover{text-decoration:underline}
+  @media (max-width:920px){ .bp{padding-left:24px;padding-right:24px} }
   @media (max-width:920px){
     .notes{padding-left:24px;padding-right:24px}
   }
@@ -284,6 +300,21 @@
       </div>
 
     </div>
+  </section>
+
+  <section class="bp">
+    <h2 class="notes-title">Best-practice assessment</h2>
+    <p class="bp-intro">This isn't a SOX-controlled process, so controls should be proportionate to risk. Against common governance principles &mdash; segregation of duties, four-eyes, auditability and RACI &mdash; this option rates:</p>
+    <div class="bp-grid">
+      <div class="bp-item"><span class="bp-label">Segregation of duties</span><span class="lvl good">Strong</span></div>
+      <div class="bp-item"><span class="bp-label">Independent approval before Group</span><span class="lvl good">Strong</span></div>
+      <div class="bp-item"><span class="bp-label">Auditability of approval</span><span class="lvl good">Strong</span></div>
+      <div class="bp-item"><span class="bp-label">Accountability clarity</span><span class="lvl good">Strong</span></div>
+      <div class="bp-item"><span class="bp-label">Guaranteed oversight visibility</span><span class="lvl good">Strong</span></div>
+      <div class="bp-item"><span class="bp-label">Adoption / fit to current ways</span><span class="lvl mid">Medium</span></div>
+    </div>
+    <div class="bp-verdict"><strong>Verdict.</strong> The strongest control posture of the five: a <strong>mandatory, in-system, two-level approval</strong> (FBP leads, SET BC Lead approves) with clean segregation of duties and a full audit trail. Main cost is the change impact on areas that don't already work this way.</div>
+    <a class="bp-more" href="compare.html">See all five options compared &rarr;</a>
   </section>
 
 <script>
