@@ -146,9 +146,9 @@
     <div class="rec-banner-inner">
       <span class="rec-pill">Recommendation</span>
       <div class="rec-body">
-        <h2>Optional FBP Approval &mdash; with the approval made threshold-mandatory, not discretionary.</h2>
+        <h2>Option 3 &mdash; BC Leads + Contributors + Optional FBP approval, with the approval made threshold-mandatory, not discretionary.</h2>
         <p>It's the option closest to what's already been built, and it fixes the one genuine control gap in that direction: the <span class="k">offline, un-auditable sign-off</span> becomes an in-system step. Since this isn't a SOX process, the target is <span class="k">proportionate</span> control &mdash; so make the FBP approval <span class="k">mandatory above a value / materiality threshold</span> (small changes flow through; material ones always get an independent second pair of eyes), and <span class="k">auto-notify the SET BC Lead</span> by rule. This gives a defensible four-eyes control at the <span class="k">lowest rework</span>.</p>
-        <p class="rec-flip"><strong>What would change this:</strong> if FBPs already drive most BCs in practice, <a href="fbp-signoff.html">FBP-led</a> stops being a big change and its stronger controls make it the better pick. The deciding question is empirical &mdash; <em>today, who actually drives BCs: the FP&amp;A lead or the FBP?</em></p>
+        <p class="rec-flip"><strong>What would change this:</strong> if FBPs already drive most BCs in practice, <a href="fbp-signoff.html">option 4 (FBPs as BC Leads)</a> stops being a big change and its stronger controls make it the better pick. The deciding question is empirical &mdash; <em>today, who actually drives BCs: the FP&amp;A lead or the FBP?</em></p>
       </div>
     </div>
   </section>
@@ -186,7 +186,7 @@
 
 <script>
   const OPTIONS = [
-    { key:'proposed', title:'The Proposed Workflow', href:'proposed.html', accent:'#8E1B53', tag:'Rigid',
+    { key:'proposed', title:'1. BC Leads + Contributors only', href:'proposed.html', accent:'#8E1B53', tag:'Rigid',
       roleModel:'Rigid &amp; pervasive',
       bcLead:'FP&amp;A — SET BC Lead &amp; BC Lead are one combined role',
       contributors:'FBP or GFS Analyst',
@@ -204,7 +204,7 @@
       tradeoff:'FBP sign-off stays a manual offline step',
       bestWhen:'You want the simplest build and accept offline FBP sign-off' },
 
-    { key:'proposedConsulted', title:'Proposed · Consulted', href:'proposed-consulted.html', accent:'#B85C86', tag:'Rigid',
+    { key:'proposedConsulted', title:'2. BC Leads (Consulted option) + Contributors', href:'proposed-consulted.html', accent:'#B85C86', tag:'Rigid',
       roleModel:'Rigid &amp; pervasive',
       bcLead:'FP&amp;A — SET BC Lead &amp; BC Lead are one combined role',
       contributors:'FBP or GFS Analyst',
@@ -222,7 +222,7 @@
       tradeoff:'Consulted is keep-informed only, not an approval',
       bestWhen:'You want the proposed flow plus in-system visibility for named stakeholders' },
 
-    { key:'optfbp', title:'Optional FBP Approval', href:'optional-fbp-approval.html', accent:'#A23866', tag:'Rigid',
+    { key:'optfbp', title:'3. BC Leads + Contributors + Optional FBP approval', href:'optional-fbp-approval.html', accent:'#A23866', tag:'Rigid',
       roleModel:'Rigid &amp; pervasive',
       bcLead:'FP&amp;A — SET BC Lead &amp; BC Lead are one combined role',
       contributors:'FBP or GFS Analyst',
@@ -240,7 +240,7 @@
       tradeoff:'Roles stay rigid; adds no flexibility',
       bestWhen:'You want today&rsquo;s process digitised with minimal change' },
 
-    { key:'fbpled', title:'FBP-led Workflow', href:'fbp-signoff.html', accent:'#6A4C93', tag:'Rigid',
+    { key:'fbpled', title:'4. FBPs as BC Leads', href:'fbp-signoff.html', accent:'#6A4C93', tag:'Rigid',
       roleModel:'Rigid &amp; pervasive',
       bcLead:'FBP',
       contributors:'GFS Analyst or Junior Local Finance',
@@ -258,7 +258,7 @@
       tradeoff:'FBPs can no longer act as Contributors',
       bestWhen:'FBPs naturally own BCs and should lead them' },
 
-    { key:'fluid', title:'Fluid-role Workflow', href:'fluid-roles.html', accent:'#3E6DA3', tag:'Fluid',
+    { key:'fluid', title:'5. Fluid BC Leads and Contributors', href:'fluid-roles.html', accent:'#3E6DA3', tag:'Fluid',
       roleModel:'Fluid — assigned per BC',
       bcLead:'Any business role — whoever creates the BC',
       contributors:'Any business role (except that BC&rsquo;s Lead)',
@@ -276,7 +276,7 @@
       tradeoff:'Complex notifications; harder to document',
       bestWhen:'You want to mirror existing flexible ways of working' },
 
-    { key:'consulted', title:'Fluid Roles · Consulted', href:'fluid-roles-consulted.html', accent:'#2F8F8F', tag:'Fluid',
+    { key:'consulted', title:'6. Fluid BC Leads (Consulted option) and Contributors', href:'fluid-roles-consulted.html', accent:'#2F8F8F', tag:'Fluid',
       roleModel:'Fluid — assigned per BC',
       bcLead:'Any business role — whoever creates the BC',
       contributors:'Any business role (except that BC&rsquo;s Lead)',
