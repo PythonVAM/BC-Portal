@@ -109,46 +109,46 @@
 <script>
   const OPTIONS = [
     {
-      title:'The Proposed Workflow',
+      title:'1. BC Leads + Contributors only',
       status:'live',
       href:'proposed.html',
-      blurb:'Lead-orchestrated, sequential hand-offs: the Lead sets up the BC and delegates Cost Out, then Cost In, reviewing between each, before submitting to Group.',
+      blurb:'Lead-orchestrated, sequential hand-offs: the Lead sets up the BC and delegates Cost Out, then Cost In, reviewing between each, before submitting to Group. Roles are rigid and pervasive.',
       mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead'],
     },
     {
-      title:'Proposed · Consulted',
+      title:'2. BC Leads (Consulted option) + Contributors',
       status:'live',
       href:'proposed-consulted.html',
-      blurb:'The proposed workflow with one light addition: at setup the SET BC Lead can name "Consulted" people to keep informed in-system (e.g. an FBP) — keep-informed only, not an approval. Roles stay rigid and pervasive.',
+      blurb:'As option 1, with one light addition: at setup the BC Lead can name "Consulted" people to keep informed in-system (e.g. an FBP) — keep-informed only, not an approval. Roles stay rigid and pervasive.',
       mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead'],
     },
     {
-      title:'FBP-led Workflow',
+      title:'3. BC Leads + Contributors + Optional FBP approval',
+      status:'live',
+      href:'optional-fbp-approval.html',
+      blurb:'As option 1, with one addition: before submitting to Group, the BC Lead can optionally route the BC to an FBP for approval — replacing today’s offline sign-off. Roles stay rigid and pervasive.',
+      mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead','arrow','fbpopt','arrow','lead'],
+    },
+    {
+      title:'4. FBPs as BC Leads',
       status:'live',
       href:'fbp-signoff.html',
       blurb:'The BC Lead role is filled by the FBP, who orchestrates the whole BC, then submits it up to the SET BC Lead (FP&A) for oversight and the final submission to Group.',
       mini:['bclead','arrow','bclead','arrow','out','arrow','bclead','arrow','in','arrow','bclead','arrow','bclead','arrow','lead'],
     },
     {
-      title:'Fluid-role Workflow',
+      title:'5. Fluid BC Leads and Contributors',
       status:'live',
       href:'fluid-roles.html',
-      blurb:'A flexible variant of the proposed flow: whoever creates a BC becomes its BC Lead — any business role can. Role-to-person mapping is fluid and assigned per BC, with the SET BC Lead kept informed by notifications.',
+      blurb:'A flexible variant: whoever creates a BC becomes its BC Lead — any business role can. Role-to-person mapping is fluid and assigned per BC, with the SET BC Lead kept informed by notifications.',
       mini:['bclead','arrow','out','arrow','bclead','arrow','in','arrow','bclead'],
     },
     {
-      title:'Fluid Roles · Consulted',
+      title:'6. Fluid BC Leads (Consulted option) and Contributors',
       status:'live',
       href:'fluid-roles-consulted.html',
-      blurb:'The fluid-role flow, but instead of automatic notification rules the BC Lead names "Consulted" people at setup. Simpler to implement — at the cost of relying on the Lead to include everyone relevant.',
+      blurb:'As option 5, but instead of automatic notification rules the BC Lead names "Consulted" people at setup. Simpler to implement — at the cost of relying on the Lead to include everyone relevant.',
       mini:['bclead','arrow','out','arrow','bclead','arrow','in','arrow','bclead'],
-    },
-    {
-      title:'Optional FBP Approval',
-      status:'live',
-      href:'optional-fbp-approval.html',
-      blurb:'The proposed workflow with one addition: before submitting to Group, the SET BC Lead can optionally route the BC to an FBP for approval — replacing today’s offline sign-off. Roles stay rigid and pervasive.',
-      mini:['lead','arrow','out','arrow','lead','arrow','in','arrow','lead','arrow','fbpopt','arrow','lead'],
     },
     // Add future options here — e.g. Many→Many matrix, Lead-does-everything, parallel both-sides.
   ];
