@@ -51,7 +51,7 @@
   @media (max-width:920px){ .rec-banner{padding-left:16px;padding-right:16px} .rec-banner-inner{flex-direction:column;gap:12px} }
 
   .cmp-wrap{padding:30px 40px 60px;overflow-x:auto}
-  table.cmp{border-collapse:separate;border-spacing:0;min-width:1120px;width:100%}
+  table.cmp{border-collapse:separate;border-spacing:0;min-width:1320px;width:100%}
   table.cmp th,table.cmp td{
     text-align:left;vertical-align:top;
     padding:14px 16px;
@@ -139,7 +139,7 @@
   <header>
     <a class="back" href="index.html">&larr; All workflow options</a>
     <h1>COMPARE OPTIONS</h1>
-    <p>Five ways to orchestrate a Boundary Change, ordered <span class="k">closest-to-today / most rigid</span> on the left to <span class="k">most flexible</span> on the right. The <span class="k">SET BC Lead is always an FP&amp;A person</span> in every option. Click any option name to open its walkthrough.</p>
+    <p>Six ways to orchestrate a Boundary Change, ordered <span class="k">closest-to-today / most rigid</span> on the left to <span class="k">most flexible</span> on the right. The <span class="k">SET BC Lead is always an FP&amp;A person</span> in every option. Click any option name to open its walkthrough.</p>
   </header>
 
   <section class="rec-banner">
@@ -203,6 +203,24 @@
       adoption:{text:'Medium',tone:'mid'},
       tradeoff:'FBP sign-off stays a manual offline step',
       bestWhen:'You want the simplest build and accept offline FBP sign-off' },
+
+    { key:'proposedConsulted', title:'Proposed · Consulted', href:'proposed-consulted.html', accent:'#B85C86', tag:'Rigid',
+      roleModel:'Rigid &amp; pervasive',
+      bcLead:'FP&amp;A — SET BC Lead &amp; BC Lead are one combined role',
+      contributors:'FBP or GFS Analyst',
+      fbp:'Offline for approval; can be named Consulted (informed)',
+      approval:'Manual &amp; offline',
+      informed:'Lead names Consulted parties (in-system) + is the BC Lead',
+      impl:{text:'Low',tone:'good'},
+      flex:{text:'Low',tone:'bad'},
+      sod:{text:'Moderate',tone:'mid'},
+      approval4eyes:{text:'Weak',tone:'bad'},
+      audit:{text:'Weak',tone:'bad'},
+      accountability:{text:'Strong',tone:'good'},
+      oversight:{text:'Strong',tone:'good'},
+      adoption:{text:'Medium',tone:'mid'},
+      tradeoff:'Consulted is keep-informed only, not an approval',
+      bestWhen:'You want the proposed flow plus in-system visibility for named stakeholders' },
 
     { key:'optfbp', title:'Optional FBP Approval', href:'optional-fbp-approval.html', accent:'#A23866', tag:'Rigid',
       roleModel:'Rigid &amp; pervasive',
