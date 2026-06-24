@@ -2877,15 +2877,19 @@ function renderRvUvFtes(){
 }
 
 // Compute the Project × UV FTE allocation for the given R&D-shape CCs from the
-// current ccData (5110-STAFF cost weights) and fteData (FTE totals). Returns a
+// given ccData (5110-STAFF cost weights) and fteData (FTE totals). Returns a
 // {ccCode: {cc, ccTotals, staffByUv, staffTotals, allocatedRows}} map. Shared by the
-// Cost Out review (step 5) and the BC Lead's FTE screen (step 6b).
-function computeUvFteAlloc(ccs){
+// Cost Out review (step 5, contributor's live module data) and the BC Lead's FTE
+// screen (step 6b, merged Many side across ALL transfers). `src` defaults to the
+// global ccData/fteData (the active transfer); pass {ccData,fteData} to aggregate.
+function computeUvFteAlloc(ccs,src){
+  const srcCc=(src&&src.ccData)||ccData;
+  const srcFte=(src&&src.fteData)||fteData;
   const ccAlloc={};
   ccs.forEach(cc=>{
     // Sum FTE totals from fteData
     const ccTotals={fy25:Array(12).fill(0),fy26:Array(12).fill(0),fy27:0,fy28:0,fy29:0};
-    fteData.filter(r=>r.cc===cc.code).forEach(r=>{
+    srcFte.filter(r=>r.cc===cc.code).forEach(r=>{
       (r.fy25||[]).forEach((v,mi)=>{ccTotals.fy25[mi]+=Number(v)||0;});
       (r.fy26||[]).forEach((v,mi)=>{ccTotals.fy26[mi]+=Number(v)||0;});
       ccTotals.fy27+=Number(r.fy27)||0;
@@ -2894,7 +2898,7 @@ function computeUvFteAlloc(ccs){
     });
     // Group STAFF costs by Project × UV (5110-STAFF only)
     const byKey={};
-    (ccData[cc.code]||[]).forEach(row=>{
+    (srcCc[cc.code]||[]).forEach(row=>{
       if(row.gl!=='5110-STAFF')return;
       const projCode=row.project||'';
       const projName=row.projectName||'—';
@@ -4119,10 +4123,12 @@ function buildStep6(){
 function buildStep6b(){
   const el=document.getElementById('step6b-content');
   if(!el)return;
-  // UV-allocated FTEs view — R&D (gl+project+uv) CCs in the active transfer; allocated
+  // UV-allocated FTEs view — R&D (gl+project+uv) CCs across ALL transfers; allocated
   // from FTEs Out by Project × UV STAFF cost weights. Its own By UV / cost centre /
-  // Detail toggle (uvFteView['lead']). (Reflects the active transfer's R&D data.)
-  const rndCcs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
+  // Detail toggle (uvFteView['lead']). Reads the merged Many side (mergedManyCcData/
+  // mergedManyFte) so it aggregates every transfer, consistent with the rest of step 6b.
+  const leadSrc=_aggSrc('fte-lead');
+  const rndCcs=leadSrc.cc2Sel.filter(cc=>coShape(cc.code)==='gl+project+uv');
   const uvBlock=rndCcs.length?`<div style="margin-top:20px;border-top:1px solid #ece9e0;padding-top:14px;"><div id="lead-uv-ftes-table"></div></div>`:'';
   el.innerHTML=`
     ${leadBcDetailsHTML()}
@@ -4131,7 +4137,7 @@ function buildStep6b(){
     <div id="s6-agg-fte"></div>
     ${uvBlock}`;
   renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead'});
-  if(rndCcs.length)document.getElementById('lead-uv-ftes-table').innerHTML=uvFteBlockHTML(computeUvFteAlloc(rndCcs),'lead');
+  if(rndCcs.length)document.getElementById('lead-uv-ftes-table').innerHTML=uvFteBlockHTML(computeUvFteAlloc(rndCcs,leadSrc),'lead');
 }
 
 /* ── Step 7: BC Lead — Review ── */
