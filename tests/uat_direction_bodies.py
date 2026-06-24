@@ -45,7 +45,10 @@ with sync_playwright() as p:
         ci2['title']=='Cost'  # receiver screen uses a neutral title
         and ci2['aggTitleCostIn']
         and s6title=='Cost'
-        and s7[:2]==['Cost In','Cost Out'] and 'FTEs In' in s7  # Cost groups + FTE out-group, swapped
+        # step7 pivots are direction-aware (absolute Out/In, not swapped): the IN
+        # transfer's Many side is Cost In, its One side is Cost Out, and the Many-side
+        # FTEs are FTEs In.
+        and 'Cost Out' in s7 and 'Cost In' in s7 and 'FTEs In' in s7
         and not errs)
     print('PASS' if ok else 'FAIL')
     print('errors:', errs[:5])

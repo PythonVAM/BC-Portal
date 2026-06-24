@@ -615,26 +615,12 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
   </div>
   <div class="field"><label>BC name</label><input type="text" id="inp-bcname" placeholder="Give this boundary change a short, descriptive name..."/></div>
   <div class="field"><label>BC description</label><textarea id="inp-bcdesc" placeholder="Describe the purpose and context of this boundary change..."></textarea></div>
-  <div class="field"><label>Which side has many cost centres?</label>
-    <div class="method-toggle" style="margin-top:4px;">
-      <button type="button" class="method-btn active" id="dir-btn-out" onclick="setBcManySide('out')">Cost Out (many)</button>
-      <button type="button" class="method-btn" id="dir-btn-in" onclick="setBcManySide('in')">Cost In (many)</button>
-    </div>
-    <div class="input-hint">Pick the side that involves many cost centres — it's collected first, by the contributors you add below. The other side is then a single cost centre, entered afterwards.</div>
+  <div class="field"><label>Transfers</label>
+    <div class="input-hint">Add a transfer for each contributor (up to 5). For each, pick the contact and whether their side is <strong>Cost Out</strong> or <strong>Cost In</strong> — that's the side with many cost centres, collected first. The other side is a single cost centre, entered afterwards. Each transfer must balance on its own.</div>
   </div>
-  <div style="font-size:13px;font-weight:500;margin-bottom:6px;" id="step1-contrib-heading">Cost Out Contributor(s)</div>
-  <div style="font-size:12px;color:#666;margin-bottom:12px;" id="step1-contrib-intro">As the Boundary Change Lead you delegate the Cost Out entry. Search and add one or more Cost Out Contributors below — they will be notified when you save.</div>
-  <div class="contrib-panel">
-    <div class="contrib-list" id="contrib-out-list"></div>
-    <div id="contrib-empty-state" style="font-size:12px;color:#999;font-style:italic;margin-bottom:12px;display:none;">No contributors added yet.</div>
-    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
-      <div style="flex:1;min-width:200px;position:relative;">
-        <input class="person-search" id="contrib-out-search" placeholder="Search by name to add a Cost Out Contributor…" autocomplete="off"/>
-        <div class="person-dropdown" id="contrib-out-dropdown"></div>
-      </div>
-    </div>
-  </div>
-  <div class="btn-row"><button class="btn btn-secondary" onclick="go('dashboard')">Cancel</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" id="step1-save-btn" onclick="step1Next()">Save &amp; notify Cost Out Contributor(s) →</button></div>
+  <div id="transfer-blocks"></div>
+  <button type="button" class="btn btn-secondary" id="add-transfer-btn" onclick="addTransferBlock()" style="margin-bottom:14px;">+ Add transfer</button>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="go('dashboard')">Cancel</button><button class="btn btn-secondary">Save as draft</button><button class="btn btn-primary" id="step1-save-btn" onclick="step1Next()">Save &amp; notify contributor(s) →</button></div>
 </div></div>
 
 <!-- STEP 2: Cost centres -->
@@ -1077,36 +1063,52 @@ let contribs=[];
 // the other side becomes a single-CC "One" side. Default keeps legacy behaviour.
 let bcManySide='out';
 const CURRENT_USER={...PEOPLE[0],isCurrentUser:true};
-function renderContribs(){
-  const list=document.getElementById('contrib-out-list');
-  const emptyState=document.getElementById('contrib-empty-state');
-  if(!contribs.length){
-    list.innerHTML='';
-    if(emptyState)emptyState.style.display='block';
-    return;
-  }
-  if(emptyState)emptyState.style.display='none';
-  list.innerHTML=contribs.map((p,i)=>`<div class="contrib-row"><div class="contrib-person-display"><div style="width:26px;height:26px;border-radius:50%;background:#FAEEDA;color:#633806;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;">${p.initials}</div><div><div class="contrib-person-name">${p.first} ${p.last}</div><div style="font-size:11px;color:#666;">${p.dept}</div></div></div><button class="contrib-remove" onclick="removeContrib(${i})">×</button></div>`).join('');
+// ── Step-1 transfer blocks ──
+// The Lead defines up to 5 transfers upfront, each = one contact + a Cost Out/Cost In
+// direction (the "Many" side). Stored in plannedTransfers; the BC processes them in
+// turn (each a Many→One transfer that must balance) via the instances mechanism.
+let plannedTransfers=[{person:null,manySide:'out'}];
+const MAX_TRANSFERS=5;
+function addTransferBlock(){if(plannedTransfers.length>=MAX_TRANSFERS)return;plannedTransfers.push({person:null,manySide:'out'});renderTransferBlocks();}
+function removeTransferBlock(i){plannedTransfers.splice(i,1);if(!plannedTransfers.length)plannedTransfers.push({person:null,manySide:'out'});renderTransferBlocks();}
+function setTransferDir(i,dir){plannedTransfers[i].manySide=(dir==='in')?'in':'out';renderTransferBlocks();}
+function setTransferPerson(i,id){const p=PEOPLE.find(x=>x.id===id);if(!p)return;plannedTransfers[i].person={...p};renderTransferBlocks();}
+function clearTransferPerson(i){plannedTransfers[i].person=null;renderTransferBlocks();}
+function renderTransferBlocks(){
+  const host=document.getElementById('transfer-blocks');if(!host)return;
+  host.innerHTML=plannedTransfers.map((t,i)=>{
+    const dirLbl=t.manySide==='in'?'Cost In':'Cost Out';
+    const person=t.person
+      ?`<div class="contrib-row"><div class="contrib-person-display"><div style="width:26px;height:26px;border-radius:50%;background:#FAEEDA;color:#633806;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;">${t.person.initials}</div><div><div class="contrib-person-name">${t.person.first} ${t.person.last}</div><div style="font-size:11px;color:#666;">${t.person.dept}</div></div></div><button class="contrib-remove" onclick="clearTransferPerson(${i})">×</button></div>`
+      :`<div style="position:relative;"><input class="person-search" id="transfer-search-${i}" placeholder="Search by name to add the ${dirLbl} contact…" autocomplete="off" oninput="renderTransferDropdown(${i},this.value)" onfocus="renderTransferDropdown(${i},this.value)" onblur="setTimeout(()=>{const d=document.getElementById('transfer-dd-${i}');if(d)d.style.display='none';},150)"/><div class="person-dropdown" id="transfer-dd-${i}"></div></div>`;
+    return `<div class="contrib-panel" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+        <strong style="font-size:13px;">Transfer ${i+1}</strong>
+        <span class="method-toggle" style="margin-bottom:0;margin-left:auto;">
+          <button type="button" class="method-btn ${t.manySide==='out'?'active':''}" onclick="setTransferDir(${i},'out')">Cost Out (many)</button>
+          <button type="button" class="method-btn ${t.manySide==='in'?'active':''}" onclick="setTransferDir(${i},'in')">Cost In (many)</button>
+        </span>
+        ${plannedTransfers.length>1?`<button class="contrib-remove" onclick="removeTransferBlock(${i})" title="Remove transfer">×</button>`:''}
+      </div>
+      ${person}
+    </div>`;
+  }).join('');
+  const addBtn=document.getElementById('add-transfer-btn');if(addBtn)addBtn.style.display=plannedTransfers.length>=MAX_TRANSFERS?'none':'';
 }
-function removeContrib(i){contribs.splice(i,1);renderContribs();}
-function renderGlobalDropdown(q){
-  const dd=document.getElementById('contrib-out-dropdown');
-  const already=new Set(contribs.map(p=>p.id));
-  const leadId=currentUser().id; // Lead cannot be a Cost Out Contributor
-  // Only show users whose persona role is BC Contributor — Leads are never offered
-  // as candidates for the Cost Out Contributor field.
+function renderTransferDropdown(i,q){
+  const dd=document.getElementById('transfer-dd-'+i);if(!dd)return;
+  const leadId=currentUser().id;
+  const chosen=new Set(plannedTransfers.map(t=>t.person&&t.person.id).filter(Boolean));
   const res=PEOPLE.filter(p=>{
     const profile=USER_PROFILES[p.id];
     if(!profile||profile.personaRole!=='BC Contributor')return false;
-    if(p.id===leadId)return false;
-    if(already.has(p.id))return false;
-    return`${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase());
+    if(p.id===leadId||chosen.has(p.id))return false;
+    return`${p.first} ${p.last}`.toLowerCase().includes((q||'').toLowerCase());
   });
   if(!res.length){dd.innerHTML='<div class="person-no-results">No results</div>';dd.style.display='block';return;}
-  dd.innerHTML=res.map(p=>`<div class="person-option" onmousedown="addGlobalContrib(event,'${p.id}')"><div class="person-option-avatar">${p.initials}</div><div><div class="person-option-name">${p.first} ${p.last}</div><div class="person-option-dept">${p.dept}</div></div></div>`).join('');
+  dd.innerHTML=res.map(p=>`<div class="person-option" onmousedown="setTransferPerson(${i},'${p.id}')"><div class="person-option-avatar">${p.initials}</div><div><div class="person-option-name">${p.first} ${p.last}</div><div class="person-option-dept">${p.dept}</div></div></div>`).join('');
   dd.style.display='block';
 }
-function addGlobalContrib(ev,id){ev.preventDefault();const p=PEOPLE.find(x=>x.id===id);if(!p)return;contribs.push({...p});renderContribs();document.getElementById('contrib-out-search').value='';document.getElementById('contrib-out-dropdown').style.display='none';}
 
 /* ── Banner ── */
 function showBanner(){
@@ -3288,7 +3290,7 @@ function resetAllData(){
   // Close menu, refresh
   const menu=document.getElementById('user-menu');if(menu)menu.style.display='none';
   renderCc2Hier();renderCc2Tray();
-  renderContribs();
+  plannedTransfers=[{person:null,manySide:'out'}];renderTransferBlocks();
   renderUserMenu();
   go('dashboard');
 }
@@ -3833,12 +3835,50 @@ function renderCiCcAggregate(mode,elId,opts){
    View level (ciAggView) and per-column filters (ciDetailFilters) are namespaced by
    scope; the open filter panel is keyed "scope::colKey". */
 function _aggMode(scope){return scope.indexOf('cost')===0?'cost':'fte';}
+// ── Cross-transfer aggregation (Lead review shows ALL transfers together) ──
+// Every transfer (archived + active) as a uniform record; the active one reads the
+// live module ciResponses.
+function bcTransfersData(){
+  const list=(submittedBC?.archivedInstances||[]).map(i=>({manySide:i.manySide,ccData:i.ccData||{},fteData:i.fteData||[],ciResponses:i.ciResponses||{},cc2Sel:i.cc2Sel||[]}));
+  if(submittedBC)list.push({manySide:submittedBC.manySide,ccData:submittedBC.ccData||{},fteData:submittedBC.fteData||[],ciResponses:ciResponses||{},cc2Sel:submittedBC.cc2Sel||[]});
+  return list;
+}
+// Cost / FTE rows across all transfers, classified Out vs In by each transfer's
+// direction (manySide='out' → ccData is Out, ciResponses is In; 'in' → reversed).
+function bcCostRows(){
+  const out=[],inn=[];
+  bcTransfersData().forEach(t=>{
+    const many=[];Object.entries(t.ccData).forEach(([cc,rows])=>rows.forEach(r=>many.push({cc,row:r})));
+    const one=[];Object.values(t.ciResponses).forEach(resp=>(resp.ciData||[]).forEach(r=>one.push({cc:r.cc||resp.ccCode,row:r})));
+    if(t.manySide==='in'){inn.push(...many);out.push(...one);}else{out.push(...many);inn.push(...one);}
+  });
+  return {out,inn};
+}
+function bcFteRows(){
+  const out=[],inn=[];
+  bcTransfersData().forEach(t=>{
+    const many=t.fteData.map(r=>({cc:r.cc,row:r}));
+    const one=[];Object.values(t.ciResponses).forEach(resp=>(resp.ciFteData||[]).forEach(r=>one.push({cc:r.cc||resp.ccCode,row:r})));
+    if(t.manySide==='in'){inn.push(...many);out.push(...one);}else{out.push(...many);inn.push(...one);}
+  });
+  return {out,inn};
+}
+// Merged MANY-side datasets across all transfers (for the Lead's Cost step6 / FTEs
+// step6b views — each transfer's Many side combined; single-transfer is unchanged).
+function mergedManyCcData(){const m={};bcTransfersData().forEach(t=>Object.entries(t.ccData).forEach(([cc,rows])=>{(m[cc]=m[cc]||[]).push(...rows);}));return m;}
+function mergedManyFte(){const a=[];bcTransfersData().forEach(t=>(t.fteData||[]).forEach(r=>a.push(r)));return a;}
+function mergedBcCc2Sel(){const m=[];bcTransfersData().forEach(t=>(t.cc2Sel||[]).forEach(c=>{if(!m.some(x=>x.code===c.code))m.push(c);}));return m;}
 // Data source for an aggregate scope: '-co' = the Cost Out contributor's own live
-// module data (step 5 review); otherwise the submitted BC.
-function _aggSrc(scope){return scope.endsWith('-co')?{ccData,fteData,cc2Sel}:submittedBC;}
+// module data (step 5 review); '-lead' = the merged Many side across ALL transfers;
+// otherwise the submitted BC.
+function _aggSrc(scope){
+  if(scope.endsWith('-co'))return {ccData,fteData,cc2Sel};
+  if(scope.endsWith('-lead'))return {ccData:mergedManyCcData(),fteData:mergedManyFte(),cc2Sel:mergedBcCc2Sel()};
+  return submittedBC;
+}
 function _aggCcs(scope){
   if(scope.endsWith('-co'))return _aggMode(scope)==='cost'?Object.keys(ccData).filter(c=>(ccData[c]||[]).length):[...new Set((fteData||[]).map(r=>r.cc))];
-  if(scope.endsWith('-lead'))return getAllCostOut().map(c=>c.code);
+  if(scope.endsWith('-lead'))return _aggMode(scope)==='cost'?Object.keys(mergedManyCcData()):[...new Set(mergedManyFte().map(r=>r.cc))];
   return [...getMyAssignedCcCodes()];
 }
 function _aggRerender(scope){
@@ -4066,35 +4106,31 @@ function buildStep6(){
   const chips=contributors.map(p=>{const done=!!coSubmissions[p.id];
     return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:12px;margin:0 6px 6px 0;background:${done?'#EAF3DE':'#f0efe9'};color:${done?'#27500A':'#888'};"><span style="width:6px;height:6px;border-radius:50%;background:${done?'#5C9A1B':'#bbb'};"></span>${p.first} ${p.last} · ${done?'submitted':'awaiting'}</span>`;}).join('');
 
-  // Cost review table uses the shared summary component, scoped to all the BC's CCs.
-  const costCodes=ccs.map(c=>c.code).filter(code=>(submittedBC?.ccData?.[code]||[]).length);
-
   el.innerHTML=`
     ${leadBcDetailsHTML()}
     <div class="rv-divider"></div>
-    <p style="font-size:13px;color:#666;margin:10px 0 12px;">${isAwaitingCo?'Cost Out submissions so far.':'Review the cost being transferred.'} Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail. Continue to <strong>FTEs</strong>, then the <strong>Summary</strong>.</p>
+    <p style="font-size:13px;color:#666;margin:10px 0 12px;">${isAwaitingCo?'Cost Out submissions so far.':'Review the cost being transferred — all transfers combined.'} Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail. Continue to <strong>FTEs</strong>, then the <strong>Summary</strong>.</p>
     <div style="margin-bottom:12px;">${chips||'<span class="rv-none" style="font-size:12px;">No contributors.</span>'}</div>
     <div id="s6-agg-cost"></div>`;
-  renderCiCcAggregate('cost','s6-agg-cost',{scope:'cost-lead',ccs:costCodes});
+  renderCiCcAggregate('cost','s6-agg-cost',{scope:'cost-lead'});
 }
 
 /* ── Step 6b: BC Lead — FTEs (second review screen, mirroring the receiver) ── */
 function buildStep6b(){
   const el=document.getElementById('step6b-content');
   if(!el)return;
-  const fteCodes=[...new Set((submittedBC?.fteData||[]).map(r=>r.cc))];
-  // UV-allocated FTEs view — R&D (gl+project+uv) CCs only; allocated from FTEs Out by
-  // Project × UV STAFF cost weights (same engine as the Cost Out review, step 5). It
-  // has its OWN By UV / By cost centre / Detail toggle (uvFteView['lead']).
+  // UV-allocated FTEs view — R&D (gl+project+uv) CCs in the active transfer; allocated
+  // from FTEs Out by Project × UV STAFF cost weights. Its own By UV / cost centre /
+  // Detail toggle (uvFteView['lead']). (Reflects the active transfer's R&D data.)
   const rndCcs=getAllCostOut().filter(cc=>coShape(cc.code)==='gl+project+uv');
   const uvBlock=rndCcs.length?`<div style="margin-top:20px;border-top:1px solid #ece9e0;padding-top:14px;"><div id="lead-uv-ftes-table"></div></div>`:'';
   el.innerHTML=`
     ${leadBcDetailsHTML()}
     <div class="rv-divider"></div>
-    <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred. Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
+    <p style="font-size:13px;color:#666;margin:10px 0 14px;">Review the FTEs being transferred — all transfers combined. Use the toggle for SET area / cost centre / detail; click <strong>FY25</strong> / <strong>FY26</strong> for monthly detail.</p>
     <div id="s6-agg-fte"></div>
     ${uvBlock}`;
-  renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead',ccs:fteCodes});
+  renderCiCcAggregate('fte','s6-agg-fte',{scope:'fte-lead'});
   if(rndCcs.length)document.getElementById('lead-uv-ftes-table').innerHTML=uvFteBlockHTML(computeUvFteAlloc(rndCcs),'lead');
 }
 
@@ -4127,19 +4163,16 @@ function buildStep7(){
   const fkCost=(r,cur)=>(fk==='fy25'||fk==='fy26')?rowTotal((r[fk]||[]).map(v=>convCost(v,cur))):convCost(r[fk]||0,cur);
   const fkFte=(r)=>(fk==='fy25'||fk==='fy26')?rowTotal(r[fk]||[]):(Number(r[fk])||0);
 
+  // Aggregate across ALL transfers (direction-aware via bcCostRows/bcFteRows).
   function costEntries(){
-    const rowBy=s7CostRowBy,out=[],inn=[];
-    ccs.forEach(cc=>{const cur=gca(cc.code).cur||'USD';let v=0;(ccData[cc.code]||[]).forEach(r=>v+=fkCost(r,cur));
-      if(v)out.push({rowKey:rowBy==='cc'?cc.code:(gca(cc.code).bcDept||'—'),area:getSetArea(cc.code).code,val:v});});
-    Object.values(ciResponses).forEach(resp=>{(resp.ciData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const cur=gca(cc).cur||'USD';const v=fkCost(r,cur);
-      if(v)inn.push({rowKey:rowBy==='cc'?cc:(gca(cc).bcDept||'—'),area:getSetArea(cc).code,val:v});});});
-    return {out,inn};
+    const rowBy=s7CostRowBy;const rows=bcCostRows();
+    const map=list=>list.map(({cc,row})=>{const v=fkCost(row,gca(cc).cur||'USD');return v?{rowKey:rowBy==='cc'?cc:(gca(cc).bcDept||'—'),area:getSetArea(cc).code,val:v}:null;}).filter(Boolean);
+    return {out:map(rows.out),inn:map(rows.inn)};
   }
   function fteEntries(){
-    const out=[],inn=[];
-    fteData.forEach(r=>{const v=fkFte(r);if(v)out.push({rowKey:r.loc||'—',area:getSetArea(r.cc).code,val:v});});
-    Object.values(ciResponses).forEach(resp=>{(resp.ciFteData||[]).forEach(r=>{const cc=r.cc||resp.ccCode;const v=fkFte(r);if(v)inn.push({rowKey:r.loc||'—',area:getSetArea(cc).code,val:v});});});
-    return {out,inn};
+    const rows=bcFteRows();
+    const map=list=>list.map(({cc,row})=>{const v=fkFte(row);return v?{rowKey:row.loc||'—',area:getSetArea(cc).code,val:v}:null;}).filter(Boolean);
+    return {out:map(rows.out),inn:map(rows.inn)};
   }
   function s7Pivot(rowDimLabel,outLabel,inLabel,data,fmtv){
     const outE=data.out,inE=data.inn;
@@ -4163,7 +4196,7 @@ function buildStep7(){
     const ot=ct(outAreas,out),it=ct(inAreas,inn);
     const go=ot.reduce((s,v)=>s+v,0),gi=it.reduce((s,v)=>s+v,0);
     const totalRow=`<tr class="s6-tr-net"><td class="s6-td-label s6-td-net-label">Total</td>${ot.map(v=>`<td>${fmtv(v)}</td>`).join('')}${it.map(v=>`<td>${fmtv(v)}</td>`).join('')}<td class="s6-td-net">${fmtv(gi-go)}</td></tr>`;
-    return `<div class="s6-table-wrap"><table class="s6-table">${thead}<tbody>${body}${totalRow}</tbody></table></div>`;
+    return `<div class="s6-table-wrap s7-pivot"><table class="s6-table">${thead}<tbody>${body}${totalRow}</tbody></table></div>`;
   }
   const yearToggle=`<div class="method-toggle" style="margin-bottom:0;">${FYS.map(f=>`<button class="method-btn ${s7Year===f?'active':''}" onclick="setS7Year('${f}')">${FYLBL[f]}</button>`).join('')}</div>`;
   const costRowToggle=`<div class="method-toggle" style="margin-bottom:0;"><button class="method-btn ${s7CostRowBy==='dept'?'active':''}" onclick="setS7CostRowBy('dept')">By Dept</button><button class="method-btn ${s7CostRowBy==='cc'?'active':''}" onclick="setS7CostRowBy('cc')">By cost centre</button></div>`;
@@ -4279,11 +4312,20 @@ function buildStep7(){
         if(Math.abs(netFte)>0.05){isBalanced=false;imbalanceReason.push(`${fk.toUpperCase()} FTE net = ${fmtFte(netFte)}`);}
       });
       if(isBalanced){
-        const more=archived.length?` All ${archived.length+1} transfers will be submitted together.`:'';
-        submitBox.innerHTML=`<div class="submit-box-text">This transfer is balanced.${more} Review above, then submit to Group — or add another transfer to this boundary change.</div>
+        // Planned transfers auto-advance: if more remain, offer "Start next transfer";
+        // once the last is balanced, offer "Submit all to Group".
+        const total=submittedBC?.totalTransfers||(archived.length+1);
+        const curNo=submittedBC?.currentTransferNo||(archived.length+1);
+        const moreLeft=curNo<total;
+        const next=moreLeft?(submittedBC.plannedTransfers||[])[curNo]:null;
+        const nextBtn=moreLeft
+          ?`<button class="btn btn-secondary" onclick="advanceToNextTransfer()">Start next transfer (${curNo+1} of ${total})${next&&next.person?` · ${next.person.first} ${next.person.last}`:''}</button>`
+          :'';
+        const more=total>1?` Transfer ${curNo} of ${total} balanced.${moreLeft?'':' All '+total+' transfers balanced.'}`:'';
+        submitBox.innerHTML=`<div class="submit-box-text">This transfer is balanced.${more} ${moreLeft?'Start the next planned transfer, or':'Review above, then'} submit to Group.</div>
           <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
-            <button class="btn btn-secondary" onclick="addAnotherInstance()">+ Add another transfer</button>
-            <button class="btn-submit" onclick="go('confirmation')">Submit ${archived.length?'all ':''}to Group</button>
+            ${nextBtn}
+            <button class="btn-submit"${moreLeft?' style="opacity:0.5;cursor:not-allowed;" disabled title="Complete all planned transfers first"':''} onclick="go('confirmation')">Submit ${total>1?'all ':''}to Group</button>
           </div>`;
         submitBox.style.borderColor='';submitBox.style.background='';
       } else {
@@ -4508,17 +4550,9 @@ function submitToLead(){
   go('confirmation');
   skipConfirmationSetup=false;
 }
-// Lead picks the Many side at setup; relabel the step-1 contributor section to match.
-function setBcManySide(side){
-  bcManySide=(side==='in')?'in':'out';
-  const ob=document.getElementById('dir-btn-out'),ib=document.getElementById('dir-btn-in');
-  if(ob)ob.classList.toggle('active',bcManySide==='out');
-  if(ib)ib.classList.toggle('active',bcManySide==='in');
-  const lbl=dirName(bcManySide);
-  const h=document.getElementById('step1-contrib-heading');if(h)h.textContent=`${lbl} Contributor(s)`;
-  const intro=document.getElementById('step1-contrib-intro');if(intro)intro.textContent=`As the Boundary Change Lead you delegate the ${lbl} entry. Search and add one or more ${lbl} Contributors below — they will be notified when you save.`;
-  const b=document.getElementById('step1-save-btn');if(b)b.textContent=`Save & notify ${lbl} Contributor(s) →`;
-}
+// Sets the ACTIVE transfer's direction (Many side). The per-transfer toggle now lives
+// in the step-1 transfer blocks; this just tracks bcManySide for the active transfer.
+function setBcManySide(side){bcManySide=(side==='in')?'in':'out';}
 
 /* Bidirectional label swap (Cost Out ↔ Cost In, FTEs Out ↔ FTEs In) over the text
    nodes inside `root`, optionally skipping any subtree matching `skipSel`. Applied
@@ -4570,28 +4604,25 @@ function applyDirLabels(){
   if(want==='in'){
     const act=document.querySelector('.screen.active');
     if(act&&!['screen-step2','screen-step3','screen-step3b','screen-step4'].includes(act.id))
-      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"],[id^="s6-agg"],#rv-co-agg,#rv-fte-agg');
+      dirSwapNodes(act,'.card-title,[id^="ci-cc-agg"],[id^="s6-agg"],#rv-co-agg,#rv-fte-agg,.s7-pivot');
   }
 }
 
 function step1Next(){
-  // Under the new model, the Boundary Change Lead never enters values themselves.
-  // Step 1 is the only step for the Lead in the creation flow: capture BC details,
-  // pick the Many side, name its Contributor(s), then save and notify them.
-  if(!contribs.length){
-    alert(`Please add at least one ${manyLabel()} Contributor before saving.`);
+  // The Lead defines up to 5 transfers upfront (each = a contact + a direction).
+  // The BC is seeded with that planned queue; transfer 1 is activated immediately and
+  // the rest auto-advance as each completes & balances.
+  const valid=plannedTransfers.filter(t=>t.person);
+  if(!valid.length){
+    alert('Please add at least one transfer with a contact before saving.');
     return;
   }
   saveAndNotifyCoPersons();
 }
 
-// ── Instances (Many→One can repeat under one BC; each must balance) ──
-// `addingInstance` routes step-1 save to add a NEW Many→One instance to the EXISTING
-// BC rather than creating a fresh BC. Completed instances live on
-// submittedBC.archivedInstances; the top-level working fields hold the active one.
-let addingInstance=false;
+// ── Transfers (a BC holds up to 5 Many→One transfers; each must balance) ──
 const FYK5=['fy25','fy26','fy27','fy28','fy29'];
-// Per-FY cost totals for one instance's Many side (ccData) and One side (ciResp).
+// Per-FY cost totals for one transfer's Many side (ccData) and One side (ciResp).
 function instCostTotals(ccDataObj,ciResp){
   const many=fyTotals(Object.values(ccDataObj||{}).flat());
   const one={fy25:0,fy26:0,fy27:0,fy28:0,fy29:0};
@@ -4603,13 +4634,18 @@ function isInstanceBalanced(ccDataObj,ciResp){
   const m=v=>Math.round((v||0)/1e4)/100;
   return FYK5.every(fk=>m(many[fk])===m(one[fk]));
 }
-// Is the BC's ACTIVE instance balanced? (Many=submittedBC.ccData, One=ciResponses.)
+// Is the BC's ACTIVE transfer balanced? (Many=submittedBC.ccData, One=ciResponses.)
 function activeInstanceBalanced(){return submittedBC&&isInstanceBalanced(submittedBC.ccData,ciResponses);}
 
-// Archive the current Many→One and start a fresh one under the same BC.
-function addAnotherInstance(){
+// Archive the current transfer and activate the NEXT planned one (its pre-chosen
+// contact + direction). Called from the Summary once the active transfer balances.
+function advanceToNextTransfer(){
   if(!submittedBC)return;
-  if(submittedBC.status!=='ci-submitted'||!activeInstanceBalanced()){alert('This transfer must be completed and balanced before you can add another.');return;}
+  if(submittedBC.status!=='ci-submitted'||!activeInstanceBalanced()){alert('This transfer must be completed and balanced before you can start the next.');return;}
+  const planned=submittedBC.plannedTransfers||[];
+  const nextNo=(submittedBC.currentTransferNo||1)+1;
+  const next=planned[nextNo-1];
+  if(!next){alert('All transfers are complete.');return;}
   submittedBC.archivedInstances=submittedBC.archivedInstances||[];
   submittedBC.archivedInstances.push({
     no:submittedBC.instanceNo||1,
@@ -4621,34 +4657,47 @@ function addAnotherInstance(){
     ciResponses:JSON.parse(JSON.stringify(ciResponses||{})),
     contributors:JSON.parse(JSON.stringify(submittedBC.contributors||[])),
   });
-  // Reset working state for the new instance (Many side re-entered at step1).
+  // Activate the next planned transfer (its contact + direction).
+  submittedBC.currentTransferNo=nextNo;
+  submittedBC.instanceNo=nextNo;
+  submittedBC.manySide=next.manySide;
+  submittedBC.contributors=[{...next.person}];
   submittedBC.ccData={};submittedBC.fteData=[];submittedBC.cc2Sel=[];submittedBC.costInPersons={};
-  submittedBC.contributors=[];submittedBC.status='awaiting-co';
-  submittedBC.instanceNo=(submittedBC.instanceNo||1)+1;
-  ccData={};fteData=[];cc2Sel=[];costInPersons={};ciResponses={};ciInCcSel={};contribs=[];
-  addingInstance=true;
-  go('step1');
+  submittedBC.status='awaiting-co';
+  ccData={};fteData=[];cc2Sel=[];costInPersons={};ciResponses={};ciInCcSel={};contribs=[{...next.person}];
+  bcManySide=next.manySide;
+  go('dashboard');
 }
 
 function saveAndNotifyCoPersons(){
-  if(addingInstance&&submittedBC){
-    // New instance on the existing BC — keep ref/archive/manySide, swap in the new
-    // Many contributors and reset the working state for this instance.
-    addingInstance=false;
-    submittedBC.contributors=[...contribs];
-    submittedBC.manySide=bcManySide;
-    submittedBC.status='awaiting-co';
-    submittedBC.ccData={};submittedBC.fteData=[];submittedBC.cc2Sel=[];submittedBC.costInPersons={};
-  } else {
+  {
+    const valid=plannedTransfers.filter(t=>t.person);
+    let planned, activeContribs, activeMany;
+    if(valid.length){
+      planned=valid.map((t,i)=>({no:i+1,person:{...t.person},manySide:t.manySide}));
+      activeContribs=[{...valid[0].person}];
+      activeMany=valid[0].manySide;
+    } else {
+      // Legacy path (e.g. tests that set `contribs` directly): a single transfer with
+      // all of `contribs` as the Many-side contributors and the global bcManySide.
+      planned=[{no:1,person:contribs[0]?{...contribs[0]}:null,manySide:bcManySide}];
+      activeContribs=[...contribs];
+      activeMany=bcManySide;
+    }
+    bcManySide=activeMany;
+    contribs=[...activeContribs];
     submittedBC={
       ref:'TRF-2026-'+String(Math.floor(1000+Math.random()*9000)),
       bcName:document.getElementById('inp-bcname')?.value||'(Untitled)',
       bcDesc:document.getElementById('inp-bcdesc')?.value||'',
       submittedBy:currentUser(),
       bcLeadId:currentUser().id,
-      contributors:[...contribs],
+      plannedTransfers:planned,
+      totalTransfers:planned.length,
+      currentTransferNo:1,
+      contributors:[...activeContribs],
       ccData:{},fteData:[],cc2Sel:[],costInPersons:{},coSubmissions:{},
-      manySide:bcManySide,
+      manySide:activeMany,
       archivedInstances:[],instanceNo:1,
       submittedAt:new Date().toLocaleString('en-GB'),
       status:'awaiting-co',
@@ -4672,7 +4721,7 @@ function saveAndNotifyCoPersons(){
 
 /* ── Init ── */
 renderCc2Hier();renderCc2Tray();
-renderContribs();
+renderTransferBlocks();
 renderUserMenu();
 // Gate the New Request topbar button to SET BC Leads only
 (function gateNewRequestOnLoad(){
@@ -4680,11 +4729,6 @@ renderUserMenu();
   const nr=document.getElementById('nav-new-request');
   if(nr)nr.style.display=isLeadUser(u)?'':'none';
 })();
-const ci=document.getElementById('contrib-out-search');
-const cd=document.getElementById('contrib-out-dropdown');
-ci.addEventListener('focus',()=>renderGlobalDropdown(ci.value));
-ci.addEventListener('input',()=>renderGlobalDropdown(ci.value));
-ci.addEventListener('blur',()=>setTimeout(()=>{cd.style.display='none';},150));
 go('dashboard');
 </script>
 </body>
