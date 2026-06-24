@@ -859,6 +859,15 @@ table.cod-full-tbl tbody tr.cod-full-row td.cod-na { background: #f3f2ee; }
   <div class="btn-row" id="step7-btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('step6b')">← Back</button><button class="btn btn-secondary">Save as draft</button></div>
 </div></div>
 
+<!-- BC OVERVIEW: BC Lead — per-transfer hub for a concurrent boundary change -->
+<div class="screen" id="screen-bc-overview"><div class="card">
+  <div class="screen-head">
+    <div class="card-title">Transfers in this boundary change</div>
+  </div>
+  <div id="bc-overview-content"></div>
+  <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary" onclick="go('dashboard')">← Dashboard</button></div>
+</div></div>
+
 <!-- APPROVAL -->
 <div class="screen" id="screen-approval">
   <div class="card" style="margin-bottom:10px;">
@@ -3324,15 +3333,17 @@ function switchUser(id){
 /* ── Dynamic dashboard ── */
 
 function getCostOutTasks(){
-  // Returns BCs where the current user is listed as a Cost Out contributor
-  // and has NOT yet submitted their own Cost Out data.
+  // Returns one task per TRANSFER whose Many-side contributor is the current user and
+  // who hasn't yet submitted that transfer's Cost Out. All transfers are live at once,
+  // so a person may have several pending tasks (and different people work in parallel).
   if(!submittedBC)return[];
   const u=currentUser();
-  const isContrib=submittedBC.contributors&&submittedBC.contributors.some(p=>p.id===u.id);
-  const isLead=submittedBC.bcLeadId===u.id;
-  const hasSubmitted=submittedBC.coSubmissions&&submittedBC.coSubmissions[u.id];
-  if(isContrib&&!isLead&&!hasSubmitted)return[submittedBC];
-  return[];
+  if(submittedBC.bcLeadId===u.id)return[];
+  return getTransfers().filter(t=>
+    t.person&&t.person.id===u.id&&
+    !(t.coSubmissions&&t.coSubmissions[u.id])&&
+    t.status!=='submitted-to-group'
+  ).map(t=>({bc:submittedBC,transfer:t}));
 }
 
 function renderDashboard(){
@@ -3348,7 +3359,8 @@ function renderDashboard(){
 
   // CI incoming
   const incoming=getCiIncoming();
-  const myResponses=Object.entries(ciResponses).filter(([k,r])=>r.person.id===u.id);
+  const myResponses=[];
+  getTransfers().forEach(t=>Object.values(t.ciResponses||{}).forEach(r=>{if(r.person&&r.person.id===u.id)myResponses.push(r);}));
 
   let html='';
 
@@ -3356,14 +3368,15 @@ function renderDashboard(){
   if(coTasks.length){
     html+=`<div class="card" style="margin-bottom:12px;border-left:3px solid #185FA5;">
       <div class="section-header-row" style="margin-bottom:10px;"><span style="font-size:15px;font-weight:500;">Cost Out tasks assigned to you</span><span class="badge badge-pending" style="margin-left:8px;">${coTasks.length} pending</span></div>
-      <div style="font-size:12px;color:#666;margin-bottom:12px;">The Boundary Change Lead has asked you to fill in the Cost Out values for the following boundary changes.</div>
-      <div class="table-wrap"><table><thead><tr><th>Reference</th><th>BC name</th><th>Lead</th><th>Cost centres</th><th>Status</th></tr></thead><tbody>
-        ${coTasks.map(bc=>`<tr class="clickable" onclick="openCoTask()">
+      <div style="font-size:12px;color:#666;margin-bottom:12px;">The Boundary Change Lead has asked you to fill in the values for the following transfer${coTasks.length===1?'':'s'}.</div>
+      <div class="table-wrap"><table><thead><tr><th>Reference</th><th>BC name</th><th>Lead</th><th>Transfer</th><th>Direction</th><th>Status</th></tr></thead><tbody>
+        ${coTasks.map(({bc,transfer})=>`<tr class="clickable" onclick="openCoTask(${transfer.no})">
           <td>${bc.ref}</td>
           <td>${bc.bcName||'—'}</td>
           <td>${bc.submittedBy.first} ${bc.submittedBy.last}</td>
-          <td>${(bc.cc2Sel||[]).map(c=>`<span class="cc-badge-out">${c.code}</span>`).join(' ')}</td>
-          <td>${bc.status==='submitted-to-group'?'<span class="badge badge-approved">Locked — view only</span>':bc.status==='ci-submitted'||bc.status==='co-submitted'?'<span class="badge badge-approved">Submitted</span>':'<span class="badge badge-pending">Cost Out required</span>'}</td>
+          <td>Transfer ${transfer.no} of ${bc.totalTransfers||getTransfers().length}</td>
+          <td>${transfer.manySide==='in'?'Cost In':'Cost Out'}</td>
+          <td><span class="badge badge-pending">Required</span></td>
         </tr>`).join('')}
       </tbody></table></div>
     </div>`;
@@ -3373,36 +3386,40 @@ function renderDashboard(){
   if(myBCs.length||isLeadUser(u)){
     const hasSubmitted=myBCs.length>0;
     const bc=myBCs[0];
+    const ts=getTransfers();
+    const ov=bcOverallStatus();
+    const balancedCount=ts.filter(t=>(t.status==='ci-submitted'||t.status==='submitted-to-group')&&isTransferBalanced(t)).length;
     const status=bc?(
-      submittedBC?.status==='submitted-to-group'?'Submitted to Group — locked':
-      submittedBC?.status==='ci-submitted'?'Cost In received — review &amp; submit':
-      submittedBC?.status==='co-submitted'?'Cost Out received — assign Cost In':
-      submittedBC?.status==='awaiting-co'?(()=>{
-        const total=(submittedBC.contributors||[]).length;
-        const done=Object.keys(submittedBC.coSubmissions||{}).length;
-        return`Awaiting Cost Out (${done}/${total} submitted)`;
-      })():
-      Object.keys(ciResponses).length?'In progress':'Awaiting Cost In'):'—';
+      ov==='submitted-to-group'?'Submitted to Group — locked':
+      ov==='ready-to-group'?`All ${ts.length} transfers balanced — ready to submit`:
+      `In progress — ${balancedCount}/${ts.length} transfer${ts.length===1?'':'s'} balanced`):'—';
+    // Combined Many-side FY26 totals across all transfers (dashboard glance).
+    const comboCost=ts.reduce((s,t)=>s+Object.values(t.ccData||{}).reduce((a,rows)=>a+rows.reduce((rs,r)=>rs+rowTotal(r.fy26),0),0),0);
+    const comboFte=ts.reduce((s,t)=>s+(t.fteData||[]).reduce((a,r)=>a+rowTotal(r.fy26),0),0);
+    // All Cost In responses across all transfers (for the "Responses received" list).
+    const allResp=[];ts.forEach(t=>Object.values(t.ciResponses||{}).forEach(r=>allResp.push(r)));
+    const awaitingCo=ts.filter(t=>t.status==='awaiting-co').length;
     html+=`
       <div class="kpi-group"><div class="kpi-group-label">Boundary changes I created</div><div class="metrics-row">
-        <div class="metric"><div class="metric-label">Submitted</div><div class="metric-value">${hasSubmitted?1:0}</div></div>
-        <div class="metric"><div class="metric-label">Awaiting Cost Out</div><div class="metric-value">${hasSubmitted&&!Object.keys(ciResponses).length?1:0}</div></div>
-        <div class="metric"><div class="metric-label">Responses received</div><div class="metric-value">${Object.keys(ciResponses).length}</div></div>
+        <div class="metric"><div class="metric-label">Transfers</div><div class="metric-value">${hasSubmitted?ts.length:0}</div></div>
+        <div class="metric"><div class="metric-label">Awaiting Cost Out</div><div class="metric-value">${awaitingCo}</div></div>
+        <div class="metric"><div class="metric-label">Responses received</div><div class="metric-value">${allResp.length}</div></div>
       </div></div>
       <div class="card">
         <div class="section-header-row"><span style="font-size:15px;font-weight:500;">My boundary changes</span>${isLeadUser(u)?`<button class="btn btn-primary" onclick="go('step1')">+ New request</button>`:''}</div>
-        ${hasSubmitted?`<div class="table-wrap"><table><thead><tr><th>Reference</th><th>BC name</th><th>FY26 Cost ($m)</th><th>FY26 FTEs</th><th>Status</th></tr></thead><tbody>
-          <tr class="clickable" onclick="${submittedBC?.status==='submitted-to-group'?'openLeadView(\'step7\')':submittedBC?.status==='ci-submitted'?'openLeadView(\'step6\')':submittedBC?.status==='co-submitted'?'openLeadView(\'step6\')':submittedBC?.status==='awaiting-co'?'openLeadView(\'step6\')':'openLeadView(\'step5\')'}">
+        ${hasSubmitted?`<div class="table-wrap"><table><thead><tr><th>Reference</th><th>BC name</th><th>Transfers</th><th>FY26 Cost ($m)</th><th>FY26 FTEs</th><th>Status</th></tr></thead><tbody>
+          <tr class="clickable" onclick="openBcOverview()">
             <td>${bc.ref}</td>
             <td>${bc.bcName||'—'}</td>
-            <td>${bc.ccData?fmtM(Object.values(bc.ccData).reduce((s,rows)=>s+rows.reduce((rs,r)=>rs+rowTotal(r.fy26),0),0)):'—'}</td>
-            <td>${bc.fteData?bc.fteData.reduce((s,r)=>s+rowTotal(r.fy26),0).toFixed(1):'—'}</td>
+            <td>${ts.length}</td>
+            <td>${fmtM(comboCost)}</td>
+            <td>${comboFte.toFixed(1)}</td>
             <td><span class="badge badge-pending">${status}</span></td>
           </tr>
         </tbody></table></div>
-        ${Object.keys(ciResponses).length?`<hr class="section-divider"/><div class="section-label">Responses received <span class="count-pill pill-green">${Object.keys(ciResponses).length}</span></div>
+        ${allResp.length?`<hr class="section-divider"/><div class="section-label">Responses received <span class="count-pill pill-green">${allResp.length}</span></div>
         <div class="table-wrap"><table><thead><tr><th>Cost centre</th><th>Responded by</th><th>FY26 ($m)</th><th>FTEs</th></tr></thead><tbody>
-          ${Object.entries(ciResponses).map(([key,resp])=>`<tr><td><span class="cc-badge-out">${resp.ccCode||'—'}</span></td><td>${resp.person.first} ${resp.person.last}</td><td>${fmtM((resp.ciData||[]).reduce((s,r)=>s+Math.abs(rowTotal(r.fy26)),0))}</td><td>${resp.fteTotals||'—'}</td></tr>`).join('')}
+          ${allResp.map(resp=>`<tr><td><span class="cc-badge-out">${resp.ccCode||'—'}</span></td><td>${resp.person.first} ${resp.person.last}</td><td>${fmtM((resp.ciData||[]).reduce((s,r)=>s+Math.abs(rowTotal(r.fy26)),0))}</td><td>${resp.fteTotals||'—'}</td></tr>`).join('')}
         </tbody></table></div>`:''}`
         :`<div style="padding:20px 0;text-align:center;color:#888;font-size:13px;">No boundary changes created yet.${isLeadUser(u)?` <button class="btn btn-primary" style="margin-left:8px;" onclick="go('step1')">Create one</button>`:''}</div>`}
       </div>`;
@@ -3418,11 +3435,12 @@ function renderDashboard(){
       </div></div>
       <div class="card">
         <div class="section-header-row"><span style="font-size:15px;font-weight:500;">Incoming Cost In requests</span></div>
-        <div class="table-wrap"><table><thead><tr><th>Reference</th><th>From</th><th>Cost centres</th><th>FY26 Cost Out ($m)</th><th>Status</th></tr></thead><tbody>
+        <div class="table-wrap"><table><thead><tr><th>Reference</th><th>From</th><th>Transfer</th><th>Cost centres</th><th>FY26 Cost Out ($m)</th><th>Status</th></tr></thead><tbody>
           ${incoming.map(bc=>{
-            const locked=submittedBC?.status==='submitted-to-group';
-            return`<tr class="clickable" onclick="openCiFlow()">
-              <td>${bc.ref}</td><td>${bc.fromName}</td><td><span class="cc-badge-out">${bc.ccCode}</span></td>
+            const tr=getTransfer(bc.transferNo);
+            const locked=tr&&tr.status==='submitted-to-group';
+            return`<tr class="clickable" onclick="openCiFlow(${bc.transferNo})">
+              <td>${bc.ref}</td><td>${bc.fromName}</td><td>Transfer ${bc.transferNo}</td><td><span class="cc-badge-out">${bc.ccCode}</span></td>
               <td>${fmtM(bc.costTotal)}</td>
               <td>${locked?'<span class="badge badge-approved">Locked — view only</span>':bc.responded?'<span class="badge badge-approved">Responded</span>':'<span class="badge badge-pending">Action required</span>'}</td>
             </tr>`;
@@ -3436,10 +3454,12 @@ function renderDashboard(){
   el.innerHTML=html;
 }
 
-// Open the CO task — restores state from the BC so the CO person can fill in steps 3-5
-function openCoTask(){
+// Open the CO task for transfer `no` — loads that transfer, then lets the CO person
+// fill in steps 2-5 against a fresh dataset.
+function openCoTask(no){
   if(!submittedBC)return;
-  // If BC is locked, show read-only review
+  if(no)loadTransfer(no);
+  // If this transfer is locked, show read-only review
   if(submittedBC.status==='submitted-to-group'){go('step7');return;}
   // Fully reset Cost Out state — each contributor starts with an empty dataset
   cc2Sel=[];
@@ -3501,13 +3521,16 @@ function getCiIncoming(){
   if(!submittedBC)return[];
   const u=currentUser();
   const results=[];
-  Object.entries(submittedBC.costInPersons||{}).forEach(([ccCode,persons])=>{
-    if(persons.some(p=>p.id===u.id)){
-      const ccRows=submittedBC.ccData[ccCode]||[];
-      const costTotal=ccRows.reduce((s,r)=>s+rowTotal(r.fy26),0);
-      const responded=Object.values(ciResponses).some(r=>r.ccCode===ccCode&&r.person.id===u.id);
-      results.push({ref:submittedBC.ref,ccCode,fromName:`${submittedBC.submittedBy.first} ${submittedBC.submittedBy.last}`,costTotal,responded});
-    }
+  // Scan every transfer for CCs the Lead routed to the current user.
+  getTransfers().forEach(t=>{
+    Object.entries(t.costInPersons||{}).forEach(([ccCode,persons])=>{
+      if(persons.some(p=>p.id===u.id)){
+        const ccRows=(t.ccData&&t.ccData[ccCode])||[];
+        const costTotal=ccRows.reduce((s,r)=>s+rowTotal(r.fy26),0);
+        const responded=Object.values(t.ciResponses||{}).some(r=>r.ccCode===ccCode&&r.person.id===u.id);
+        results.push({ref:submittedBC.ref,transferNo:t.no,ccCode,fromName:`${submittedBC.submittedBy.first} ${submittedBC.submittedBy.last}`,costTotal,responded});
+      }
+    });
   });
   return results;
 }
@@ -3572,15 +3595,16 @@ function coViewWrap(scope,label,totals,fullHTML,fmtv,totalsLabel){
   return `<div>${head}${tbl}</div>`;
 }
 
-function openCiFlow(){
-  // If BC is locked, show read-only review
+function openCiFlow(no){
+  if(submittedBC&&no)loadTransfer(no);
+  // If this transfer is locked, show read-only review
   if(submittedBC&&submittedBC.status==='submitted-to-group'){go('step7');return;}
   // Read-only receiver flow: the One side auto-mirrors the Many side when the CC is
   // chosen, so no per-row seeding here — just reset selection state.
   ciData=[];ciFteData=[];ciSel.clear();ciFteSel.clear();
   ciInCcSel={};ciCcPaths={};
   ciAggView['cost']='cc';ciAggView['fte']='cc';aggCur='usd';ciDetailFilters['cost']={};ciDetailFilters['fte']={};ciDetailFilterOpen=null;
-  const assigned=getCiIncoming().map(x=>x.ccCode);
+  const assigned=getCiIncoming().filter(x=>!no||x.transferNo===no).map(x=>x.ccCode);
   ciActiveCcCode=assigned[0]||null;
   go('ci-step1');
 }
@@ -3840,12 +3864,17 @@ function renderCiCcAggregate(mode,elId,opts){
    scope; the open filter panel is keyed "scope::colKey". */
 function _aggMode(scope){return scope.indexOf('cost')===0?'cost':'fte';}
 // ── Cross-transfer aggregation (Lead review shows ALL transfers together) ──
-// Every transfer (archived + active) as a uniform record; the active one reads the
-// live module ciResponses.
+// Every transfer in submittedBC.transfers[] as a uniform record. The currently-loaded
+// transfer prefers the live module ciResponses so in-flight edits show immediately.
 function bcTransfersData(){
-  const list=(submittedBC?.archivedInstances||[]).map(i=>({manySide:i.manySide,ccData:i.ccData||{},fteData:i.fteData||[],ciResponses:i.ciResponses||{},cc2Sel:i.cc2Sel||[]}));
-  if(submittedBC)list.push({manySide:submittedBC.manySide,ccData:submittedBC.ccData||{},fteData:submittedBC.fteData||[],ciResponses:ciResponses||{},cc2Sel:submittedBC.cc2Sel||[]});
-  return list;
+  const loaded=loadedTransferNo();
+  return getTransfers().map(t=>({
+    manySide:t.manySide,
+    ccData:t.ccData||{},
+    fteData:t.fteData||[],
+    ciResponses:(t.no===loaded?(ciResponses||t.ciResponses||{}):(t.ciResponses||{})),
+    cc2Sel:t.cc2Sel||[],
+  }));
 }
 // Cost / FTE rows across all transfers, classified Out vs In by each transfer's
 // direction (manySide='out' → ccData is Out, ciResponses is In; 'in' → reversed).
@@ -4055,8 +4084,10 @@ function submitCostIn(){
     fteTotals:ciFteData.reduce((s,r)=>s+rowTotal(r.fy26),0).toFixed(1),
     submittedAt:new Date().toLocaleString('en-GB'),
   };
-  // Update BC status so the Lead's dashboard routes to the Review screen
+  // Update this transfer's status so the Lead's overview shows it as Cost In received,
+  // and persist the response into the transfer (each transfer is independent).
   if(submittedBC)submittedBC.status='ci-submitted';
+  syncLoadedTransfer();
   document.getElementById('ci-confirm-ref').textContent=submittedBC?submittedBC.ref:'—';
   document.getElementById('ci-confirm-time').textContent=new Date().toLocaleString('en-GB');
   const leadName=submittedBC?.submittedBy?`${submittedBC.submittedBy.first} ${submittedBC.submittedBy.last}`:'the Boundary Change Lead';
@@ -4217,28 +4248,27 @@ function buildStep7(){
     ?`<div class="rv-row"><span class="rv-lbl">Cost In Contributor(s)</span><span>${ciPersonsList.map(p=>`${p.first} ${p.last} · ${p.dept}`).join('; ')}</span></div>`
     :'';
 
-  // ── Instances summary (Phase 3): combined totals across all Many→One transfers ──
-  const archived=submittedBC?.archivedInstances||[];
-  const instNo=submittedBC?.instanceNo||1;
+  // ── Transfers summary: combined totals across ALL concurrent Many→One transfers ──
+  const allTransfers=getTransfers();
+  const loadedNo=loadedTransferNo();
   let instancesBanner='';
-  if(archived.length){
+  if(allTransfers.length>1){
     const combo={many:{fy25:0,fy26:0,fy27:0,fy28:0,fy29:0},one:{fy25:0,fy26:0,fy27:0,fy28:0,fy29:0}};
     const add=t=>{FYK5.forEach(fk=>{combo.many[fk]+=t.many[fk];combo.one[fk]+=t.one[fk];});};
-    const oneCcOf=inst=>{const r=Object.values(inst.ciResponses||{})[0];return (r&&(r.ciData||[])[0]&&r.ciData[0].cc)||'—';};
-    const rowsHTML=archived.map(inst=>{const t=instCostTotals(inst.ccData,inst.ciResponses);add(t);
-      return `<div class="rv-row"><span class="rv-lbl">Transfer ${inst.no} <span class="badge badge-approved" style="font-size:9px;">balanced</span></span><span style="font-size:11px;color:#555;">${manyLabel()} ${fmtM(t.many.fy26)} → ${oneLabel()} <span class="cc-badge-out">${oneCcOf(inst)}</span> · FY26</span></div>`;}).join('');
-    const at=instCostTotals(submittedBC.ccData,ciResponses);add(at);
+    const oneCcOf=tr=>{const r=Object.values(tr.ciResponses||{})[0];return (r&&(r.ciData||[])[0]&&r.ciData[0].cc)||'—';};
+    const stLabel=tr=>tr.status==='submitted-to-group'?'<span class="badge badge-approved" style="font-size:9px;">submitted</span>':((tr.status==='ci-submitted'&&isTransferBalanced(tr))?'<span class="badge badge-approved" style="font-size:9px;">balanced</span>':`<span class="badge badge-pending" style="font-size:9px;">${tr.status==='awaiting-co'?'awaiting Cost Out':tr.status==='co-submitted'?'awaiting Cost In':'in progress'}</span>`);
+    const rowsHTML=allTransfers.map(tr=>{const t=instCostTotals(tr.ccData,tr.ciResponses);add(t);
+      return `<div class="rv-row"><span class="rv-lbl">Transfer ${tr.no}${tr.no===loadedNo?' (viewing)':''} ${stLabel(tr)}</span><span style="font-size:11px;color:#555;">${tr.person?tr.person.first+' '+tr.person.last+' · ':''}FY26 ${fmtM(t.many.fy26)} → <span class="cc-badge-out">${oneCcOf(tr)}</span></span></div>`;}).join('');
     instancesBanner=`<div class="rv-section" style="margin-bottom:14px;border:0.5px solid #B5D4F4;border-radius:8px;background:#F4F9FE;padding:10px 14px;">
-      <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;">Transfers in this boundary change — ${archived.length+1} total</div>
+      <div style="font-size:13px;font-weight:600;color:#0C447C;margin-bottom:6px;">Transfers in this boundary change — ${allTransfers.length} total</div>
       ${rowsHTML}
-      <div class="rv-row"><span class="rv-lbl">Transfer ${instNo} (current)</span><span style="font-size:11px;">${activeInstanceBalanced()?'<span class="badge badge-approved" style="font-size:9px;">balanced</span>':'<span class="badge badge-pending" style="font-size:9px;">in progress</span>'}</span></div>
       <div class="rv-row" style="font-weight:600;border-top:0.5px solid #B5D4F4;margin-top:4px;padding-top:4px;"><span class="rv-lbl">Combined (FY26)</span><span style="font-size:11px;">${manyLabel()} ${fmtM(combo.many.fy26)} · ${oneLabel()} ${fmtM(combo.one.fy26)} · Net ${fmtM(combo.many.fy26-combo.one.fy26)}</span></div>
     </div>`;
   }
   el.innerHTML=`
     ${instancesBanner}
     <div class="rv-section" style="margin-bottom:14px;">
-      <div class="rv-section-hdr"><div class="rv-section-title">Boundary change details${archived.length?` <span style="font-size:11px;color:#888;font-weight:400;">· showing current transfer (${instNo} of ${archived.length+1})</span>`:''}</div></div>
+      <div class="rv-section-hdr"><div class="rv-section-title">Boundary change details${allTransfers.length>1?` <span style="font-size:11px;color:#888;font-weight:400;">· showing transfer ${loadedNo} of ${allTransfers.length}</span>`:''}</div></div>
       <div class="rv-block">
         <div class="rv-row"><span class="rv-lbl">BC name</span><span>${submittedBC?.bcName||'—'}</span></div>
         <div class="rv-row"><span class="rv-lbl">BC Lead</span><span>${submittedBC?.submittedBy?submittedBC.submittedBy.first+' '+submittedBC.submittedBy.last+' · '+submittedBC.submittedBy.deptName:(u.first+' '+u.last+' · '+u.deptName)}</span></div>
@@ -4318,20 +4348,17 @@ function buildStep7(){
         if(Math.abs(netFte)>0.05){isBalanced=false;imbalanceReason.push(`${fk.toUpperCase()} FTE net = ${fmtFte(netFte)}`);}
       });
       if(isBalanced){
-        // Planned transfers auto-advance: if more remain, offer "Start next transfer";
-        // once the last is balanced, offer "Submit all to Group".
-        const total=submittedBC?.totalTransfers||(archived.length+1);
-        const curNo=submittedBC?.currentTransferNo||(archived.length+1);
-        const moreLeft=curNo<total;
-        const next=moreLeft?(submittedBC.plannedTransfers||[])[curNo]:null;
-        const nextBtn=moreLeft
-          ?`<button class="btn btn-secondary" onclick="advanceToNextTransfer()">Start next transfer (${curNo+1} of ${total})${next&&next.person?` · ${next.person.first} ${next.person.last}`:''}</button>`
-          :'';
-        const more=total>1?` Transfer ${curNo} of ${total} balanced.${moreLeft?'':' All '+total+' transfers balanced.'}`:'';
-        submitBox.innerHTML=`<div class="submit-box-text">This transfer is balanced.${more} ${moreLeft?'Start the next planned transfer, or':'Review above, then'} submit to Group.</div>
+        // This transfer balances. Submitting to Group is gated on EVERY transfer being
+        // balanced (concurrent model — no sequential advance). Other transfers may still
+        // be awaiting their Cost Out / Cost In.
+        const total=allTransfers.length;
+        const allBal=allTransfersBalanced();
+        const pending=allTransfers.filter(t=>!((t.status==='ci-submitted'||t.status==='submitted-to-group')&&isTransferBalanced(t)));
+        const more=total>1?` ${allBal?`All ${total} transfers balanced.`:`${total-pending.length}/${total} transfers balanced — still waiting on transfer${pending.length===1?'':'s'} ${pending.map(t=>t.no).join(', ')}.`}`:'';
+        submitBox.innerHTML=`<div class="submit-box-text">This transfer is balanced.${more} ${allBal?'Review above, then submit to Group.':'Complete the remaining transfers before submitting.'}</div>
           <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
-            ${nextBtn}
-            <button class="btn-submit"${moreLeft?' style="opacity:0.5;cursor:not-allowed;" disabled title="Complete all planned transfers first"':''} onclick="go('confirmation')">Submit ${total>1?'all ':''}to Group</button>
+            <button class="btn btn-secondary" onclick="go('bc-overview')">← Transfers overview</button>
+            <button class="btn-submit"${allBal?'':' style="opacity:0.5;cursor:not-allowed;" disabled title="Every transfer must be balanced first"'} onclick="submitAllToGroup()">Submit ${total>1?'all ':''}to Group</button>
           </div>`;
         submitBox.style.borderColor='';submitBox.style.background='';
       } else {
@@ -4365,7 +4392,17 @@ function buildStep7(){
 // phase (mirrors the old step6Proceed → submit flow, now on one screen).
 function submitToCiPersons(){
   if(submittedBC)submittedBC.costInPersons=JSON.parse(JSON.stringify(costInPersons||{}));
-  go('confirmation');
+  // Persist the Cost In assignment into this transfer so the assigned person sees it.
+  syncLoadedTransfer();
+  const titleEl=document.getElementById('conf-title');
+  const msgEl=document.getElementById('conf-msg');
+  const refEl=document.getElementById('conf-ref');
+  const timeEl=document.getElementById('rv-submit-time');
+  if(titleEl)titleEl.textContent='Cost In Contributor notified';
+  if(msgEl)msgEl.textContent='The Cost In Contributor has been notified to enter the offsetting side for this transfer.';
+  if(refEl)refEl.textContent=submittedBC?submittedBC.ref:'—';
+  if(timeEl)timeEl.textContent=new Date().toLocaleString('en-GB');
+  skipConfirmationSetup=true;go('confirmation');skipConfirmationSetup=false;
 }
 const SET_AREAS={
   '1000':{name:'Corporate Centre',codes:['1']},
@@ -4440,21 +4477,13 @@ function go(id){
   if(id==='step6')buildStep6();
   if(id==='step6b')buildStep6b();
   if(id==='step7')buildStep7();
+  if(id==='bc-overview')renderBcOverview();
   if(id==='confirmation'&&!skipConfirmationSetup){
-    // Under the simplified rule, the only path into the confirmation screen
-    // is via saveAndNotifyCoPersons (sets skipConfirmationSetup=true) or via
-    // the Lead's final submit from step 7 (handled below).
-    if(submittedBC&&submittedBC.status==='ci-submitted'){
-      // Lead submitting to Group — lock the BC
-      submittedBC.status='submitted-to-group';
-      submittedBC.submittedToGroupAt=new Date().toLocaleString('en-GB');
-      const titleEl=document.getElementById('conf-title');
-      const msgEl=document.getElementById('conf-msg');
-      const refEl=document.getElementById('conf-ref');
-      if(titleEl)titleEl.textContent='Boundary change submitted to Group';
-      if(msgEl)msgEl.textContent='The boundary change is now locked. All contributors will see a read-only view.';
-      if(refEl)refEl.textContent=submittedBC.ref;
-      document.getElementById('rv-submit-time').textContent=submittedBC.submittedToGroupAt;
+    // The expected paths into confirmation all set skipConfirmationSetup=true
+    // (saveAndNotifyCoPersons, submitToLead, submitToCiPersons, submitAllToGroup).
+    // As a fallback, if every transfer is balanced, treat a direct hit as Submit-all.
+    if(submittedBC&&allTransfersBalanced()){
+      submitAllToGroup();
       return;
     }
     // No other path is expected. Don't silently rebuild submittedBC.
@@ -4536,6 +4565,8 @@ function submitToLead(){
     coSubmittedAt:new Date().toLocaleString('en-GB'),
     status:newStatus,
   });
+  // Persist this contributor's Cost Out into its transfer (each transfer is independent).
+  syncLoadedTransfer();
 
   const titleEl=document.getElementById('conf-title');
   const msgEl=document.getElementById('conf-msg');
@@ -4640,39 +4671,158 @@ function isInstanceBalanced(ccDataObj,ciResp){
   const m=v=>Math.round((v||0)/1e4)/100;
   return FYK5.every(fk=>m(many[fk])===m(one[fk]));
 }
-// Is the BC's ACTIVE transfer balanced? (Many=submittedBC.ccData, One=ciResponses.)
+// Is the BC's LOADED transfer balanced? (Many=submittedBC.ccData, One=ciResponses.)
 function activeInstanceBalanced(){return submittedBC&&isInstanceBalanced(submittedBC.ccData,ciResponses);}
 
-// Archive the current transfer and activate the NEXT planned one (its pre-chosen
-// contact + direction). Called from the Summary once the active transfer balances.
-function advanceToNextTransfer(){
+// ── Concurrent transfers ──────────────────────────────────────────────────────
+// A BC holds N independent Many→One transfers, ALL live at once (the contributors
+// work in parallel). `submittedBC.transfers[]` is the source of truth; each entry is
+// a self-contained transfer {no,person,manySide,status,cc2Sel,ccData,fteData,
+// coSubmissions,costInPersons,ciResponses,contributors}. The working globals (ccData,
+// fteData, cc2Sel, costInPersons, ciResponses, contribs, bcManySide) PLUS the mirrored
+// top-level submittedBC fields are a working COPY of the currently-loaded transfer
+// (submittedBC.currentTransferNo). loadTransfer() copies a transfer into that working
+// copy; syncLoadedTransfer() writes the working copy back. This keeps the per-screen
+// code (which reads the globals / top-level fields) unchanged while letting each role
+// act on whichever transfer their task belongs to.
+function getTransfers(){return (submittedBC&&submittedBC.transfers)||[];}
+function loadedTransferNo(){return (submittedBC&&submittedBC.currentTransferNo)||1;}
+function getTransfer(no){return getTransfers()[(no||loadedTransferNo())-1]||null;}
+function transferNoForContributor(pid){const ts=getTransfers();for(let i=0;i<ts.length;i++){if(ts[i].person&&ts[i].person.id===pid)return i+1;}return 0;}
+// Persist the working copy (globals + top-level mirror) back into its transfer.
+function syncLoadedTransfer(){
+  const t=getTransfer();
+  if(!t)return;
+  t.cc2Sel=JSON.parse(JSON.stringify(submittedBC.cc2Sel||[]));
+  t.ccData=JSON.parse(JSON.stringify(submittedBC.ccData||{}));
+  t.fteData=JSON.parse(JSON.stringify(submittedBC.fteData||[]));
+  t.costInPersons=JSON.parse(JSON.stringify(submittedBC.costInPersons||{}));
+  t.coSubmissions=JSON.parse(JSON.stringify(submittedBC.coSubmissions||{}));
+  t.ciResponses=JSON.parse(JSON.stringify(ciResponses||{}));
+  t.contributors=JSON.parse(JSON.stringify(submittedBC.contributors||[]));
+  t.manySide=submittedBC.manySide;
+  t.status=submittedBC.status;
+}
+// Mirror transfer `no` into the working copy (top-level submittedBC fields + globals).
+function loadTransfer(no){
+  const t=getTransfer(no);
+  if(!t||!submittedBC)return;
+  submittedBC.currentTransferNo=no;
+  submittedBC.instanceNo=no;
+  const contribs0=t.contributors&&t.contributors.length?t.contributors:(t.person?[{...t.person}]:[]);
+  submittedBC.manySide=t.manySide;
+  submittedBC.contributors=JSON.parse(JSON.stringify(contribs0));
+  submittedBC.cc2Sel=JSON.parse(JSON.stringify(t.cc2Sel||[]));
+  submittedBC.ccData=JSON.parse(JSON.stringify(t.ccData||{}));
+  submittedBC.fteData=JSON.parse(JSON.stringify(t.fteData||[]));
+  submittedBC.costInPersons=JSON.parse(JSON.stringify(t.costInPersons||{}));
+  submittedBC.coSubmissions=JSON.parse(JSON.stringify(t.coSubmissions||{}));
+  submittedBC.status=t.status;
+  ccData=JSON.parse(JSON.stringify(t.ccData||{}));
+  fteData=JSON.parse(JSON.stringify(t.fteData||[]));
+  cc2Sel=JSON.parse(JSON.stringify(t.cc2Sel||[]));
+  costInPersons=JSON.parse(JSON.stringify(t.costInPersons||{}));
+  ciResponses=JSON.parse(JSON.stringify(t.ciResponses||{}));
+  contribs=JSON.parse(JSON.stringify(contribs0));
+  bcManySide=t.manySide;
+  ciInCcSel={};
+}
+// Balance for a transfer object; whether EVERY transfer is balanced (the Submit-to-
+// Group gate); and the BC's overall status across all transfers.
+function isTransferBalanced(t){return !!t&&isInstanceBalanced(t.ccData,t.ciResponses);}
+function allTransfersBalanced(){const ts=getTransfers();return ts.length>0&&ts.every(t=>(t.status==='ci-submitted'||t.status==='submitted-to-group')&&Object.keys(t.ciResponses||{}).length>0&&isTransferBalanced(t));}
+function bcOverallStatus(){
+  const ts=getTransfers();
+  if(!ts.length)return (submittedBC&&submittedBC.status)||'awaiting-co';
+  if(ts.every(t=>t.status==='submitted-to-group'))return 'submitted-to-group';
+  if(allTransfersBalanced())return 'ready-to-group';
+  return 'in-progress';
+}
+
+// Lead navigation: open the per-BC transfers overview, and drill into one transfer's
+// review/assign flow (loads that transfer, then walks the Cost→FTEs→Summary screens).
+function openBcOverview(){if(!submittedBC)return;go('bc-overview');}
+function openTransferReview(no,step){if(!submittedBC)return;loadTransfer(no);openLeadView(step||'step6');}
+
+// Final submission: every transfer must be balanced; lock them all to Group.
+function submitAllToGroup(){
   if(!submittedBC)return;
-  if(submittedBC.status!=='ci-submitted'||!activeInstanceBalanced()){alert('This transfer must be completed and balanced before you can start the next.');return;}
-  const planned=submittedBC.plannedTransfers||[];
-  const nextNo=(submittedBC.currentTransferNo||1)+1;
-  const next=planned[nextNo-1];
-  if(!next){alert('All transfers are complete.');return;}
-  submittedBC.archivedInstances=submittedBC.archivedInstances||[];
-  submittedBC.archivedInstances.push({
-    no:submittedBC.instanceNo||1,
-    manySide:submittedBC.manySide,
-    cc2Sel:JSON.parse(JSON.stringify(submittedBC.cc2Sel||[])),
-    ccData:JSON.parse(JSON.stringify(submittedBC.ccData||{})),
-    fteData:JSON.parse(JSON.stringify(submittedBC.fteData||[])),
-    costInPersons:JSON.parse(JSON.stringify(submittedBC.costInPersons||{})),
-    ciResponses:JSON.parse(JSON.stringify(ciResponses||{})),
-    contributors:JSON.parse(JSON.stringify(submittedBC.contributors||[])),
-  });
-  // Activate the next planned transfer (its contact + direction).
-  submittedBC.currentTransferNo=nextNo;
-  submittedBC.instanceNo=nextNo;
-  submittedBC.manySide=next.manySide;
-  submittedBC.contributors=[{...next.person}];
-  submittedBC.ccData={};submittedBC.fteData=[];submittedBC.cc2Sel=[];submittedBC.costInPersons={};
-  submittedBC.status='awaiting-co';
-  ccData={};fteData=[];cc2Sel=[];costInPersons={};ciResponses={};ciInCcSel={};contribs=[{...next.person}];
-  bcManySide=next.manySide;
-  go('dashboard');
+  if(!allTransfersBalanced()){alert('Every transfer must be completed and balanced before submitting to Group.');return;}
+  const now=new Date().toLocaleString('en-GB');
+  getTransfers().forEach(t=>{t.status='submitted-to-group';});
+  submittedBC.status='submitted-to-group';
+  submittedBC.submittedToGroupAt=now;
+  const titleEl=document.getElementById('conf-title');
+  const msgEl=document.getElementById('conf-msg');
+  const refEl=document.getElementById('conf-ref');
+  const timeEl=document.getElementById('rv-submit-time');
+  if(titleEl)titleEl.textContent='Boundary change submitted to Group';
+  if(msgEl)msgEl.textContent='All transfers are balanced and the boundary change is now locked. All contributors will see a read-only view.';
+  if(refEl)refEl.textContent=submittedBC.ref;
+  if(timeEl)timeEl.textContent=now;
+  skipConfirmationSetup=true;go('confirmation');skipConfirmationSetup=false;
+}
+
+// Render the Lead's "Transfers in this boundary change" overview — one row per
+// transfer (contributor, direction, assigned Cost In person, status + action), plus
+// the combined-summary link and the "Submit all to Group" gate.
+function renderBcOverview(){
+  const el=document.getElementById('bc-overview-content');
+  if(!el||!submittedBC)return;
+  const ts=getTransfers();
+  const dirName=ms=>ms==='in'?'Cost In (Many → One)':'Cost Out (Many → One)';
+  const rowsHTML=ts.map(t=>{
+    const ciArr=Object.values(t.costInPersons||{}).find(a=>(a||[]).length);
+    const ciPerson=ciArr?ciArr[0]:null;
+    const ciAssigned=!!ciPerson;
+    const balanced=isTransferBalanced(t);
+    let badge,action;
+    if(t.status==='submitted-to-group'){
+      badge='<span class="badge badge-approved">Submitted to Group</span>';
+      action=`<button class="btn btn-secondary" onclick="openTransferReview(${t.no},'step7')">View</button>`;
+    } else if(t.status==='ci-submitted'){
+      badge=balanced?'<span class="badge badge-approved">Cost In received · balanced</span>':'<span class="badge badge-pending">Cost In received · not balanced</span>';
+      action=`<button class="btn btn-primary" onclick="openTransferReview(${t.no},'step6')">Review &amp; balance</button>`;
+    } else if(t.status==='co-submitted'&&!ciAssigned){
+      badge='<span class="badge badge-pending">Cost Out received</span>';
+      action=`<button class="btn btn-primary" onclick="openTransferReview(${t.no},'step6')">Assign Cost In</button>`;
+    } else if(t.status==='co-submitted'&&ciAssigned){
+      badge='<span class="badge badge-pending">Awaiting Cost In</span>';
+      action=`<button class="btn btn-secondary" onclick="openTransferReview(${t.no},'step6')">Review</button>`;
+    } else {
+      badge='<span class="badge badge-pending">Awaiting Cost Out</span>';
+      action='<span style="font-size:11px;color:#888;">Waiting for contributor</span>';
+    }
+    return `<tr>
+      <td>Transfer ${t.no}</td>
+      <td>${t.person?`${t.person.first} ${t.person.last}`:'—'}</td>
+      <td style="font-size:12px;">${dirName(t.manySide)}</td>
+      <td>${ciPerson?`${ciPerson.first} ${ciPerson.last}`:'—'}</td>
+      <td>${badge}</td>
+      <td style="text-align:right;">${action}</td>
+    </tr>`;
+  }).join('');
+  const allBal=allTransfersBalanced();
+  const reviewNo=(ts.find(t=>t.status!=='awaiting-co')||ts[0]||{no:1}).no;
+  const submitBox=`<div class="submit-box" style="margin-top:16px;">
+    <div class="submit-box-text">${allBal
+      ?`All ${ts.length} transfer${ts.length===1?'':'s'} balanced. Review the combined summary, then submit the whole boundary change to Group.`
+      :`Each transfer balances on its own. Once every transfer has its Cost In received and balanced, you can submit the boundary change to Group.`}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="openTransferReview(${reviewNo},'step6')">Review combined summary</button>
+      <button class="btn-submit"${allBal?'':' disabled style="opacity:0.5;cursor:not-allowed;"'} onclick="submitAllToGroup()">Submit all to Group</button>
+    </div>
+  </div>`;
+  el.innerHTML=`
+    <div class="rv-section" style="margin-bottom:14px;">
+      <div class="rv-block">
+        <div class="rv-row"><span class="rv-lbl">BC name</span><span>${submittedBC.bcName||'—'}</span></div>
+        <div class="rv-row"><span class="rv-lbl">BC Lead</span><span>${submittedBC.submittedBy?`${submittedBC.submittedBy.first} ${submittedBC.submittedBy.last} · ${submittedBC.submittedBy.deptName||''}`:'—'}</span></div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#666;margin:10px 0 12px;">This boundary change has ${ts.length} transfer${ts.length===1?'':'s'}, each balancing on its own. Contributors work <strong>in parallel</strong> — assign each transfer's Cost In Contributor once its Cost Out arrives.</p>
+    <div class="table-wrap"><table><thead><tr><th>Transfer</th><th>Cost Out Contributor</th><th>Direction</th><th>Cost In Contributor</th><th>Status</th><th></th></tr></thead><tbody>${rowsHTML}</tbody></table></div>
+    ${submitBox}`;
 }
 
 function saveAndNotifyCoPersons(){
@@ -4692,6 +4842,17 @@ function saveAndNotifyCoPersons(){
     }
     bcManySide=activeMany;
     contribs=[...activeContribs];
+    // Every planned transfer becomes a self-contained, independently-live transfer so
+    // ALL contributors are notified at once and work in parallel. The first transfer is
+    // loaded into the working copy below.
+    const transfers=planned.map(pt=>({
+      no:pt.no,
+      person:pt.person?{...pt.person}:null,
+      manySide:pt.manySide,
+      status:'awaiting-co',
+      contributors:pt.person?[{...pt.person}]:[],
+      cc2Sel:[],ccData:{},fteData:[],coSubmissions:{},costInPersons:{},ciResponses:{},
+    }));
     submittedBC={
       ref:'TRF-2026-'+String(Math.floor(1000+Math.random()*9000)),
       bcName:document.getElementById('inp-bcname')?.value||'(Untitled)',
@@ -4700,14 +4861,16 @@ function saveAndNotifyCoPersons(){
       bcLeadId:currentUser().id,
       plannedTransfers:planned,
       totalTransfers:planned.length,
+      transfers,
       currentTransferNo:1,
       contributors:[...activeContribs],
       ccData:{},fteData:[],cc2Sel:[],costInPersons:{},coSubmissions:{},
       manySide:activeMany,
-      archivedInstances:[],instanceNo:1,
+      instanceNo:1,
       submittedAt:new Date().toLocaleString('en-GB'),
       status:'awaiting-co',
     };
+    loadTransfer(1);
   }
   const titleEl=document.getElementById('conf-title');
   const msgEl=document.getElementById('conf-msg');
@@ -4715,8 +4878,8 @@ function saveAndNotifyCoPersons(){
   const timeEl=document.getElementById('rv-submit-time');
   if(titleEl)titleEl.textContent='Boundary change saved';
   if(msgEl){
-    const names=contribs.map(p=>`${p.first} ${p.last}`).join(', ');
-    msgEl.textContent=`Saved and ${names} notified. They can now enter the ${manyLabel()} values.`;
+    const names=getTransfers().map(t=>t.person?`${t.person.first} ${t.person.last}`:null).filter(Boolean).join(', ');
+    msgEl.textContent=`Saved and ${names||'the contributors'} notified. Each can now enter their transfer's values independently.`;
   }
   if(refEl)refEl.textContent=submittedBC.ref;
   if(timeEl)timeEl.textContent=submittedBC.submittedAt;
