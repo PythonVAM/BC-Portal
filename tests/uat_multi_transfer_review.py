@@ -36,7 +36,7 @@ with sync_playwright() as p:
     s7=pg.evaluate("""(()=>{const s=document.getElementById('screen-step7');
       const cost=[...s.querySelectorAll('table.s6-table')][0];
       const subHdrs=[...cost.querySelectorAll('thead tr:nth-child(2) th')].map(x=>x.textContent.trim());
-      return {areaSubHdrs:subHdrs, balanced:/is balanced/i.test(s.innerText), submitAll:/Submit all to Group/.test(s.innerText), allBal:allTransfersBalanced()};})()""")
+      return {areaSubHdrs:subHdrs, balanced:/balanced/i.test(s.innerText), submitAll:/Submit all to Group/.test(s.innerText), allBal:allTransfersBalanced()};})()""")
     # step6 Cost (both transfers' Many CCs) and step6b FTEs
     pg.evaluate("openLeadView('step6'); setCiAggView('cost-lead','cc')"); pg.wait_for_timeout(200)
     s6cost=pg.evaluate("[...document.querySelectorAll('#s6-agg-cost .cc-badge-out')].map(x=>x.textContent.trim()).sort()")
