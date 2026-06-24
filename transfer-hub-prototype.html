@@ -4662,13 +4662,14 @@ function advanceToNextTransfer(){
     costInPersons:JSON.parse(JSON.stringify(submittedBC.costInPersons||{})),
     ciResponses:JSON.parse(JSON.stringify(ciResponses||{})),
     contributors:JSON.parse(JSON.stringify(submittedBC.contributors||[])),
+    coSubmissions:JSON.parse(JSON.stringify(submittedBC.coSubmissions||{})),
   });
   // Activate the next planned transfer (its contact + direction).
   submittedBC.currentTransferNo=nextNo;
   submittedBC.instanceNo=nextNo;
   submittedBC.manySide=next.manySide;
   submittedBC.contributors=[{...next.person}];
-  submittedBC.ccData={};submittedBC.fteData=[];submittedBC.cc2Sel=[];submittedBC.costInPersons={};
+  submittedBC.ccData={};submittedBC.fteData=[];submittedBC.cc2Sel=[];submittedBC.costInPersons={};submittedBC.coSubmissions={};
   submittedBC.status='awaiting-co';
   ccData={};fteData=[];cc2Sel=[];costInPersons={};ciResponses={};ciInCcSel={};contribs=[{...next.person}];
   bcManySide=next.manySide;
