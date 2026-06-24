@@ -3140,6 +3140,79 @@ function renderOnePersonDropdown(q){
   dd.style.display='block';
 }
 
+// ── Per-transfer Cost In assignment (concurrent model) ─────────────────────────
+// On the combined Summary the Lead assigns a receiver to EACH transfer separately.
+// Each picker writes straight into its own transfer in submittedBC.transfers[] (and
+// mirrors the loaded transfer's working globals). Assigning notifies that person (the
+// CI task routes via getCiIncoming as soon as the transfer's costInPersons is set).
+function getTransferCiPerson(no){
+  const t=getTransfer(no);if(!t)return null;
+  for(const arr of Object.values(t.costInPersons||{})){if(arr&&arr.length)return arr[0];}
+  return null;
+}
+function assignTransferCiPerson(no,pid){
+  const t=getTransfer(no);const p=PEOPLE.find(x=>x.id===pid);if(!t||!p)return;
+  const cip={};(t.cc2Sel||[]).forEach(cc=>{cip[cc.code]=[{...p}];});
+  t.costInPersons=cip;
+  if(no===loadedTransferNo()){costInPersons=JSON.parse(JSON.stringify(cip));if(submittedBC)submittedBC.costInPersons=JSON.parse(JSON.stringify(cip));}
+  rebuildActiveLeadScreen();
+}
+function clearTransferCiPerson(no){
+  const t=getTransfer(no);if(!t)return;
+  t.costInPersons={};
+  if(no===loadedTransferNo()){costInPersons={};if(submittedBC)submittedBC.costInPersons={};}
+  rebuildActiveLeadScreen();
+}
+// One assignment panel per transfer: awaiting-co → not yet assignable; co-submitted →
+// pick/change the receiver; ci-submitted/locked → receiver shown read-only.
+function transferAssignListHTML(){
+  const rows=getTransfers().map(t=>{
+    const ccs=(t.cc2Sel||[]).map(c=>`<span class="cc-badge-out" style="margin-right:3px;">${c.code}</span>`).join('')||'—';
+    const who=t.person?`${t.person.first} ${t.person.last}`:'—';
+    const dir=t.manySide==='in'?'Cost In':'Cost Out';
+    const head=`<div style="font-size:12px;font-weight:600;color:#0C447C;margin-bottom:3px;">Transfer ${t.no} <span style="font-weight:400;color:#666;">· ${dir} by ${who}</span></div><div style="font-size:11px;color:#888;margin-bottom:6px;">${ccs}</div>`;
+    let body;
+    if(t.status==='awaiting-co'){
+      body=`<div style="font-size:12px;color:#888;font-style:italic;">Awaiting ${dir} from ${who} before a Cost In Contributor can be assigned.</div>`;
+    } else if(t.status==='ci-submitted'||t.status==='submitted-to-group'){
+      const ci=getTransferCiPerson(t.no);
+      body=`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EAF3DE;color:#27500A;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${ci?ci.initials:'?'}</div><div><div style="font-size:12px;">${ci?ci.first+' '+ci.last:'—'}</div><div style="font-size:11px;color:#666;">Cost In received</div></div></div></div>`;
+    } else {
+      const a=getTransferCiPerson(t.no);
+      body=a
+        ?`<div class="rv-ci-row"><div class="rv-ci-person"><div style="width:22px;height:22px;border-radius:50%;background:#EEEDFE;color:#3C3489;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0;">${a.initials}</div><div><div style="font-size:12px;">${a.first} ${a.last}</div><div style="font-size:11px;color:#666;">${a.dept} · notified</div></div></div><button class="rv-ci-remove" onclick="clearTransferCiPerson(${t.no})">×</button></div>`
+        :`<div style="position:relative;"><input class="person-search" id="ci-assign-search-${t.no}" placeholder="Search by name to assign Transfer ${t.no}'s Cost In Contributor…" autocomplete="off" style="font-size:12px;"/><div class="person-dropdown" id="ci-assign-dd-${t.no}"></div></div>`;
+    }
+    return `<div class="rv-ci-panel" style="margin-bottom:10px;">${head}${body}</div>`;
+  }).join('');
+  return `<div class="rv-ci-label">Cost In Contributor — assign one per transfer (each enters that transfer's offsetting One side)</div>${rows}`;
+}
+function wireTransferCiPickers(){
+  getTransfers().forEach(t=>{
+    const inp=document.getElementById(`ci-assign-search-${t.no}`);
+    const dd=document.getElementById(`ci-assign-dd-${t.no}`);
+    if(inp&&dd){
+      const render=()=>renderTransferCiDropdown(t.no,inp.value);
+      inp.addEventListener('focus',render);
+      inp.addEventListener('input',render);
+      inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
+    }
+  });
+}
+function renderTransferCiDropdown(no,q){
+  const dd=document.getElementById(`ci-assign-dd-${no}`);if(!dd)return;
+  const leadId=submittedBC?.bcLeadId||currentUser().id;
+  const res=PEOPLE.filter(p=>{
+    const profile=USER_PROFILES[p.id];
+    if(!profile||profile.personaRole!=='BC Contributor')return false;
+    if(p.id===leadId)return false;
+    return`${p.first} ${p.last}`.toLowerCase().includes((q||'').toLowerCase());
+  });
+  if(!res.length){dd.innerHTML='<div class="person-no-results">No results</div>';dd.style.display='block';return;}
+  dd.innerHTML=res.map(p=>`<div class="person-option" onmousedown="assignTransferCiPerson(${no},'${p.id}')"><div class="person-option-avatar">${p.initials}</div><div><div class="person-option-name">${p.first} ${p.last}</div><div class="person-option-dept">${p.dept}</div></div></div>`).join('');
+  dd.style.display='block';
+}
+
 /* ── User personas ── */
 // Each user profile is tagged with a `personaRole` that determines what they
 // can do in the prototype:
@@ -4312,10 +4385,18 @@ function buildStep7(){
       </div>
       ${ftePivotHTML}
     </div>
-    ${(()=>{const st=submittedBC?.status;
-      // Assign phase (before the One side has responded): the Summary ends with the
-      // single Cost In Contributor picker. Once Cost In is in (ci-submitted) or the BC
-      // is locked, the picker is gone and the submit/add actions take over.
+    ${(()=>{
+      // MULTI-transfer: the Summary aggregates every transfer, so assignment is
+      // per-transfer — one picker per transfer (each routes its own One side).
+      const ts=getTransfers();
+      if(ts.length>1){
+        if(bcOverallStatus()==='submitted-to-group')return '';
+        return `<div class="rv-divider" style="margin-top:16px;"></div>
+        <p style="font-size:12px;color:#666;margin:10px 0 10px;">Assign the Cost In Contributor for <strong>each transfer</strong> separately — each enters that transfer's offsetting (One) side, and is notified as soon as you assign them.</p>
+        ${transferAssignListHTML()}`;
+      }
+      // SINGLE transfer: one Cost In Contributor for the whole One side.
+      const st=submittedBC?.status;
       if(st==='ci-submitted'||st==='submitted-to-group')return '';
       return `<div class="rv-divider" style="margin-top:16px;"></div>
         <p style="font-size:12px;color:#666;margin:10px 0 10px;">Assign the single Cost In Contributor who will enter the offsetting (One) side, then notify them.</p>
@@ -4326,7 +4407,36 @@ function buildStep7(){
   const titleEl=document.getElementById('step7-title');
   const btnRow=document.getElementById('step7-btn-row');
   const isLead=submittedBC?.bcLeadId===u.id;
-  if(submitBox){
+  if(submitBox&&allTransfers.length>1){
+    // ── MULTI-transfer: actions reflect the OVERALL state across every transfer ──
+    if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'bc-overview\')">← Transfers overview</button><button class="btn btn-secondary">Save as draft</button>';
+    if(bcOverallStatus()==='submitted-to-group'){
+      if(titleEl)titleEl.textContent='Summary (read only)';
+      submitBox.innerHTML=`<div class="submit-box-text" style="color:#27500A;"><strong>✓ Submitted to Group</strong> · <span style="font-size:11px;color:#666;">${submittedBC.submittedToGroupAt||''}</span><br><span style="font-size:11px;color:#666;">This boundary change is locked. All contributors see a read-only view.</span></div>`;
+      submitBox.style.borderColor='#A3CC72';submitBox.style.background='#EAF3DE';
+      if(btnRow)btnRow.innerHTML='<button class="btn btn-secondary" onclick="go(\'dashboard\')">← Back to dashboard</button>';
+    } else if(allTransfersBalanced()){
+      if(titleEl)titleEl.textContent='Summary';
+      submitBox.innerHTML=`<div class="submit-box-text">All ${allTransfers.length} transfers balanced. Review above, then submit the whole boundary change to Group.</div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
+          <button class="btn btn-secondary" onclick="go('bc-overview')">← Transfers overview</button>
+          <button class="btn-submit" onclick="submitAllToGroup()">Submit all to Group</button>
+        </div>`;
+      submitBox.style.borderColor='';submitBox.style.background='';
+    } else {
+      if(titleEl)titleEl.textContent='Summary';
+      const needCo=allTransfers.filter(t=>t.status==='awaiting-co').length;
+      const needAssign=allTransfers.filter(t=>t.status==='co-submitted'&&!getTransferCiPerson(t.no)).length;
+      const awaitCi=allTransfers.filter(t=>t.status==='co-submitted'&&getTransferCiPerson(t.no)).length;
+      const parts=[];
+      if(needCo)parts.push(`${needCo} awaiting Cost Out`);
+      if(needAssign)parts.push(`${needAssign} need a Cost In Contributor`);
+      if(awaitCi)parts.push(`${awaitCi} awaiting Cost In`);
+      submitBox.innerHTML=`<div class="submit-box-text">Assign a Cost In Contributor for each transfer above — each is notified on assignment. ${parts.length?'Still pending: '+parts.join(' · ')+'.':''}</div>
+        <button class="btn-submit" disabled style="opacity:0.5;cursor:not-allowed;" title="Every transfer must be balanced first">Submit all to Group</button>`;
+      submitBox.style.background='#fafaf7';submitBox.style.borderColor='#e0ded8';
+    }
+  } else if(submitBox){
     const status=submittedBC?.status;
     if(status==='submitted-to-group'){
       // Locked — read-only view for everyone
@@ -4383,8 +4493,10 @@ function buildStep7(){
       }
     }
   }
-  // Wire the single person picker (only present, with a search box, in the assign phase).
+  // Wire the person pickers — single (single-transfer) or per-transfer (multi). Each
+  // no-ops if its elements aren't on screen.
   wireOnePersonPicker();
+  wireTransferCiPickers();
 }
 
 // Persist the One-side Cost In Contributor assignment back to the BC, then send it
