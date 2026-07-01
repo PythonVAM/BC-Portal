@@ -19,6 +19,7 @@ The prototype is fully self-contained, with simulated personas, fake hierarchica
 - **`transfer-hub-prototype.html`** (repo root) — the **canonical working file** and the prototype itself. ~5,000 lines of HTML/CSS/JS in one file. This is the single source of truth and the **only** prototype file Claude Code should ever edit. Edit it in place at the repo root.
 - **`transfer-hub-paths.html`** (repo root) — standalone documentation file that maps the Cost Out paths across SET Area × BC Dept × Full/Partial combinations, with in-browser editing and persistent change history. Linked from the prototype's topbar ("📖 Paths").
 - **`vN/index.html`** (`v2/` … `v10/`, and counting) — **frozen, read-only snapshots** of the prototype at past milestones. They exist so colleagues can open a stable link to a specific version (e.g. via GitHub Pages at `…/BC-Portal/v10/`). **v10 is the latest snapshot** and includes concurrent transfers + per-transfer Cost In assignment. **Never edit, rename, or delete these.** They are an archive, not working code. All new work happens in the root `transfer-hub-prototype.html`, never in a `vN/` folder.
+- **`workflow-options/`** — a **separate** set of standalone clickable HTML mockups exploring the BC *approval / role model* (who is BC Lead, where FBP/approvals/Consulted parties sit). **Not part of the prototype** and not covered by the UATs. See §1.1 below.
 
 ### Versioning & sharing (snapshot ritual)
 
@@ -34,6 +35,22 @@ Do **not** promote/rename the root file into a `vN/` folder (that would remove t
 ### Build / run
 
 There is no build step. Open the HTML file in a browser. For testing, see `UATS.md`.
+
+### 1.1 The `workflow-options/` exploration set (separate from the prototype)
+
+`workflow-options/` holds **standalone clickable HTML mockups** exploring **who plays which role** in the BC approval process — a governance / role-model exploration, **entirely separate** from `transfer-hub-prototype.html`. There are **no cross-links either way** (the prototype never references `workflow-options/`); they only share visual styling (pink header, gold/maroon/purple accents, colour-coded roles). Built in earlier sessions (PRs #31–#40); **not covered by the UATs**. Structure:
+
+- **`index.html`** — landing/menu grid linking to all six options (each card = short description + mini role-flow diagram), plus a "Compare all options" button.
+- **`compare.html`** — side-by-side comparison of all six, ordered most-rigid → most-flexible, with a **recommendation banner** (Option 3 flagged "recommended") and a best-practice assessment (segregation of duties, four-eyes, auditability, accountability; COSO/RACI lenses). Links back to `index.html` and to each option.
+- **Six option pages** — each an interactive role hand-off walkthrough, back-linked to `compare.html`, ending in a roles-mapping section:
+  1. **`proposed.html`** (Option 1) — BC Leads + Contributors only. FP&A SET BC Lead orchestrates sequentially (setup → delegate Cost Out/In → review → submit to Group). Rigid roles; no approval gate (offline FBP sign-off only).
+  2. **`proposed-consulted.html`** (Option 2) — as Option 1 + named **Consulted** people (dashed-border, in-system but non-approving), nameable at setup.
+  3. **`optional-fbp-approval.html`** (Option 3) — as Option 1 + an **optional FBP approver** inserted before Group submission. Flagged **recommended** in `compare.html`.
+  4. **`fbp-signoff.html`** (Option 4) — **FBP is the BC Lead**; orchestrates the whole BC, then submits to the SET BC Lead (FP&A) for final sign-off + Group submission. Two-level governance.
+  5. **`fluid-roles.html`** (Option 5) — **any business role can be BC Lead** (whoever creates the BC); roles fluid per BC; SET BC Lead kept informed via auto-notification rules.
+  6. **`fluid-roles-consulted.html`** (Option 6) — as Option 5, but the BC Lead names **Consulted** people at setup instead of relying on auto-notification rules.
+
+Treat these as an exploration artifact: **edit them only when the user is explicitly iterating on the workflow-options exploration**, not as part of prototype work. Changes to the prototype's flow do not need to be mirrored here.
 
 ---
 
